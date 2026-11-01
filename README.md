@@ -4,7 +4,7 @@
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
 ![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-61DAFB)
-![Backend](https://img.shields.io/badge/backend-Node.js-339933)
+![Backend](https://img.shields.io/badge/backend-Laravel-339933)
 ![Database](https://img.shields.io/badge/database-PostgreSQL-4169E1)
 ![SDGs Desa](https://img.shields.io/badge/SDGs%20Desa-4%20Pendidikan%20Berkualitas-C5192D)
 
