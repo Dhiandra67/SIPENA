@@ -3,8 +3,8 @@
 **Digitalisasi Sistem Penilaian Akademik Siswa di SMP Karya Utama**
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-61DAFB)
-![Backend](https://img.shields.io/badge/backend-Laravel-339933)
+![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB)
+![Backend](https://img.shields.io/badge/backend-Laravel-FF2D20)
 ![Database](https://img.shields.io/badge/database-PostgreSQL-4169E1)
 ![SDGs Desa](https://img.shields.io/badge/SDGs%20Desa-4%20Pendidikan%20Berkualitas-C5192D)
 
@@ -83,8 +83,8 @@ Di sisi lain, guru juga merangkap tugas administratif di luar kegiatan mengajar.
 
 | Lapisan | Teknologi |
 |---------|-----------|
-| Front-end | HTML, CSS, JavaScript, React, Tailwind CSS |
-| Back-end | Laravel, Node.js (RESTful API) |
+| Front-end | React, TypeScript, Vite, Tailwind CSS |
+| Back-end | Laravel (PHP, RESTful API) |
 | Basis data | PostgreSQL |
 | Format data | Excel (.xlsx) / CSV untuk impor dan ekspor |
 
@@ -106,27 +106,43 @@ Proyek dilaksanakan bertahap selama 8 minggu (M1–M8) dengan pendekatan Waterfa
 
 ### Prasyarat
 
+- PHP 8.3 atau lebih baru dengan ekstensi PDO PostgreSQL
+- Composer
 - Node.js (disarankan versi LTS terbaru)
+- PostgreSQL
 - Git
 
-### Langkah
+### Menjalankan aplikasi
 
-```bash
-# 1. Clone repository
-git clone https://github.com/Dhiandra67/SIPENA.git
-cd SIPENA
+Siapkan database PostgreSQL `sipena`, lalu dari PowerShell jalankan:
 
-# 2. Siapkan konfigurasi API frontend (PowerShell)
+```powershell
+# Persiapan backend (cukup sekali)
+cd backend
+composer install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+php artisan key:generate
+php artisan migrate
+Set-Location ..
+```
+
+Jalankan backend dari root project di terminal pertama:
+
+```powershell
+npm.cmd run dev
+```
+
+Jalankan frontend dari folder `frontend` di terminal kedua:
+
+```powershell
 cd frontend
-Copy-Item .env.example .env
-# sesuaikan VITE_API_BASE_URL dengan alamat API backend
-
-# 3. Install dan jalankan frontend
 npm.cmd install
 npm.cmd run dev
 ```
 
-Endpoint dan format respons login, struktur folder halaman, serta solusi error PowerShell `npm.ps1` dijelaskan di [frontend/README.md](frontend/README.md). Backend dan database dapat dijalankan terpisah sesuai konfigurasi API.
+Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` dari folder `frontend` juga menjalankan frontend. Gunakan `npm.cmd` di PowerShell agar tidak diblokir oleh execution policy yang mencegah `npm.ps1` berjalan. Frontend meneruskan request `/api` ke backend Laravel di `http://127.0.0.1:8000`.
+
+Backend saat ini menyediakan `GET /api/health`, tetapi belum menyediakan `POST /api/auth/login`. Karena itu tampilan login dan dashboard sudah tersedia, namun autentikasi memerlukan endpoint login dari backend. Rincian struktur dan integrasi frontend ada di [frontend/README.md](frontend/README.md).
 
 ## Kontribusi Terhadap SDGs Desa
 

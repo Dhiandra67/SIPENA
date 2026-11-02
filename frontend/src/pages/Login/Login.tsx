@@ -160,7 +160,11 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
                   value={password}
                 />
                 <button
-                  aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                  aria-label={
+                    showPassword
+                      ? "Sembunyikan kata sandi"
+                      : "Tampilkan kata sandi"
+                  }
                   className="password-toggle"
                   onClick={() => setShowPassword((visible) => !visible)}
                   type="button"
@@ -199,7 +203,11 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
               </p>
             )}
 
-            <button className="submit-button" disabled={isSubmitting} type="submit">
+            <button
+              className="submit-button"
+              disabled={isSubmitting}
+              type="submit"
+            >
               <span>{isSubmitting ? "Memproses..." : "Masuk"}</span>
               {!isSubmitting && <Icon name="arrow" />}
             </button>
