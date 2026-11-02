@@ -104,12 +104,9 @@ Proyek dilaksanakan bertahap selama 8 minggu (M1–M8) dengan pendekatan Waterfa
 
 ## Instalasi dan Menjalankan Project
 
-> Bagian ini akan dilengkapi seiring perkembangan implementasi. Sesuaikan perintah dan nama folder dengan struktur repo yang sebenarnya.
-
 ### Prasyarat
 
 - Node.js (disarankan versi LTS terbaru)
-- PostgreSQL
 - Git
 
 ### Langkah
@@ -119,25 +116,17 @@ Proyek dilaksanakan bertahap selama 8 minggu (M1–M8) dengan pendekatan Waterfa
 git clone https://github.com/Dhiandra67/SIPENA.git
 cd SIPENA
 
-# 2. Install dependency back-end
-cd backend
-npm install
+# 2. Siapkan konfigurasi API frontend (PowerShell)
+cd frontend
+Copy-Item .env.example .env
+# sesuaikan VITE_API_BASE_URL dengan alamat API backend
 
-# 3. Salin dan isi konfigurasi environment
-cp .env.example .env
-# isi DATABASE_URL, JWT_SECRET, PORT, dll.
-
-# 4. Jalankan migrasi database
-npm run migrate
-
-# 5. Jalankan server back-end
-npm run dev
-
-# 6. Install dan jalankan front-end (terminal baru)
-cd ../frontend
-npm install
-npm run dev
+# 3. Install dan jalankan frontend
+npm.cmd install
+npm.cmd run dev
 ```
+
+Endpoint dan format respons login, struktur folder halaman, serta solusi error PowerShell `npm.ps1` dijelaskan di [frontend/README.md](frontend/README.md). Backend dan database dapat dijalankan terpisah sesuai konfigurasi API.
 
 ## Kontribusi Terhadap SDGs Desa
 
