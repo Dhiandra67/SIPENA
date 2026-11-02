@@ -1,8 +1,13 @@
 import { FormEvent, useState } from "react";
 import { login } from "./auth";
+import type { AuthUser } from "./auth";
 import "./Login.css";
 
 type IconName = "brand" | "mail" | "lock" | "eye" | "eyeOff" | "arrow" | "shield";
+
+interface LoginProps {
+  onLoginSuccess: (user: AuthUser) => void;
+}
 
 function Icon({ name, className }: { name: IconName; className?: string }) {
   const sharedProps = {
@@ -67,7 +72,7 @@ function Icon({ name, className }: { name: IconName; className?: string }) {
   }
 }
 
-function App() {
+function LoginPage({ onLoginSuccess }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -87,6 +92,7 @@ function App() {
       const result = await login({ email: email.trim(), password }, rememberMe);
       setMessage(`Berhasil masuk. Selamat datang, ${result.user.name}.`);
       setMessageType("success");
+      onLoginSuccess(result.user);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -226,4 +232,4 @@ function App() {
   );
 }
 
-export default App;
+export default LoginPage;
