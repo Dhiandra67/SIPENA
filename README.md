@@ -3,7 +3,7 @@
 **Digitalisasi Sistem Penilaian Akademik Siswa di SMP Karya Utama**
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![Frontend](https://img.shields.io/badge/frontend-Laravel%20Blade-FF2D20)
+![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB)
 ![Backend](https://img.shields.io/badge/backend-Laravel-FF2D20)
 ![Database](https://img.shields.io/badge/database-PostgreSQL-4169E1)
 ![SDGs Desa](https://img.shields.io/badge/SDGs%20Desa-4%20Pendidikan%20Berkualitas-C5192D)
@@ -83,7 +83,7 @@ Di sisi lain, guru juga merangkap tugas administratif di luar kegiatan mengajar.
 
 | Lapisan | Teknologi |
 |---------|-----------|
-| Front-end | Laravel Blade, HTML, CSS, JavaScript |
+| Front-end | React, TypeScript, Vite, Tailwind CSS |
 | Back-end | Laravel (PHP, RESTful API) |
 | Basis data | PostgreSQL |
 | Format data | Excel (.xlsx) / CSV untuk impor dan ekspor |
@@ -108,31 +108,31 @@ Proyek dilaksanakan bertahap selama 8 minggu (M1–M8) dengan pendekatan Waterfa
 
 - PHP 8.3 atau lebih baru dengan ekstensi PDO PostgreSQL
 - Composer
+- Node.js (disarankan versi LTS terbaru)
 - PostgreSQL
+- Git
 
 ### Menjalankan aplikasi
 
-Buat database PostgreSQL bernama `sipena` (misalnya dengan `createdb -U postgres sipena` atau melalui pgAdmin), lalu dari PowerShell jalankan:
+Siapkan database PostgreSQL `sipena`, lalu dari PowerShell jalankan:
 
 ```powershell
+# Persiapan backend (cukup sekali)
 cd backend
 composer install
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 php artisan key:generate
 php artisan migrate
+Set-Location ..
 ```
 
-Setelah persiapan backend selesai, jalankan backend dari **root repositori**. Di PowerShell gunakan launcher `.cmd`:
+Jalankan backend dari root project di terminal pertama:
 
 ```powershell
 npm.cmd run dev
-# atau
-npm.cmd start
 ```
 
-Jika menggunakan Command Prompt, perintah yang sama dapat dijalankan sebagai `npm run dev` atau `npm start`. Keduanya menjalankan server Laravel yang sama di `http://127.0.0.1:8000`. Bentuk `.cmd` di PowerShell menghindari error `npm.ps1 cannot be loaded because running scripts is disabled` tanpa perlu mengubah execution policy Windows.
-
-Perintah di root menjalankan server Laravel. Untuk menjalankan frontend React secara terpisah, buka terminal kedua:
+Jalankan frontend dari folder `frontend` di terminal kedua:
 
 ```powershell
 cd frontend
@@ -140,13 +140,9 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Buka `http://127.0.0.1:5173`. Frontend memproxy request `/api` ke backend `http://127.0.0.1:8000`; konfigurasi ini ada di `frontend/vite.config.ts`. Alternatif perintah frontend adalah `npm.cmd start`. Gunakan `npm.cmd` di PowerShell agar tidak terkena blokir `npm.ps1`; tidak perlu mengubah Execution Policy.
+Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` dari folder `frontend` juga menjalankan frontend. Gunakan `npm.cmd` di PowerShell agar tidak diblokir oleh execution policy yang mencegah `npm.ps1` berjalan. Frontend meneruskan request `/api` ke backend Laravel di `http://127.0.0.1:8000`.
 
-Endpoint login `POST /api/auth/login` belum tersedia di backend saat ini (API yang tersedia adalah `GET /api/health`), sehingga formulir login baru dapat terhubung setelah endpoint autentikasi ditambahkan.
-
-Nama database yang digunakan adalah **`sipena`**. Atur `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` di `backend/.env`. Jika file tersebut memiliki `DB_URL`, pastikan nilainya benar atau hapus baris itu karena Laravel memprioritaskan `DB_URL` di atas pengaturan koneksi lainnya.
-
-Halaman utama Blade menampilkan status API dan database. Endpoint `GET /health` memeriksa aplikasi, sedangkan `GET /api/health` juga menguji koneksi PostgreSQL. Jalankan pengujian dengan `npm test` dari root atau `php artisan test` dari folder `backend`.
+Backend saat ini menyediakan `GET /api/health`, tetapi belum menyediakan `POST /api/auth/login`. Karena itu tampilan login dan dashboard sudah tersedia, namun autentikasi memerlukan endpoint login dari backend. Rincian struktur dan integrasi frontend ada di [frontend/README.md](frontend/README.md).
 
 ## Kontribusi Terhadap SDGs Desa
 

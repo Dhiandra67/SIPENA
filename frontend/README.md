@@ -1,16 +1,20 @@
 # SIPENA Frontend
 
-Frontend React + Vite. Semua request `/api` diproxy ke Laravel pada `http://127.0.0.1:8000`.
+Frontend React + TypeScript + Vite. Permintaan `/api` diproxy ke backend Laravel di `http://127.0.0.1:8000`.
 
-## Menjalankan frontend
+## Struktur halaman
 
-Jalankan backend Laravel di satu terminal dari root project:
+Setiap halaman memiliki folder sendiri di `src/pages`. Login ada di `src/pages/Login/`, sedangkan dashboard ada di `src/pages/Dashboard/`. `src/App.tsx` memilih dashboard berdasarkan role akun setelah backend mengembalikan respons login.
+
+## Menjalankan aplikasi
+
+Jalankan backend dan frontend di dua terminal. Dari root project, terminal pertama:
 
 ```powershell
 npm.cmd run dev
 ```
 
-Di terminal kedua:
+Terminal kedua:
 
 ```powershell
 cd frontend
@@ -18,6 +22,8 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` juga menjalankan frontend pada port yang sama.
+Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` juga menjalankan frontend. Di PowerShell gunakan `npm.cmd` agar tidak diblokir oleh execution policy yang mencegah `npm.ps1` berjalan. Tidak perlu mengubah execution policy.
 
-Di PowerShell gunakan `npm.cmd` untuk menghindari pemblokiran `npm.ps1` oleh Execution Policy. Backend yang tersedia saat ini baru memiliki `GET /api/health`; endpoint login `POST /api/auth/login` belum dibuat, sehingga formulir akan menampilkan pesan bahwa endpoint belum tersedia sampai route autentikasi backend ditambahkan.
+Frontend memakai `GET /api/health` untuk pemeriksaan koneksi backend. Form login mengharapkan endpoint `POST /api/auth/login` yang mengembalikan `{ "accessToken": "...", "user": { "id": "...", "name": "...", "email": "...", "role": "admin" } }`. Backend saat ini belum menyediakan endpoint autentikasi tersebut, jadi login baru berfungsi setelah route backend ditambahkan.
+
+Untuk production, jalankan `npm.cmd run build`; output siap deployment dibuat di `dist/`.
