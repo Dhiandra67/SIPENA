@@ -1,0 +1,10 @@
+node_modules/
+**/node_modules/
+**/dist/
+backend/.env
+backend/vendor/
+backend/bootstrap/cache/*.php
+backend/storage/*.key
+backend/public/build/
+backend/public/hot
+backend/.phpunit.cache/

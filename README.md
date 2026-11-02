@@ -3,8 +3,8 @@
 **Digitalisasi Sistem Penilaian Akademik Siswa di SMP Karya Utama**
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-61DAFB)
-![Backend](https://img.shields.io/badge/backend-Laravel-339933)
+![Frontend](https://img.shields.io/badge/frontend-Laravel%20Blade-FF2D20)
+![Backend](https://img.shields.io/badge/backend-Laravel-FF2D20)
 ![Database](https://img.shields.io/badge/database-PostgreSQL-4169E1)
 ![SDGs Desa](https://img.shields.io/badge/SDGs%20Desa-4%20Pendidikan%20Berkualitas-C5192D)
 
@@ -83,8 +83,8 @@ Di sisi lain, guru juga merangkap tugas administratif di luar kegiatan mengajar.
 
 | Lapisan | Teknologi |
 |---------|-----------|
-| Front-end | HTML, CSS, JavaScript, React, Tailwind CSS |
-| Back-end | Node.js (RESTful API) |
+| Front-end | Laravel Blade, HTML, CSS, JavaScript |
+| Back-end | Laravel (PHP, RESTful API) |
 | Basis data | PostgreSQL |
 | Format data | Excel (.xlsx) / CSV untuk impor dan ekspor |
 
@@ -104,40 +104,49 @@ Proyek dilaksanakan bertahap selama 8 minggu (M1–M8) dengan pendekatan Waterfa
 
 ## Instalasi dan Menjalankan Project
 
-> Bagian ini akan dilengkapi seiring perkembangan implementasi. Sesuaikan perintah dan nama folder dengan struktur repo yang sebenarnya.
-
 ### Prasyarat
 
-- Node.js (disarankan versi LTS terbaru)
+- PHP 8.3 atau lebih baru dengan ekstensi PDO PostgreSQL
+- Composer
 - PostgreSQL
-- Git
 
-### Langkah
+### Menjalankan aplikasi
 
-```bash
-# 1. Clone repository
-git clone https://github.com/<username>/<nama-repo>.git
-cd <nama-repo>
+Buat database PostgreSQL bernama `sipena` (misalnya dengan `createdb -U postgres sipena` atau melalui pgAdmin), lalu dari PowerShell jalankan:
 
-# 2. Install dependency back-end
+```powershell
 cd backend
-npm install
-
-# 3. Salin dan isi konfigurasi environment
-cp .env.example .env
-# isi DATABASE_URL, JWT_SECRET, PORT, dll.
-
-# 4. Jalankan migrasi database
-npm run migrate
-
-# 5. Jalankan server back-end
-npm run dev
-
-# 6. Install dan jalankan front-end (terminal baru)
-cd ../frontend
-npm install
-npm run dev
+composer install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+php artisan key:generate
+php artisan migrate
 ```
+
+Setelah persiapan backend selesai, jalankan backend dari **root repositori**. Di PowerShell gunakan launcher `.cmd`:
+
+```powershell
+npm.cmd run dev
+# atau
+npm.cmd start
+```
+
+Jika menggunakan Command Prompt, perintah yang sama dapat dijalankan sebagai `npm run dev` atau `npm start`. Keduanya menjalankan server Laravel yang sama di `http://127.0.0.1:8000`. Bentuk `.cmd` di PowerShell menghindari error `npm.ps1 cannot be loaded because running scripts is disabled` tanpa perlu mengubah execution policy Windows.
+
+Perintah di root menjalankan server Laravel. Untuk menjalankan frontend React secara terpisah, buka terminal kedua:
+
+```powershell
+cd frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+Buka `http://127.0.0.1:5173`. Frontend memproxy request `/api` ke backend `http://127.0.0.1:8000`; konfigurasi ini ada di `frontend/vite.config.ts`. Alternatif perintah frontend adalah `npm.cmd start`. Gunakan `npm.cmd` di PowerShell agar tidak terkena blokir `npm.ps1`; tidak perlu mengubah Execution Policy.
+
+Endpoint login `POST /api/auth/login` belum tersedia di backend saat ini (API yang tersedia adalah `GET /api/health`), sehingga formulir login baru dapat terhubung setelah endpoint autentikasi ditambahkan.
+
+Nama database yang digunakan adalah **`sipena`**. Atur `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` di `backend/.env`. Jika file tersebut memiliki `DB_URL`, pastikan nilainya benar atau hapus baris itu karena Laravel memprioritaskan `DB_URL` di atas pengaturan koneksi lainnya.
+
+Halaman utama Blade menampilkan status API dan database. Endpoint `GET /health` memeriksa aplikasi, sedangkan `GET /api/health` juga menguji koneksi PostgreSQL. Jalankan pengujian dengan `npm test` dari root atau `php artisan test` dari folder `backend`.
 
 ## Kontribusi Terhadap SDGs Desa
 
