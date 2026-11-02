@@ -84,7 +84,7 @@ Di sisi lain, guru juga merangkap tugas administratif di luar kegiatan mengajar.
 | Lapisan | Teknologi |
 |---------|-----------|
 | Front-end | HTML, CSS, JavaScript, React, Tailwind CSS |
-| Back-end | Node.js (RESTful API) |
+| Back-end | Laravel, Node.js (RESTful API) |
 | Basis data | PostgreSQL |
 | Format data | Excel (.xlsx) / CSV untuk impor dan ekspor |
 
@@ -116,8 +116,8 @@ Proyek dilaksanakan bertahap selama 8 minggu (M1–M8) dengan pendekatan Waterfa
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/<username>/<nama-repo>.git
-cd <nama-repo>
+git clone https://github.com/Dhiandra67/SIPENA.git
+cd SIPENA
 
 # 2. Install dependency back-end
 cd backend
