@@ -24,6 +24,6 @@ npm.cmd run dev
 
 Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` juga menjalankan frontend. Di PowerShell gunakan `npm.cmd` agar tidak diblokir oleh execution policy yang mencegah `npm.ps1` berjalan. Tidak perlu mengubah execution policy.
 
-Frontend memakai `GET /api/health` untuk pemeriksaan koneksi backend. Form login mengharapkan endpoint `POST /api/auth/login` yang mengembalikan `{ "accessToken": "...", "user": { "id": "...", "name": "...", "email": "...", "role": "admin" } }`. Backend saat ini belum menyediakan endpoint autentikasi tersebut, jadi login baru berfungsi setelah route backend ditambahkan.
+Frontend memakai `GET /api/health` untuk pemeriksaan koneksi backend. Login menggunakan `POST /api/auth/login`, menyimpan bearer token sesuai pilihan "Ingat saya", dan memeriksa sesi lewat `GET /api/auth/me`. Logout mencabut token melalui `POST /api/auth/logout`. Jalankan `php artisan db:seed` di backend local/testing untuk membuat akun demo `test@example.com` dengan kata sandi `password`; akun ini hanya untuk demonstrasi, bukan production. Kredensial hanya ditampilkan pada development build frontend.
 
 Untuk production, jalankan `npm.cmd run build`; output siap deployment dibuat di `dist/`.

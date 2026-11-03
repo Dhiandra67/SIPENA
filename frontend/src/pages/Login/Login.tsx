@@ -128,6 +128,28 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
           <form className="login-card" onSubmit={handleSubmit}>
             <h2>Masuk ke akun Anda</h2>
 
+            {import.meta.env.DEV && (
+              <aside className="demo-credentials" aria-label="Kredensial akun demo">
+                <strong>Akun demo — hanya untuk demonstrasi</strong>
+                <span>
+                  Email: <code>test@example.com</code>
+                </span>
+                <span>
+                  Kata sandi: <code>password</code>
+                </span>
+                <button
+                  className="text-button demo-fill-button"
+                  onClick={() => {
+                    setEmail("test@example.com");
+                    setPassword("password");
+                  }}
+                  type="button"
+                >
+                  Gunakan akun demo
+                </button>
+              </aside>
+            )}
+
             <div className="field">
               <label htmlFor="email">Email</label>
               <div className="input-wrap">
