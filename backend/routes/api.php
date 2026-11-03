@@ -1,0 +1,33 @@
+<?php
+
+use App\Http\Controllers\AuthController;
+use App\Http\Middleware\AuthenticateApiToken;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/health', function () {
+    try {
+        DB::select('SELECT 1');
+    } catch (QueryException $exception) {
+        Log::error('Database health check failed.', ['exception' => $exception]);
+
+        return response()->json([
+            'status' => 'error',
+            'database' => 'unavailable',
+        ], 503);
+    }
+
+    return response()->json([
+        'status' => 'ok',
+        'database' => 'connected',
+    ]);
+});
+
+Route::middleware('throttle:5,1')->post('/auth/login', [AuthController::class, 'login']);
+
+Route::middleware(AuthenticateApiToken::class)->group(function () {
+    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+});

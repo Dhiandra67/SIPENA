@@ -3,8 +3,8 @@
 **Digitalisasi Sistem Penilaian Akademik Siswa di SMP Karya Utama**
 
 ![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-61DAFB)
-![Backend](https://img.shields.io/badge/backend-Laravel-339933)
+![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB)
+![Backend](https://img.shields.io/badge/backend-Laravel-FF2D20)
 ![Database](https://img.shields.io/badge/database-PostgreSQL-4169E1)
 ![SDGs Desa](https://img.shields.io/badge/SDGs%20Desa-4%20Pendidikan%20Berkualitas-C5192D)
 
@@ -83,8 +83,8 @@ Di sisi lain, guru juga merangkap tugas administratif di luar kegiatan mengajar.
 
 | Lapisan | Teknologi |
 |---------|-----------|
-| Front-end | HTML, CSS, JavaScript, React, Tailwind CSS |
-| Back-end | Node.js (RESTful API) |
+| Front-end | React, TypeScript, Vite, Tailwind CSS |
+| Back-end | Laravel (PHP, RESTful API) |
 | Basis data | PostgreSQL |
 | Format data | Excel (.xlsx) / CSV untuk impor dan ekspor |
 
@@ -104,40 +104,46 @@ Proyek dilaksanakan bertahap selama 8 minggu (M1–M8) dengan pendekatan Waterfa
 
 ## Instalasi dan Menjalankan Project
 
-> Bagian ini akan dilengkapi seiring perkembangan implementasi. Sesuaikan perintah dan nama folder dengan struktur repo yang sebenarnya.
-
 ### Prasyarat
 
+- PHP 8.3 atau lebih baru dengan ekstensi PDO PostgreSQL
+- Composer
 - Node.js (disarankan versi LTS terbaru)
 - PostgreSQL
 - Git
 
-### Langkah
+### Menjalankan aplikasi
 
-```bash
-# 1. Clone repository
-git clone https://github.com/<username>/<nama-repo>.git
-cd <nama-repo>
+Siapkan database PostgreSQL `sipena`, lalu dari PowerShell jalankan:
 
-# 2. Install dependency back-end
+```powershell
+# Persiapan backend (cukup sekali)
 cd backend
-npm install
-
-# 3. Salin dan isi konfigurasi environment
-cp .env.example .env
-# isi DATABASE_URL, JWT_SECRET, PORT, dll.
-
-# 4. Jalankan migrasi database
-npm run migrate
-
-# 5. Jalankan server back-end
-npm run dev
-
-# 6. Install dan jalankan front-end (terminal baru)
-cd ../frontend
-npm install
-npm run dev
+composer install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+php artisan key:generate
+php artisan migrate
+php artisan db:seed
+Set-Location ..
 ```
+
+Jalankan backend dari root project di terminal pertama:
+
+```powershell
+npm.cmd run dev
+```
+
+Jalankan frontend dari folder `frontend` di terminal kedua:
+
+```powershell
+cd frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` dari folder `frontend` juga menjalankan frontend. Gunakan `npm.cmd` di PowerShell agar tidak diblokir oleh execution policy yang mencegah `npm.ps1` berjalan. Frontend meneruskan request `/api` ke backend Laravel di `http://127.0.0.1:8000`.
+
+Backend menyediakan `GET /api/health` dan autentikasi bearer token melalui `POST /api/auth/login`. Di environment local/testing, seeder membuat akun demo `test@example.com` dengan kata sandi `password`; kredensial ini ditampilkan di frontend mode development dan tidak boleh digunakan di production. Endpoint `GET /api/auth/me` memeriksa sesi, sementara `POST /api/auth/logout` mencabut token. Rincian integrasi frontend ada di [frontend/README.md](frontend/README.md).
 
 ## Kontribusi Terhadap SDGs Desa
 
