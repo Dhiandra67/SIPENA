@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AuthController;
+use App\Http\Middleware\AuthenticateApiToken;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,4 +23,11 @@ Route::get('/health', function () {
         'status' => 'ok',
         'database' => 'connected',
     ]);
+});
+
+Route::middleware('throttle:5,1')->post('/auth/login', [AuthController::class, 'login']);
+
+Route::middleware(AuthenticateApiToken::class)->group(function () {
+    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
 });

@@ -123,6 +123,7 @@ composer install
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 php artisan key:generate
 php artisan migrate
+php artisan db:seed
 Set-Location ..
 ```
 
@@ -142,7 +143,7 @@ npm.cmd run dev
 
 Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` dari folder `frontend` juga menjalankan frontend. Gunakan `npm.cmd` di PowerShell agar tidak diblokir oleh execution policy yang mencegah `npm.ps1` berjalan. Frontend meneruskan request `/api` ke backend Laravel di `http://127.0.0.1:8000`.
 
-Backend saat ini menyediakan `GET /api/health`, tetapi belum menyediakan `POST /api/auth/login`. Karena itu tampilan login dan dashboard sudah tersedia, namun autentikasi memerlukan endpoint login dari backend. Rincian struktur dan integrasi frontend ada di [frontend/README.md](frontend/README.md).
+Backend menyediakan `GET /api/health` dan autentikasi bearer token melalui `POST /api/auth/login`. Di environment local/testing, seeder membuat akun demo `test@example.com` dengan kata sandi `password`; kredensial ini ditampilkan di frontend mode development dan tidak boleh digunakan di production. Endpoint `GET /api/auth/me` memeriksa sesi, sementara `POST /api/auth/logout` mencabut token. Rincian integrasi frontend ada di [frontend/README.md](frontend/README.md).
 
 ## Kontribusi Terhadap SDGs Desa
 
