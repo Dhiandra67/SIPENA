@@ -152,8 +152,7 @@
   font-weight: 700;
 }
 
-.mobile-dashboard-header,
-.mobile-bottom-nav {
+.mobile-dashboard-header {
   display: none;
 }
 
@@ -368,7 +367,6 @@
   .dashboard-app {
     display: block;
     min-height: 100vh;
-    padding-bottom: 51px;
   }
 
   .dashboard-sidebar,
@@ -378,7 +376,7 @@
 
   .dashboard-main {
     width: 100%;
-    min-height: calc(100vh - 51px);
+    min-height: 100vh;
     margin: 0;
   }
 
@@ -420,6 +418,11 @@
     cursor: pointer;
   }
 
+  .mobile-menu-toggle:focus-visible {
+    outline: 2px solid #71877b;
+    outline-offset: 1px;
+  }
+
   .mobile-menu-toggle .dashboard-icon {
     width: 16px;
     height: 16px;
@@ -427,6 +430,7 @@
 
   .mobile-menu {
     position: absolute;
+    z-index: 1;
     top: 38px;
     right: 8px;
     display: flex;
@@ -437,6 +441,20 @@
     border-radius: 8px;
     background: #fff;
     box-shadow: 0 8px 24px rgb(41 63 53 / 14%);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top right;
+    visibility: hidden;
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+  }
+
+  .mobile-menu.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    visibility: visible;
+    transition-delay: 0s;
   }
 
   .mobile-menu a,
@@ -638,40 +656,6 @@
     color: #596a60;
   }
 
-  .mobile-bottom-nav {
-    position: fixed;
-    z-index: 7;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: grid;
-    height: 51px;
-    grid-template-columns: repeat(4, 1fr);
-    border-top: 1px solid #e8e4dd;
-    background: #fff;
-  }
-
-  .mobile-bottom-nav a,
-  .mobile-bottom-nav button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    border: 0;
-    background: transparent;
-    color: #53655b;
-    cursor: pointer;
-    font: inherit;
-    font-size: 8px;
-    text-decoration: none;
-  }
-
-  .mobile-bottom-nav .dashboard-icon {
-    width: 12px;
-    height: 12px;
-    flex-basis: 12px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -680,5 +664,6 @@
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 }

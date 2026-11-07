@@ -131,22 +131,36 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
             {import.meta.env.DEV && (
               <aside className="demo-credentials" aria-label="Kredensial akun demo">
                 <strong>Akun demo — hanya untuk demonstrasi</strong>
-                <span>
-                  Email: <code>test@example.com</code>
-                </span>
-                <span>
-                  Kata sandi: <code>password</code>
-                </span>
-                <button
-                  className="text-button demo-fill-button"
-                  onClick={() => {
-                    setEmail("test@example.com");
-                    setPassword("password");
-                  }}
-                  type="button"
-                >
-                  Gunakan akun demo
-                </button>
+                <div className="demo-account">
+                  <span className="demo-role">Admin</span>
+                  <span>Email: <code>test@example.com</code></span>
+                  <span>Kata sandi: <code>password</code></span>
+                  <button
+                    className="text-button demo-fill-button"
+                    onClick={() => {
+                      setEmail("test@example.com");
+                      setPassword("password");
+                    }}
+                    type="button"
+                  >
+                    Gunakan akun admin
+                  </button>
+                </div>
+                <div className="demo-account">
+                  <span className="demo-role">Guru</span>
+                  <span>Email: <code>guru@example.com</code></span>
+                  <span>Kata sandi: <code>guru12345</code></span>
+                  <button
+                    className="text-button demo-fill-button"
+                    onClick={() => {
+                      setEmail("guru@example.com");
+                      setPassword("guru12345");
+                    }}
+                    type="button"
+                  >
+                    Gunakan akun guru
+                  </button>
+                </div>
               </aside>
             )}
 
