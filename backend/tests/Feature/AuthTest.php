@@ -34,6 +34,20 @@ class AuthTest extends TestCase
         $this->assertNotSame($plainTextToken, DB::table('api_tokens')->value('token_hash'));
     }
 
+    public function test_demo_teacher_can_log_in_with_the_teacher_role(): void
+    {
+        $this->seed();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'guru@example.com',
+            'password' => 'guru12345',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.name', 'Guru Demo')
+            ->assertJsonPath('user.email', 'guru@example.com')
+            ->assertJsonPath('user.role', 'teacher');
+    }
+
     public function test_login_rejects_an_incorrect_password(): void
     {
         $this->seed();

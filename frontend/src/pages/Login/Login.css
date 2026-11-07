@@ -102,7 +102,7 @@
 
 .demo-credentials {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   margin: -8px 0 22px;
   padding: 12px;
   border: 1px solid #e4e9e3;
@@ -123,9 +123,21 @@
   font-weight: 650;
 }
 
+.demo-account {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #e4e9e3;
+}
+
+.demo-role {
+  color: #344a40;
+  font-weight: 650;
+}
+
 .demo-fill-button {
   justify-self: start;
-  margin-top: 2px;
+  margin-top: 1px;
   color: #344a40;
   font-size: 11px;
   font-weight: 650;

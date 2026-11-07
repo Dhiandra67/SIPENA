@@ -14,10 +14,7 @@ type IconName =
   | "settings"
   | "logout"
   | "menu"
-  | "home"
-  | "book"
-  | "grades"
-  | "more";
+  | "grades";
 
 interface DashboardProps {
   user: AuthUser;
@@ -40,10 +37,7 @@ function Icon({ name }: { name: IconName }) {
     settings: <><circle cx="12" cy="12" r="3" /><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a7.8 7.8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a7.8 7.8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a7.3 7.3 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a7.8 7.8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a7.8 7.8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a7.3 7.3 0 0 1 0 2Z" /></>,
     logout: <><path d="M10 5H5v14h5m5-4 4-3-4-3m4 3H9" /></>,
     menu: <><path d="M4 6h16M4 12h16M4 18h16" /></>,
-    home: <><path d="m3 11 9-7 9 7m-2-1v10h-5v-6h-4v6H5V10" /></>,
-    book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5zM4 16h16M8 7h8m-8 4h8" /></>,
     grades: <><path d="M4 4h16v16H4zM8 16l2.5-3 2 2 3.5-5" /></>,
-    more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
   };
 
   return (
@@ -129,31 +123,32 @@ function Dashboard({ user, onLogout }: DashboardProps) {
             <Icon name="brand" />
             <strong>SIPENA</strong>
           </a>
-          {isAdmin && (
-            <button
-              aria-expanded={menuOpen}
-              aria-label={menuOpen ? "Tutup menu" : "Buka menu"}
-              className="mobile-menu-toggle"
-              onClick={() => setMenuOpen((open) => !open)}
-              type="button"
-            >
-              <Icon name="menu" />
+          <button
+            aria-controls="mobile-dashboard-menu"
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "Tutup menu" : "Buka menu"}
+            className="mobile-menu-toggle"
+            onClick={() => setMenuOpen((open) => !open)}
+            type="button"
+          >
+            <Icon name="menu" />
+          </button>
+          <div
+            aria-hidden={!menuOpen}
+            className={`mobile-menu${menuOpen ? " open" : ""}`}
+            id="mobile-dashboard-menu"
+          >
+            {navigation.map((item) => (
+              <a href={item.href} key={item.label} onClick={() => setMenuOpen(false)}>
+                <Icon name={item.icon} />
+                <span>{item.label}</span>
+              </a>
+            ))}
+            <button onClick={onLogout} type="button">
+              <Icon name="logout" />
+              <span>Logout</span>
             </button>
-          )}
-          {menuOpen && (
-            <div className="mobile-menu">
-              {navigation.map((item) => (
-                <a href={item.href} key={item.label} onClick={() => setMenuOpen(false)}>
-                  <Icon name={item.icon} />
-                  <span>{item.label}</span>
-                </a>
-              ))}
-              <button onClick={onLogout} type="button">
-                <Icon name="logout" />
-                <span>Logout</span>
-              </button>
-            </div>
-          )}
+          </div>
         </header>
 
         <main className="dashboard-content" id="dashboard">
@@ -169,27 +164,6 @@ function Dashboard({ user, onLogout }: DashboardProps) {
           {isAdmin ? <AdminDashboard /> : <TeacherDashboard />}
         </main>
 
-        <nav className="mobile-bottom-nav" aria-label="Navigasi dashboard">
-          {isAdmin ? (
-            <>
-              <a href="#dashboard"><Icon name="home" /><span>Home</span></a>
-              <a href="#students"><Icon name="students" /><span>Siswa</span></a>
-              <a href="#teachers"><Icon name="teacher" /><span>Guru</span></a>
-              <button onClick={() => setMenuOpen((open) => !open)} type="button">
-                <Icon name="more" /><span>Menu</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <a href="#dashboard"><Icon name="home" /><span>Beranda</span></a>
-              <a href="#assignments"><Icon name="book" /><span>Kelas</span></a>
-              <a href="#assignments"><Icon name="grades" /><span>Nilai</span></a>
-              <button onClick={() => setMenuOpen((open) => !open)} type="button">
-                <Icon name="more" /><span>Menu</span>
-              </button>
-            </>
-          )}
-        </nav>
       </div>
     </div>
   );
