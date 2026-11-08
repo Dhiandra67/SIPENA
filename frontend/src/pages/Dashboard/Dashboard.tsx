@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AuthUser } from "../Login/auth";
+import StudentData from "./StudentData";
 import "./Dashboard.css";
 
 type IconName =
@@ -70,11 +71,11 @@ const adminNavigation: { label: string; icon: IconName; href: string }[] = [
 const teacherNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Dashboard", icon: "dashboard", href: "#dashboard" },
   { label: "Pengajaran Saya", icon: "subjects", href: "#assignments" },
-  { label: "Pengaturan Komponen Nilai", icon: "settings", href: "#grades" },
-  { label: "Input dan Kelola Nilai", icon: "grades", href: "#grades" },
+  { label: "Pengaturan Komponen Nilai", icon: "settings", href: "#grade-settings" },
+  { label: "Input dan Kelola Nilai", icon: "grades", href: "#grade-entry" },
   { label: "Kelas Perwalian", icon: "teacher", href: "#homeroom" },
   { label: "Data Siswa", icon: "students", href: "#students" },
-  { label: "Rekap Nilai Kelas", icon: "tasks", href: "#grades" },
+  { label: "Rekap Nilai Kelas", icon: "tasks", href: "#grade-summary" },
   { label: "Laporan Rapor", icon: "classes", href: "#reports" },
   { label: "Profil Saya", icon: "teacher", href: "#profile" },
 ];
@@ -84,7 +85,22 @@ function Dashboard({ user, onLogout }: DashboardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const displayName = user.name || (isAdmin ? "Admin" : "Ibu Sari");
   const navigation = isAdmin ? adminNavigation : teacherNavigation;
+  const [activeRoute, setActiveRoute] = useState(
+    () => window.location.hash.slice(1) || "students",
+  );
   const initial = displayName.trim().charAt(0).toUpperCase() || "S";
+
+  useEffect(() => {
+    function syncRoute() {
+      setActiveRoute(window.location.hash.slice(1) || "students");
+    }
+
+    window.addEventListener("hashchange", syncRoute);
+    return () => window.removeEventListener("hashchange", syncRoute);
+  }, []);
+
+  const activePage = navigation.find((item) => item.href === `#${activeRoute}`);
+  const pageTitle = activePage?.label ?? "Halaman";
 
   return (
     <div className={`dashboard-app ${isAdmin ? "admin-dashboard" : "teacher-dashboard"}`}>
@@ -97,10 +113,10 @@ function Dashboard({ user, onLogout }: DashboardProps) {
           </span>
         </a>
         <nav className="sidebar-navigation" aria-label="Navigasi utama">
-          {navigation.map((item, index) => (
+          {navigation.map((item) => (
             <a
-              aria-current={index === 0 ? "page" : undefined}
-              className={index === 0 ? "navigation-link active" : "navigation-link"}
+              aria-current={item.href === `#${activeRoute}` ? "page" : undefined}
+              className={item.href === `#${activeRoute}` ? "navigation-link active" : "navigation-link"}
               href={item.href}
               key={item.label}
             >
@@ -145,7 +161,12 @@ function Dashboard({ user, onLogout }: DashboardProps) {
             id="mobile-dashboard-menu"
           >
             {navigation.map((item) => (
-              <a href={item.href} key={item.label} onClick={() => setMenuOpen(false)}>
+              <a
+                aria-current={item.href === `#${activeRoute}` ? "page" : undefined}
+                href={item.href}
+                key={item.label}
+                onClick={() => setMenuOpen(false)}
+              >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
               </a>
@@ -158,27 +179,48 @@ function Dashboard({ user, onLogout }: DashboardProps) {
         </header>
 
         <main className="dashboard-content" id="dashboard">
-          <section className="dashboard-heading">
-            <h1>Dashboard{isAdmin ? " Admin" : ""}</h1>
-            {isAdmin ? (
-              <p>Kelola informasi akademik dengan mudah</p>
-            ) : (
-              <>
-                <p className="teacher-desktop-description">
-                  Ringkasan pengajaran Matematika dan perwalian kelas VII-A
-                </p>
-                <p className="teacher-mobile-description">
-                  Pengajaran dan perwalian dalam satu akun
-                </p>
-              </>
-            )}
-          </section>
-
-          {isAdmin ? <AdminDashboard /> : <TeacherDashboard displayName={displayName} />}
+          {activeRoute === "students" ? (
+            <StudentData />
+          ) : activeRoute === "dashboard" ? (
+            <>
+              <section className="dashboard-heading">
+                <h1>Dashboard{isAdmin ? " Admin" : ""}</h1>
+                {isAdmin ? (
+                  <p>Kelola informasi akademik dengan mudah</p>
+                ) : (
+                  <>
+                    <p className="teacher-desktop-description">
+                      Ringkasan pengajaran Matematika dan perwalian kelas VII-A
+                    </p>
+                    <p className="teacher-mobile-description">
+                      Pengajaran dan perwalian dalam satu akun
+                    </p>
+                  </>
+                )}
+              </section>
+              {isAdmin ? <AdminDashboard /> : <TeacherDashboard displayName={displayName} />}
+            </>
+          ) : (
+            <NavigationPage title={pageTitle} />
+          )}
         </main>
 
       </div>
     </div>
+  );
+}
+
+function NavigationPage({ title }: { title: string }) {
+  return (
+    <section className="dashboard-heading navigation-page">
+      <h1>{title}</h1>
+      <p>Kelola informasi akademik dengan mudah</p>
+      <div className="navigation-page-message">
+        <strong>{title}</strong>
+        <p>Halaman ini siap digunakan saat data {title.toLowerCase()} tersedia.</p>
+        <a href="#dashboard">Kembali ke Dashboard</a>
+      </div>
+    </section>
   );
 }
 
@@ -293,8 +335,8 @@ function TeacherDashboard({ displayName }: { displayName: string }) {
           Lengkapi UAS Eka dan UTS Fitri di Matematika untuk menyiapkan 2 rapor lainnya.
         </p>
         <div className="homeroom-actions">
-          <a href="#students">Kelas perwalian <span aria-hidden="true">→</span></a>
-          <a href="#grades">Rekap nilai &amp; rapor <span aria-hidden="true">→</span></a>
+          <a href="#homeroom">Kelas perwalian <span aria-hidden="true">→</span></a>
+          <a href="#grade-summary">Rekap nilai &amp; rapor <span aria-hidden="true">→</span></a>
           <a className="homeroom-reports-link" href="#reports">Laporan rapor <span aria-hidden="true">→</span></a>
         </div>
       </section>

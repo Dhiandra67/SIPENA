@@ -26,4 +26,6 @@ Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` juga menjalankan frontend
 
 Frontend memakai `GET /api/health` untuk pemeriksaan koneksi backend. Login menggunakan `POST /api/auth/login`, menyimpan bearer token sesuai pilihan "Ingat saya", dan memeriksa sesi lewat `GET /api/auth/me`. Logout mencabut token melalui `POST /api/auth/logout`. Jalankan `php artisan db:seed` di backend local/testing untuk membuat akun demo admin (`test@example.com` / `password`) dan guru (`guru@example.com` / `guru12345`); akun ini hanya untuk demonstrasi, bukan production. Kredensial hanya ditampilkan pada development build frontend.
 
+Laman **Data Siswa** saat ini memakai data contoh lokal browser karena endpoint dan penyimpanan siswa belum tersedia di backend. Pencarian, filter kelas, pagination, tambah, edit, dan hapus berfungsi selama laman tetap terbuka; perubahan belum disimpan ke server.
+
 Untuk production, jalankan `npm.cmd run build`; output siap deployment dibuat di `dist/`.
