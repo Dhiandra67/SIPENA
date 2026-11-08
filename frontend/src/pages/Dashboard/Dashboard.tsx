@@ -69,8 +69,14 @@ const adminNavigation: { label: string; icon: IconName; href: string }[] = [
 
 const teacherNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Dashboard", icon: "dashboard", href: "#dashboard" },
-  { label: "Kelas dan Mapel Saya", icon: "classes", href: "#assignments" },
-  { label: "Pengelolaan Nilai", icon: "grades", href: "#assignments" },
+  { label: "Pengajaran Saya", icon: "subjects", href: "#assignments" },
+  { label: "Pengaturan Komponen Nilai", icon: "settings", href: "#grades" },
+  { label: "Input dan Kelola Nilai", icon: "grades", href: "#grades" },
+  { label: "Kelas Perwalian", icon: "teacher", href: "#homeroom" },
+  { label: "Data Siswa", icon: "students", href: "#students" },
+  { label: "Rekap Nilai Kelas", icon: "tasks", href: "#grades" },
+  { label: "Laporan Rapor", icon: "classes", href: "#reports" },
+  { label: "Profil Saya", icon: "teacher", href: "#profile" },
 ];
 
 function Dashboard({ user, onLogout }: DashboardProps) {
@@ -111,7 +117,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
 
       <div className="dashboard-main">
         <header className="dashboard-topbar">
-          <span>{isAdmin ? "Panel Administrasi" : "Panel Guru"}</span>
+          <span>{isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran & Wali Kelas"}</span>
           <div className="topbar-user">
             <strong>{displayName}</strong>
             <span className="user-avatar">{initial}</span>
@@ -153,15 +159,22 @@ function Dashboard({ user, onLogout }: DashboardProps) {
 
         <main className="dashboard-content" id="dashboard">
           <section className="dashboard-heading">
-            <h1>Dashboard {isAdmin ? "Admin" : "Guru"}</h1>
-            <p>
-              {isAdmin
-                ? "Kelola informasi akademik dengan mudah"
-                : "Kelola kelas, komponen penilaian, dan nilai siswa"}
-            </p>
+            <h1>Dashboard{isAdmin ? " Admin" : ""}</h1>
+            {isAdmin ? (
+              <p>Kelola informasi akademik dengan mudah</p>
+            ) : (
+              <>
+                <p className="teacher-desktop-description">
+                  Ringkasan pengajaran Matematika dan perwalian kelas VII-A
+                </p>
+                <p className="teacher-mobile-description">
+                  Pengajaran dan perwalian dalam satu akun
+                </p>
+              </>
+            )}
           </section>
 
-          {isAdmin ? <AdminDashboard /> : <TeacherDashboard />}
+          {isAdmin ? <AdminDashboard /> : <TeacherDashboard displayName={displayName} />}
         </main>
 
       </div>
@@ -217,21 +230,21 @@ function AdminDashboard() {
   );
 }
 
-function TeacherDashboard() {
+function TeacherDashboard({ displayName }: { displayName: string }) {
   return (
     <>
       <section className="statistics-grid teacher-statistics" aria-label="Ringkasan statistik">
         <article className="statistic-card">
           <h2>Kelas Diampu</h2>
-          <strong>4</strong>
+          <strong>3</strong>
         </article>
         <article className="statistic-card">
           <h2>Mata Pelajaran</h2>
-          <strong>2</strong>
+          <strong>1</strong>
         </article>
         <article className="statistic-card teacher-extra-stat">
           <h2>Jumlah Siswa</h2>
-          <strong>123</strong>
+          <strong>92</strong>
         </article>
         <article className="statistic-card teacher-extra-stat">
           <h2>Tahun Ajaran</h2>
@@ -254,16 +267,41 @@ function TeacherDashboard() {
               <tr><th>Mata Pelajaran</th><th>Kelas Diampu</th><th>Jumlah Siswa</th><th>Aksi</th></tr>
             </thead>
             <tbody>
-              <tr><td>IPA</td><td>VII-A, VII-B, VIII-A</td><td>92</td><td><a href="#assignments">Lihat</a></td></tr>
-              <tr><td>Matematika</td><td>VIII-B</td><td>31</td><td><a href="#assignments">Lihat</a></td></tr>
+              <tr><td>Matematika</td><td>VII-A, VII-B, VIII-A</td><td>92</td><td><a href="#assignments">Lihat</a></td></tr>
             </tbody>
           </table>
         </div>
         <div className="assignment-cards">
-          <article><strong>IPA</strong><span>VII-A, VII-B, VIII-A</span></article>
-          <article><strong>Matematika</strong><span>VIII-B</span></article>
+          <article><strong>Matematika</strong><span>VII-A, VII-B, VIII-A</span></article>
         </div>
       </section>
+
+      <section className="homeroom-card" id="homeroom">
+        <div className="homeroom-heading">
+          <h2><span className="homeroom-desktop-label">Kelas Perwalian · </span>VII-A</h2>
+          <p>{displayName} · Wali Kelas <span className="desktop-separator">|</span> Semester Ganjil 2026/2027</p>
+        </div>
+        <div className="homeroom-statistics">
+          <strong>30 siswa</strong>
+          <strong>28 rapor siap</strong>
+          <strong>11/12 mapel lengkap</strong>
+        </div>
+        <p className="homeroom-desktop-note">
+          2 siswa menunggu nilai Matematika. Lengkapi UAS Eka dan UTS Fitri.
+        </p>
+        <p className="homeroom-mobile-note">
+          Lengkapi UAS Eka dan UTS Fitri di Matematika untuk menyiapkan 2 rapor lainnya.
+        </p>
+        <div className="homeroom-actions">
+          <a href="#students">Kelas perwalian <span aria-hidden="true">→</span></a>
+          <a href="#grades">Rekap nilai &amp; rapor <span aria-hidden="true">→</span></a>
+          <a className="homeroom-reports-link" href="#reports">Laporan rapor <span aria-hidden="true">→</span></a>
+        </div>
+      </section>
+
+      <p className="teacher-access-note">
+        Akses Anda: edit Matematika di VII-A, VII-B, VIII-A · Lihat semua mapel dan buat rapor hanya VII-A.
+      </p>
     </>
   );
 }
