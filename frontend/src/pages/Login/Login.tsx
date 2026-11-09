@@ -89,7 +89,37 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
     setIsSubmitting(true);
 
     try {
-      const result = await login({ email: email.trim(), password }, rememberMe);
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (
+        import.meta.env.DEV &&
+        normalizedEmail === "guru@example.com" &&
+        password === "guru12345"
+      ) {
+        onLoginSuccess({
+          id: "teacher-demo",
+          name: "Guru Demo",
+          email: normalizedEmail,
+          role: "teacher",
+        });
+        return;
+      }
+
+      if (
+        import.meta.env.DEV &&
+        normalizedEmail === "test@example.com" &&
+        password === "password"
+      ) {
+        onLoginSuccess({
+          id: "admin-demo",
+          name: "Admin Demo",
+          email: normalizedEmail,
+          role: "admin",
+        });
+        return;
+      }
+
+      const result = await login({ email: normalizedEmail, password }, rememberMe);
       setMessage(`Berhasil masuk. Selamat datang, ${result.user.name}.`);
       setMessageType("success");
       onLoginSuccess(result.user);
@@ -131,22 +161,36 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
             {import.meta.env.DEV && (
               <aside className="demo-credentials" aria-label="Kredensial akun demo">
                 <strong>Akun demo — hanya untuk demonstrasi</strong>
-                <span>
-                  Email: <code>test@example.com</code>
-                </span>
-                <span>
-                  Kata sandi: <code>password</code>
-                </span>
-                <button
-                  className="text-button demo-fill-button"
-                  onClick={() => {
-                    setEmail("test@example.com");
-                    setPassword("password");
-                  }}
-                  type="button"
-                >
-                  Gunakan akun demo
-                </button>
+                <div className="demo-account">
+                  <span className="demo-role">Admin</span>
+                  <span>Email: <code>test@example.com</code></span>
+                  <span>Kata sandi: <code>password</code></span>
+                  <button
+                    className="text-button demo-fill-button"
+                    onClick={() => {
+                      setEmail("test@example.com");
+                      setPassword("password");
+                    }}
+                    type="button"
+                  >
+                    Gunakan akun admin
+                  </button>
+                </div>
+                <div className="demo-account">
+                  <span className="demo-role">Guru</span>
+                  <span>Email: <code>guru@example.com</code></span>
+                  <span>Kata sandi: <code>guru12345</code></span>
+                  <button
+                    className="text-button demo-fill-button"
+                    onClick={() => {
+                      setEmail("guru@example.com");
+                      setPassword("guru12345");
+                    }}
+                    type="button"
+                  >
+                    Gunakan akun guru
+                  </button>
+                </div>
               </aside>
             )}
 
@@ -233,6 +277,7 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
               <span>{isSubmitting ? "Memproses..." : "Masuk"}</span>
               {!isSubmitting && <Icon name="arrow" />}
             </button>
+
           </form>
 
           <p className="contact-copy">
