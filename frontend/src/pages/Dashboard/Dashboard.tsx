@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AuthUser } from "../Login/auth";
-import StudentData from "./StudentData";
+import AdminPanel from "./AdminPanel";
+import TeacherPanel from "./TeacherPanel";
 import "./Dashboard.css";
 
 type IconName =
@@ -65,7 +66,7 @@ const adminNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Mata Pelajaran", icon: "subjects", href: "#subjects" },
   { label: "Pembagian Tugas Guru", icon: "tasks", href: "#assignments" },
   { label: "Tahun Ajaran", icon: "calendar", href: "#academic" },
-  { label: "Konfigurasi Nilai", icon: "settings", href: "#grades" },
+  { label: "Rentang Nilai", icon: "settings", href: "#grades" },
 ];
 
 const teacherNavigation: { label: string; icon: IconName; href: string }[] = [
@@ -73,34 +74,30 @@ const teacherNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Pengajaran Saya", icon: "subjects", href: "#assignments" },
   { label: "Pengaturan Komponen Nilai", icon: "settings", href: "#grade-settings" },
   { label: "Input dan Kelola Nilai", icon: "grades", href: "#grade-entry" },
-  { label: "Kelas Perwalian", icon: "teacher", href: "#homeroom" },
   { label: "Data Siswa", icon: "students", href: "#students" },
-  { label: "Rekap Nilai Kelas", icon: "tasks", href: "#grade-summary" },
-  { label: "Laporan Rapor", icon: "classes", href: "#reports" },
+  { label: "Statistik", icon: "tasks", href: "#statistics" },
+  { label: "Laporan Nilai Mapel", icon: "classes", href: "#reports" },
   { label: "Profil Saya", icon: "teacher", href: "#profile" },
 ];
 
 function Dashboard({ user, onLogout }: DashboardProps) {
   const isAdmin = user.role.toLowerCase().includes("admin");
   const [menuOpen, setMenuOpen] = useState(false);
-  const displayName = user.name || (isAdmin ? "Admin" : "Ibu Sari");
+  const [displayName, setDisplayName] = useState(user.name || "Ibu Sari");
   const navigation = isAdmin ? adminNavigation : teacherNavigation;
   const [activeRoute, setActiveRoute] = useState(
-    () => window.location.hash.slice(1) || "students",
+    () => window.location.hash.slice(1) || "dashboard",
   );
   const initial = displayName.trim().charAt(0).toUpperCase() || "S";
 
   useEffect(() => {
     function syncRoute() {
-      setActiveRoute(window.location.hash.slice(1) || "students");
+      setActiveRoute(window.location.hash.slice(1) || "dashboard");
     }
 
     window.addEventListener("hashchange", syncRoute);
     return () => window.removeEventListener("hashchange", syncRoute);
   }, []);
-
-  const activePage = navigation.find((item) => item.href === `#${activeRoute}`);
-  const pageTitle = activePage?.label ?? "Halaman";
 
   return (
     <div className={`dashboard-app ${isAdmin ? "admin-dashboard" : "teacher-dashboard"}`}>
@@ -133,7 +130,9 @@ function Dashboard({ user, onLogout }: DashboardProps) {
 
       <div className="dashboard-main">
         <header className="dashboard-topbar">
-          <span>{isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran & Wali Kelas"}</span>
+          <span>
+            {isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran & Wali Kelas"}
+          </span>
           <div className="topbar-user">
             <strong>{displayName}</strong>
             <span className="user-avatar">{initial}</span>
@@ -178,173 +177,82 @@ function Dashboard({ user, onLogout }: DashboardProps) {
           </div>
         </header>
 
+        {isAdmin && (
+          <nav className="admin-bottom-nav" aria-label="Navigasi admin">
+            {([
+              ["dashboard", "Dashboard", "dashboard"],
+              ["students", "Siswa", "students"],
+              ["teachers", "Guru", "teacher"],
+            ] as const).map(([route, label, icon]) => (
+              <a
+                aria-current={activeRoute === route ? "page" : undefined}
+                href={`#${route}`}
+                key={route}
+              >
+                <Icon name={icon} />
+                <span>{label}</span>
+              </a>
+            ))}
+            <button
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+              type="button"
+            >
+              <Icon name="menu" />
+              <span>Semua Menu</span>
+            </button>
+          </nav>
+        )}
+        {!isAdmin && (
+          <nav className="teacher-bottom-nav" aria-label="Navigasi guru">
+            {([
+              ["dashboard", "Dashboard", "dashboard"],
+              ["assignments", "Pengajaran", "subjects"],
+              ["grade-entry", "Input Nilai", "grades"],
+            ] as const).map(([route, label, icon]) => (
+              <a
+                aria-current={activeRoute === route ? "page" : undefined}
+                href={`#${route}`}
+                key={route}
+              >
+                <Icon name={icon} />
+                <span>{label}</span>
+              </a>
+            ))}
+            <button
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+              type="button"
+            >
+              <Icon name="menu" />
+              <span>Semua Menu</span>
+            </button>
+          </nav>
+        )}
+
         <main className="dashboard-content" id="dashboard">
-          {activeRoute === "students" ? (
-            <StudentData />
-          ) : activeRoute === "dashboard" ? (
-            <>
-              <section className="dashboard-heading">
-                <h1>Dashboard{isAdmin ? " Admin" : ""}</h1>
-                {isAdmin ? (
-                  <p>Kelola informasi akademik dengan mudah</p>
-                ) : (
-                  <>
-                    <p className="teacher-desktop-description">
-                      Ringkasan pengajaran Matematika dan perwalian kelas VII-A
-                    </p>
-                    <p className="teacher-mobile-description">
-                      Pengajaran dan perwalian dalam satu akun
-                    </p>
-                  </>
-                )}
-              </section>
-              {isAdmin ? <AdminDashboard /> : <TeacherDashboard displayName={displayName} />}
-            </>
+          {isAdmin ? (
+            <AdminPanel
+              onNavigate={(route) => {
+                window.location.hash = route;
+              }}
+              route={activeRoute}
+            />
           ) : (
-            <NavigationPage title={pageTitle} />
+            <TeacherPanel
+              displayName={displayName}
+              email={user.email}
+              onNavigate={(route) => {
+                window.location.hash = route;
+              }}
+              onProfileChange={setDisplayName}
+              route={activeRoute}
+            />
           )}
         </main>
 
       </div>
     </div>
-  );
-}
-
-function NavigationPage({ title }: { title: string }) {
-  return (
-    <section className="dashboard-heading navigation-page">
-      <h1>{title}</h1>
-      <p>Kelola informasi akademik dengan mudah</p>
-      <div className="navigation-page-message">
-        <strong>{title}</strong>
-        <p>Halaman ini siap digunakan saat data {title.toLowerCase()} tersedia.</p>
-        <a href="#dashboard">Kembali ke Dashboard</a>
-      </div>
-    </section>
-  );
-}
-
-function AdminDashboard() {
-  const statistics = [
-    { title: "Total Siswa", value: "180", detail: "Data tahun ajaran aktif", id: "students" },
-    { title: "Total Guru", value: "24", detail: "Data tahun ajaran aktif", id: "teachers" },
-    { title: "Total Kelas", value: "6", detail: "Data tahun ajaran aktif", id: "classes" },
-    { title: "Mata Pelajaran", value: "12", detail: "Data tahun ajaran aktif", id: "subjects" },
-  ];
-
-  return (
-    <>
-      <section className="statistics-grid" aria-label="Ringkasan statistik">
-        {statistics.map((statistic) => (
-          <article className="statistic-card" id={statistic.id} key={statistic.title}>
-            <h2>{statistic.title}</h2>
-            <strong>{statistic.value}</strong>
-            <p>{statistic.detail}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="academic-card" id="academic">
-        <div>
-          <h2>Informasi Akademik</h2>
-          <strong>Tahun Ajaran 2026/2027</strong>
-          <p>Semester Ganjil</p>
-        </div>
-        <span className="status-badge">Aktif</span>
-      </section>
-
-      <section className="dashboard-section class-summary" id="classes-summary">
-        <h2>Ringkasan Kelas</h2>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr><th>Tingkat</th><th>Nama Kelas</th><th>Jumlah Kelas</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>VII</td><td>VII-A, VII-B</td><td>2</td></tr>
-              <tr><td>VIII</td><td>VIII-A, VIII-B</td><td>2</td></tr>
-              <tr><td>IX</td><td>IX-A, IX-B</td><td>2</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </>
-  );
-}
-
-function TeacherDashboard({ displayName }: { displayName: string }) {
-  return (
-    <>
-      <section className="statistics-grid teacher-statistics" aria-label="Ringkasan statistik">
-        <article className="statistic-card">
-          <h2>Kelas Diampu</h2>
-          <strong>3</strong>
-        </article>
-        <article className="statistic-card">
-          <h2>Mata Pelajaran</h2>
-          <strong>1</strong>
-        </article>
-        <article className="statistic-card teacher-extra-stat">
-          <h2>Jumlah Siswa</h2>
-          <strong>92</strong>
-        </article>
-        <article className="statistic-card teacher-extra-stat">
-          <h2>Tahun Ajaran</h2>
-          <strong>2026/27</strong>
-        </article>
-      </section>
-
-      <section className="academic-card teacher-academic">
-        <div>
-          <h2>Informasi Akademik</h2>
-          <p>Tahun Ajaran 2026/2027 <span className="desktop-separator">•</span><br className="mobile-only" /> Semester Ganjil</p>
-        </div>
-      </section>
-
-      <section className="dashboard-section assignments-section" id="assignments">
-        <h2>Penugasan Saya</h2>
-        <div className="table-scroll assignment-table">
-          <table>
-            <thead>
-              <tr><th>Mata Pelajaran</th><th>Kelas Diampu</th><th>Jumlah Siswa</th><th>Aksi</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Matematika</td><td>VII-A, VII-B, VIII-A</td><td>92</td><td><a href="#assignments">Lihat</a></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="assignment-cards">
-          <article><strong>Matematika</strong><span>VII-A, VII-B, VIII-A</span></article>
-        </div>
-      </section>
-
-      <section className="homeroom-card" id="homeroom">
-        <div className="homeroom-heading">
-          <h2><span className="homeroom-desktop-label">Kelas Perwalian · </span>VII-A</h2>
-          <p>{displayName} · Wali Kelas <span className="desktop-separator">|</span> Semester Ganjil 2026/2027</p>
-        </div>
-        <div className="homeroom-statistics">
-          <strong>30 siswa</strong>
-          <strong>28 rapor siap</strong>
-          <strong>11/12 mapel lengkap</strong>
-        </div>
-        <p className="homeroom-desktop-note">
-          2 siswa menunggu nilai Matematika. Lengkapi UAS Eka dan UTS Fitri.
-        </p>
-        <p className="homeroom-mobile-note">
-          Lengkapi UAS Eka dan UTS Fitri di Matematika untuk menyiapkan 2 rapor lainnya.
-        </p>
-        <div className="homeroom-actions">
-          <a href="#homeroom">Kelas perwalian <span aria-hidden="true">→</span></a>
-          <a href="#grade-summary">Rekap nilai &amp; rapor <span aria-hidden="true">→</span></a>
-          <a className="homeroom-reports-link" href="#reports">Laporan rapor <span aria-hidden="true">→</span></a>
-        </div>
-      </section>
-
-      <p className="teacher-access-note">
-        Akses Anda: edit Matematika di VII-A, VII-B, VIII-A · Lihat semua mapel dan buat rapor hanya VII-A.
-      </p>
-    </>
   );
 }
 
