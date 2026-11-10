@@ -31,3 +31,19 @@ Modul **Guru (RAPORKU)** menyediakan dashboard, pengajaran saya, detail kelas, d
 Modul **Admin** mengikuti kebutuhan SRS/PRD untuk dashboard ringkasan, periode akademik, rentang predikat, mata pelajaran, kelas, guru, siswa, dan pembagian tugas guru. Form siswa tidak meminta email atau nomor telepon, dan data guru tidak menampilkan nomor telepon. Hak akses admin dan guru tetap dipisahkan. Navigasi menggunakan sidebar pada desktop serta bottom navigation dan menu lengkap pada mobile. Data master masih berupa contoh lokal; tambah/edit/hapus, validasi relasi dan periode aktif, serta impor/ekspor siswa berlaku di browser saja dan belum terhubung ke API. Impor siswa menerima `.xlsx`/`.csv` sampai 5 MB; ekspor dan template memakai `.xlsx`.
 
 Untuk production, jalankan `npm.cmd run build`; output siap deployment dibuat di `dist/`.
+
+## Pengujian
+
+Jalankan pengujian autentikasi dan alur utama frontend dengan:
+
+```powershell
+npm.cmd test
+```
+
+Mode watch tersedia lewat `npm.cmd run test:watch`. Pemeriksaan performa membangun
+production bundle lalu memverifikasi batas ukuran JavaScript (900 KiB raw dan
+300 KiB gzip) serta CSS (120 KiB):
+
+```powershell
+npm.cmd run test:performance
+```

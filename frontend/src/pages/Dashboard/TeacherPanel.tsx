@@ -1,4 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { getStoredAccessToken, login } from "../Login/auth";
 import "./TeacherPanel.css";
 
@@ -591,7 +592,6 @@ function TeacherPanel({
   }
 
   async function downloadSpreadsheet(filename: string, rows: (string | number)[][]) {
-    const XLSX = (await import("@e965/xlsx/dist/xlsx.mini.min.js")).default;
     const worksheet = XLSX.utils.aoa_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Nilai");
@@ -710,7 +710,6 @@ function TeacherPanel({
       if (file.name.toLocaleLowerCase("id").endsWith(".csv")) {
         rows = parseCsv(await file.text());
       } else {
-        const XLSX = (await import("@e965/xlsx/dist/xlsx.mini.min.js")).default;
         const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!firstSheet) {
