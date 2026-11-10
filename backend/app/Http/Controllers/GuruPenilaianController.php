@@ -23,17 +23,19 @@ class GuruPenilaianController extends Controller
 
     public function dashboard(Request $request): JsonResponse
     {
-        $pengajaranList = $this->resolveTeacherPengajaranList($request);
+        $resolvedPeriode = $this->resolveSelectedPeriode($request);
+        $pengajaranList = $this->resolveTeacherPengajaranList($request, $resolvedPeriode);
 
         return response()->json([
-            'data' => $this->buildTeacherWorkspacePayload($pengajaranList),
+            'data' => $this->buildTeacherWorkspacePayload($pengajaranList, $resolvedPeriode),
         ]);
     }
 
     public function pengajaranSaya(Request $request): JsonResponse
     {
-        $pengajaranList = $this->resolveTeacherPengajaranList($request);
-        $payload = $this->buildTeacherWorkspacePayload($pengajaranList);
+        $resolvedPeriode = $this->resolveSelectedPeriode($request);
+        $pengajaranList = $this->resolveTeacherPengajaranList($request, $resolvedPeriode);
+        $payload = $this->buildTeacherWorkspacePayload($pengajaranList, $resolvedPeriode);
 
         return response()->json([
             'data' => $payload['assignments'],
@@ -110,8 +112,10 @@ class GuruPenilaianController extends Controller
         }
 
         foreach ($targets as $target) {
-            if ($target->is_locked) {
-                return response()->json(['message' => 'Pengajaran telah dikunci dan tidak dapat diubah.'], 422);
+            if ($target->is_locked || ! ($target->periode?->is_active ?? true)) {
+                return response()->json([
+                    'message' => 'Pengajaran telah dikunci atau berada pada periode arsip sehingga tidak dapat diubah.',
+                ], 422);
             }
         }
 
@@ -183,8 +187,10 @@ class GuruPenilaianController extends Controller
     public function updateNilai(Request $request, int $id): JsonResponse
     {
         $pengajaran = $this->findAuthorizedPengajaran($request, $id);
-        if ($pengajaran->is_locked) {
-            return response()->json(['message' => 'Nilai pengajaran ini telah dikunci.'], 422);
+        if ($pengajaran->is_locked || ! ($pengajaran->periode?->is_active ?? true)) {
+            return response()->json([
+                'message' => 'Nilai pengajaran ini telah dikunci atau berada pada periode arsip.',
+            ], 422);
         }
 
         $pengajaran->load(['komponenNilai', 'kelas.anggotaKelas.siswa']);
@@ -289,14 +295,26 @@ class GuruPenilaianController extends Controller
         ]);
     }
 
+    private function resolveSelectedPeriode(Request $request): ?PeriodeAkademik
+    {
+        if ($request->filled('periode_id')) {
+            return PeriodeAkademik::find($request->input('periode_id'));
+        }
+        if ($request->filled('period')) {
+            return PeriodeAkademik::where('nama_periode', trim((string) $request->input('period')))->first();
+        }
+
+        return PeriodeAkademik::where('is_active', true)->first()
+            ?? PeriodeAkademik::orderByDesc('id')->first();
+    }
+
     /**
      * @return Collection<int, Pengajaran>
      */
-    private function resolveTeacherPengajaranList(Request $request): Collection
+    private function resolveTeacherPengajaranList(Request $request, ?PeriodeAkademik $periode = null): Collection
     {
         $user = $request->user();
-        $periodeAktif = PeriodeAkademik::where('is_active', true)->first()
-            ?? PeriodeAkademik::orderByDesc('id')->first();
+        $periodeTarget = $periode ?? $this->resolveSelectedPeriode($request);
 
         $query = Pengajaran::with([
             'periode',
@@ -307,15 +325,16 @@ class GuruPenilaianController extends Controller
             'nilaiAkhirMapel',
         ])->orderBy('id');
 
-        if ($periodeAktif) {
-            $query->where('periode_id', $periodeAktif->id);
+        if ($periodeTarget) {
+            $query->where('periode_id', $periodeTarget->id);
         }
 
         if ($user && in_array(strtolower((string) $user->role), ['teacher', 'guru', 'role_guru'], true)) {
             $guru = Guru::where('user_id', $user->id)->first();
-            if ($guru) {
-                $query->where('guru_id', $guru->id);
+            if (! $guru) {
+                return new Collection();
             }
+            $query->where('guru_id', $guru->id);
         }
 
         return $query->get();
@@ -335,7 +354,7 @@ class GuruPenilaianController extends Controller
         $user = $request->user();
         if ($user && in_array(strtolower((string) $user->role), ['teacher', 'guru', 'role_guru'], true)) {
             $guru = Guru::where('user_id', $user->id)->first();
-            if ($guru && $pengajaran->guru_id !== $guru->id) {
+            if (! $guru || $pengajaran->guru_id !== $guru->id) {
                 abort(response()->json([
                     'message' => 'Anda tidak memiliki akses pada pengajaran kelas ini.',
                 ], 403));
@@ -349,7 +368,7 @@ class GuruPenilaianController extends Controller
      * @param  Collection<int, Pengajaran>  $pengajaranList
      * @return array<string, mixed>
      */
-    private function buildTeacherWorkspacePayload(Collection $pengajaranList): array
+    private function buildTeacherWorkspacePayload(Collection $pengajaranList, ?PeriodeAkademik $selectedPeriode = null): array
     {
         $assignments = [];
         $componentsByAssignment = [];
@@ -388,13 +407,15 @@ class GuruPenilaianController extends Controller
 
             usort($students, fn (array $a, array $b) => strcmp($a['nis'], $b['nis']));
 
+            $isPeriodActive = (bool) ($pengajaran->periode?->is_active ?? true);
+
             $assignments[] = [
                 'id' => $assignmentId,
                 'subject' => $pengajaran->mataPelajaran?->nama_mapel ?? '',
                 'className' => $pengajaran->kelas?->nama_kelas ?? '',
                 'period' => $pengajaran->periode?->nama_periode ?? '',
                 'kkm' => (float) $pengajaran->kkm,
-                'isLocked' => (bool) $pengajaran->is_locked,
+                'isLocked' => (bool) $pengajaran->is_locked || ! $isPeriodActive,
                 'students' => $students,
             ];
 
@@ -415,7 +436,7 @@ class GuruPenilaianController extends Controller
             $scores[$studentId][$compId] = $formattedVal;
         }
 
-        $firstPeriodeId = $pengajaranList->first()?->periode_id;
+        $firstPeriodeId = $selectedPeriode?->id ?? $pengajaranList->first()?->periode_id;
         $rentangList = $this->gradeService->getRentangNilaiForPeriode($firstPeriodeId);
         $grades = array_map(fn (array $r) => [
             'letter' => $r['predikat'],
@@ -424,11 +445,24 @@ class GuruPenilaianController extends Controller
             'description' => $r['keterangan'],
         ], $rentangList);
 
+        $allPeriods = PeriodeAkademik::orderByDesc('is_active')
+            ->orderByDesc('tanggal_mulai')
+            ->get()
+            ->map(fn (PeriodeAkademik $p) => [
+                'id' => (string) $p->id,
+                'name' => $p->nama_periode,
+                'isActive' => (bool) $p->is_active,
+            ])
+            ->values()
+            ->all();
+
         return [
             'assignments' => $assignments,
             'componentsByAssignment' => $componentsByAssignment,
             'scores' => (object) $scores,
             'grades' => $grades,
+            'periods' => $allPeriods,
+            'selectedPeriod' => $selectedPeriode?->nama_periode ?? ($pengajaranList->first()?->periode?->nama_periode ?? ''),
         ];
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AnggotaKelas;
 use App\Models\Guru;
 use App\Models\Kelas;
+use App\Models\Pengajaran;
 use App\Models\PeriodeAkademik;
 use App\Models\Siswa;
 use Illuminate\Http\JsonResponse;
@@ -18,18 +19,20 @@ class SiswaController extends Controller
         $periodeAktif = $this->getActivePeriode();
         $user = $request->user();
 
-        $query = Siswa::with(['anggotaKelas.kelas'])->orderBy('nis');
+        $query = Siswa::with(['anggotaKelas.kelas.periode'])->orderBy('nis');
 
         if ($user && in_array(strtolower((string) $user->role), ['teacher', 'guru', 'role_guru'], true)) {
             $guru = Guru::where('user_id', $user->id)->first();
-            if ($guru) {
-                $allowedKelasIds = Kelas::where('wali_kelas_id', $guru->id)
-                    ->orWhereHas('pengajaran', fn ($q) => $q->where('guru_id', $guru->id))
-                    ->pluck('id')
-                    ->all();
-
-                $query->whereHas('anggotaKelas', fn ($q) => $q->whereIn('kelas_id', $allowedKelasIds));
+            if (! $guru) {
+                return response()->json(['data' => []]);
             }
+
+            $allowedKelasIds = Kelas::where('wali_kelas_id', $guru->id)
+                ->orWhereHas('pengajaran', fn ($q) => $q->where('guru_id', $guru->id))
+                ->pluck('id')
+                ->all();
+
+            $query->whereHas('anggotaKelas', fn ($q) => $q->whereIn('kelas_id', $allowedKelasIds));
         }
 
         if ($request->filled('search')) {
@@ -56,10 +59,31 @@ class SiswaController extends Controller
         return response()->json(['data' => $items]);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
         $periodeAktif = $this->getActivePeriode();
-        $siswa = Siswa::with(['anggotaKelas.kelas'])->findOrFail($id);
+        $siswa = Siswa::with(['anggotaKelas.kelas.periode'])->findOrFail($id);
+
+        $user = $request->user();
+        if ($user && in_array(strtolower((string) $user->role), ['teacher', 'guru', 'role_guru'], true)) {
+            $guru = Guru::where('user_id', $user->id)->first();
+            if (! $guru) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke data siswa ini.'], 403);
+            }
+
+            $allowedKelasIds = Kelas::where('wali_kelas_id', $guru->id)
+                ->orWhereHas('pengajaran', fn ($q) => $q->where('guru_id', $guru->id))
+                ->pluck('id')
+                ->all();
+
+            $inAllowedClass = $siswa->anggotaKelas->contains(
+                fn (AnggotaKelas $ak) => in_array($ak->kelas_id, $allowedKelasIds, true)
+            );
+
+            if (! $inAllowedClass) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke data siswa ini.'], 403);
+            }
+        }
 
         return response()->json(['data' => $this->formatSiswa($siswa, $periodeAktif?->id)]);
     }
@@ -270,9 +294,9 @@ class SiswaController extends Controller
      */
     public function formatSiswa(Siswa $s, ?int $periodeId = null): array
     {
-        $anggota = $s->anggotaKelas
-            ->first(fn (AnggotaKelas $ak) => $periodeId === null || $ak->kelas?->periode_id === $periodeId)
-            ?? $s->anggotaKelas->first();
+        $anggota = $periodeId !== null
+            ? $s->anggotaKelas->first(fn (AnggotaKelas $ak) => $ak->kelas?->periode_id === $periodeId)
+            : $s->anggotaKelas->sortByDesc('id')->first();
 
         $statusLabel = match (strtoupper((string) $s->status)) {
             'LULUS' => 'Lulus',
@@ -292,6 +316,7 @@ class SiswaController extends Controller
             'className' => $anggota?->kelas?->kode_kelas ?? '',
             'kode_kelas' => $anggota?->kelas?->kode_kelas ?? '',
             'kelas_id' => $anggota?->kelas_id ? (string) $anggota->kelas_id : null,
+            'period' => $anggota?->kelas?->periode?->nama_periode ?? '',
             'status' => $statusLabel,
         ];
     }

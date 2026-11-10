@@ -19,12 +19,14 @@ class KelasController extends Controller
 
         if ($user && in_array(strtolower((string) $user->role), ['teacher', 'guru', 'role_guru'], true)) {
             $guru = Guru::where('user_id', $user->id)->first();
-            if ($guru) {
-                $query->where(function ($q) use ($guru) {
-                    $q->where('wali_kelas_id', $guru->id)
-                        ->orWhereHas('pengajaran', fn ($pq) => $pq->where('guru_id', $guru->id));
-                });
+            if (! $guru) {
+                return response()->json(['data' => []]);
             }
+
+            $query->where(function ($q) use ($guru) {
+                $q->where('wali_kelas_id', $guru->id)
+                    ->orWhereHas('pengajaran', fn ($pq) => $pq->where('guru_id', $guru->id));
+            });
         }
 
         $items = $query->get()->map(fn (Kelas $k) => $this->formatKelas($k));

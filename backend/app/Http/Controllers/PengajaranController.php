@@ -18,9 +18,18 @@ class PengajaranController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
         $query = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
             ->withCount('nilaiAkhirMapel')
             ->orderBy('id');
+
+        if ($user && in_array(strtolower((string) $user->role), ['teacher', 'guru', 'role_guru'], true)) {
+            $guru = Guru::where('user_id', $user->id)->first();
+            if (! $guru) {
+                return response()->json(['data' => []]);
+            }
+            $query->where('guru_id', $guru->id);
+        }
 
         if ($request->filled('periode_id')) {
             $query->where('periode_id', (int) $request->input('periode_id'));
@@ -68,7 +77,7 @@ class PengajaranController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $pengajaran = Pengajaran::findOrFail($id);
-        $payload = $this->validatePengajaran($request, $pengajaran->id);
+        $payload = $this->validatePengajaran($request, $pengajaran->id, $pengajaran);
         $pengajaran->update($payload);
         $pengajaran->load(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
 
@@ -124,11 +133,10 @@ class PengajaranController extends Controller
             ->map(fn (PeriodeAkademik $p) => $periodeController->formatPeriode($p))
             ->values();
 
-        $gradesQuery = RentangNilai::orderByDesc('batas_bawah');
-        if ($periodeAktif) {
-            $gradesQuery->where('periode_id', $periodeAktif->id);
-        }
-        $grades = $gradesQuery->get()
+        $grades = RentangNilai::with('periode')
+            ->orderByDesc('periode_id')
+            ->orderByDesc('batas_bawah')
+            ->get()
             ->map(fn (RentangNilai $r) => $rentangController->formatRentang($r))
             ->values();
 
@@ -150,7 +158,7 @@ class PengajaranController extends Controller
             ->map(fn (Guru $g) => $guruController->formatGuru($g))
             ->values();
 
-        $students = Siswa::with(['anggotaKelas.kelas'])
+        $students = Siswa::with(['anggotaKelas.kelas.periode'])
             ->orderBy('nis')
             ->get()
             ->map(fn (Siswa $s) => $siswaController->formatSiswa($s, $periodeAktif?->id))
@@ -210,7 +218,7 @@ class PengajaranController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validatePengajaran(Request $request, ?int $ignoreId = null): array
+    private function validatePengajaran(Request $request, ?int $ignoreId = null, ?Pengajaran $existing = null): array
     {
         $periode = null;
         if ($request->filled('periode_id')) {
@@ -277,13 +285,17 @@ class PengajaranController extends Controller
             ], 422));
         }
 
+        $isLocked = $request->has('is_locked')
+            ? (bool) $request->boolean('is_locked')
+            : ($existing !== null ? (bool) $existing->is_locked : false);
+
         return [
             'periode_id' => $periode->id,
             'kelas_id' => $kelas->id,
             'mapel_id' => $mapel->id,
             'guru_id' => $guru->id,
             'kkm' => round((float) $kkmRaw, 2),
-            'is_locked' => (bool) $request->boolean('is_locked', false),
+            'is_locked' => $isLocked,
         ];
     }
 }
