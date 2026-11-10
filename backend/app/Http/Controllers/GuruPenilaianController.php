@@ -394,7 +394,7 @@ class GuruPenilaianController extends Controller
                 'className' => $pengajaran->kelas?->nama_kelas ?? '',
                 'period' => $pengajaran->periode?->nama_periode ?? '',
                 'kkm' => (float) $pengajaran->kkm,
-                'isHomeroom' => $pengajaran->kelas?->wali_kelas_id === $pengajaran->guru_id,
+                'isLocked' => (bool) $pengajaran->is_locked,
                 'students' => $students,
             ];
 

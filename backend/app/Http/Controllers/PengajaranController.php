@@ -18,7 +18,8 @@ class PengajaranController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Pengajaran::with(['guru', 'mataPelajaran', 'kelas', 'periode'])
+        $query = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
+            ->withCount('nilaiAkhirMapel')
             ->orderBy('id');
 
         if ($request->filled('periode_id')) {
@@ -56,7 +57,7 @@ class PengajaranController extends Controller
             return $created;
         });
 
-        $pengajaran->load(['guru', 'mataPelajaran', 'kelas', 'periode']);
+        $pengajaran->load(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
 
         return response()->json([
             'message' => 'Penugasan pengajaran berhasil ditambahkan.',
@@ -69,10 +70,28 @@ class PengajaranController extends Controller
         $pengajaran = Pengajaran::findOrFail($id);
         $payload = $this->validatePengajaran($request, $pengajaran->id);
         $pengajaran->update($payload);
-        $pengajaran->load(['guru', 'mataPelajaran', 'kelas', 'periode']);
+        $pengajaran->load(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
 
         return response()->json([
             'message' => 'Penugasan pengajaran berhasil diperbarui.',
+            'data' => $this->formatPengajaran($pengajaran),
+        ]);
+    }
+
+    public function toggleLock(int $id): JsonResponse
+    {
+        $pengajaran = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
+            ->withCount('nilaiAkhirMapel')
+            ->findOrFail($id);
+
+        $pengajaran->update([
+            'is_locked' => ! $pengajaran->is_locked,
+        ]);
+
+        $statusText = $pengajaran->is_locked ? 'dikunci' : 'dibuka kembali';
+
+        return response()->json([
+            'message' => "Pengisian nilai {$pengajaran->mataPelajaran?->nama_mapel} ({$pengajaran->kelas?->nama_kelas}) berhasil {$statusText}.",
             'data' => $this->formatPengajaran($pengajaran),
         ]);
     }
@@ -137,7 +156,8 @@ class PengajaranController extends Controller
             ->map(fn (Siswa $s) => $siswaController->formatSiswa($s, $periodeAktif?->id))
             ->values();
 
-        $assignments = Pengajaran::with(['guru', 'mataPelajaran', 'kelas', 'periode'])
+        $assignments = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
+            ->withCount('nilaiAkhirMapel')
             ->orderBy('id')
             ->get()
             ->map(fn (Pengajaran $p) => $this->formatPengajaran($p))
@@ -162,6 +182,13 @@ class PengajaranController extends Controller
     public function formatPengajaran(Pengajaran $p): array
     {
         $kkm = rtrim(rtrim(number_format((float) $p->kkm, 2, '.', ''), '0'), '.');
+        $totalStudents = $p->kelas
+            ? ($p->kelas->relationLoaded('anggotaKelas')
+                ? $p->kelas->anggotaKelas->count()
+                : $p->kelas->anggotaKelas()->count())
+            : 0;
+        $completedCount = (int) ($p->nilai_akhir_mapel_count ?? $p->nilaiAkhirMapel()->count());
+        $isLocked = (bool) $p->is_locked;
 
         return [
             'id' => (string) $p->id,
@@ -174,7 +201,9 @@ class PengajaranController extends Controller
             'className' => $p->kelas?->nama_kelas ?? '',
             'period' => $p->periode?->nama_periode ?? '',
             'kkm' => $kkm,
-            'is_locked' => (bool) $p->is_locked,
+            'progress' => "{$completedCount}/{$totalStudents} siswa",
+            'lockStatus' => $isLocked ? 'Terkunci' : 'Terbuka',
+            'is_locked' => $isLocked,
         ];
     }
 
