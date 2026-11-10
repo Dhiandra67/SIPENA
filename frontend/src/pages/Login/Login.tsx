@@ -88,42 +88,36 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
     setMessage("");
     setIsSubmitting(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-
-      if (
-        import.meta.env.DEV &&
-        normalizedEmail === "guru@example.com" &&
-        password === "guru12345"
-      ) {
-        onLoginSuccess({
-          id: "teacher-demo",
-          name: "Guru Demo",
-          email: normalizedEmail,
-          role: "teacher",
-        });
-        return;
-      }
-
-      if (
-        import.meta.env.DEV &&
-        normalizedEmail === "test@example.com" &&
-        password === "password"
-      ) {
-        onLoginSuccess({
-          id: "admin-demo",
-          name: "Admin Demo",
-          email: normalizedEmail,
-          role: "admin",
-        });
-        return;
-      }
-
       const result = await login({ email: normalizedEmail, password }, rememberMe);
       setMessage(`Berhasil masuk. Selamat datang, ${result.user.name}.`);
       setMessageType("success");
       onLoginSuccess(result.user);
     } catch (error) {
+      if (import.meta.env.DEV && error instanceof TypeError) {
+        if (normalizedEmail === "guru@example.com" && password === "guru12345") {
+          onLoginSuccess({
+            id: "teacher-demo",
+            name: "Guru Demo",
+            email: normalizedEmail,
+            role: "teacher",
+          });
+          return;
+        }
+
+        if (normalizedEmail === "test@example.com" && password === "password") {
+          onLoginSuccess({
+            id: "admin-demo",
+            name: "Admin Demo",
+            email: normalizedEmail,
+            role: "admin",
+          });
+          return;
+        }
+      }
+
       setMessage(
         error instanceof Error
           ? error.message

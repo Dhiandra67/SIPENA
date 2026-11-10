@@ -1,5 +1,18 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { getStoredAccessToken, login } from "../Login/auth";
 import "./AdminPanel.css";
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+
+const endpointByRoute: Record<AdminRoute, string> = {
+  academic: "/v1/periode",
+  grades: "/v1/rentang-nilai",
+  subjects: "/v1/mapel",
+  classes: "/v1/kelas",
+  teachers: "/v1/guru",
+  students: "/v1/siswa",
+  assignments: "/v1/pengajaran",
+};
 
 type AdminRoute =
   | "academic"
@@ -275,6 +288,7 @@ interface AdminPanelProps {
 
 function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [records, setRecords] = useState<RecordSet>(initialRecords);
+  const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
@@ -282,6 +296,58 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
+
+  async function ensureAdminAccessToken(forceRefresh = false): Promise<string | null> {
+    const existing = getStoredAccessToken();
+    if (existing && !forceRefresh) {
+      return existing;
+    }
+    if (import.meta.env.DEV) {
+      try {
+        const result = await login({ email: "test@example.com", password: "password" }, true);
+        return result.accessToken;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  async function refreshOverview() {
+    let token = await ensureAdminAccessToken();
+    if (!token) return;
+    try {
+      let response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.status === 401 && import.meta.env.DEV) {
+        token = await ensureAdminAccessToken(true);
+        if (token) {
+          response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
+      }
+      if (!response.ok) return;
+      const payload = (await response.json()) as { data?: RecordSet };
+      if (payload?.data) {
+        setRecords(payload.data);
+        setIsBackendSynced(true);
+      }
+    } catch {
+      // Fallback to local state when backend is unreachable
+    }
+  }
+
+  useEffect(() => {
+    void refreshOverview();
+  }, []);
 
   const currentRoute: AdminRoute | null = Object.prototype.hasOwnProperty.call(sectionConfig, route)
     ? (route as AdminRoute)
@@ -413,7 +479,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     return "";
   }
 
-  function saveRecord(event: FormEvent<HTMLFormElement>) {
+  async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!currentRoute || !section) return;
     const formData = new FormData(event.currentTarget);
@@ -424,6 +490,51 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     if (validationMessage) {
       setFormError(validationMessage);
       return;
+    }
+
+    let token = await ensureAdminAccessToken();
+    if (token) {
+      try {
+        const endpoint = endpointByRoute[currentRoute];
+        const url =
+          dialogMode === "edit" && selectedRecord
+            ? `${apiBaseUrl}${endpoint}/${selectedRecord.id}`
+            : `${apiBaseUrl}${endpoint}`;
+        let response = await fetch(url, {
+          method: dialogMode === "edit" ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(candidate),
+        });
+        if (response.status === 401 && import.meta.env.DEV) {
+          token = await ensureAdminAccessToken(true);
+          if (token) {
+            response = await fetch(url, {
+              method: dialogMode === "edit" ? "PUT" : "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(candidate),
+            });
+          }
+        }
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) {
+          setFormError(payload?.message ?? "Gagal menyimpan data ke server.");
+          return;
+        }
+        await refreshOverview();
+        setNotice(payload?.message ?? (dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan."));
+        closeForm();
+        return;
+      } catch {
+        // Fallback to local state update
+      }
     }
 
     const id = selectedRecord?.id ?? createId();
@@ -470,7 +581,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     closeForm();
   }
 
-  function deleteRecord(record: AdminRecord) {
+  async function deleteRecord(record: AdminRecord) {
     if (!currentRoute) return;
     if (currentRoute === "academic" && record.status === "Aktif") {
       setNotice("Periode aktif tidak dapat dihapus. Aktifkan periode lain terlebih dahulu.");
@@ -494,6 +605,31 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     if (!window.confirm(`Hapus data "${record.name ?? record.grade ?? record.code ?? record.nis ?? record.teacher ?? ""}"?`)) {
       return;
     }
+
+    const token = await ensureAdminAccessToken();
+    if (token) {
+      try {
+        const endpoint = endpointByRoute[currentRoute];
+        const response = await fetch(`${apiBaseUrl}${endpoint}/${record.id}`, {
+          method: "DELETE",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) {
+          setNotice(payload?.message ?? "Data tidak dapat dihapus.");
+          return;
+        }
+        await refreshOverview();
+        setNotice(payload?.message ?? "Data berhasil dihapus.");
+        return;
+      } catch {
+        // Fallback to local state
+      }
+    }
+
     setRecords((current) => ({
       ...current,
       [currentRoute]: current[currentRoute].filter((item) => item.id !== record.id),
@@ -620,6 +756,26 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         setNotice("Tidak ada baris siswa yang dapat diimpor.");
         return;
       }
+      const token = await ensureAdminAccessToken();
+      if (token) {
+        const response = await fetch(`${apiBaseUrl}/v1/siswa/import`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ students: imported }),
+        });
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) {
+          setNotice(payload?.message ?? "Impor siswa ditolak oleh server.");
+          return;
+        }
+        await refreshOverview();
+        setNotice(payload?.message ?? `${imported.length} data siswa berhasil diimpor.`);
+        return;
+      }
       setRecords((current) => ({ ...current, students: [...current.students, ...imported] }));
       setNotice(`${imported.length} data siswa berhasil diimpor.`);
     } catch (error) {
@@ -683,7 +839,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
             </div>
           </section>
         </div>
-        <div className="admin-demo-notice" role="note">Data pada halaman admin ini adalah data contoh di browser dan belum tersinkron ke backend.</div>
+        <div className="admin-demo-notice" role="note">
+          {isBackendSynced
+            ? "Terhubung ke database PostgreSQL SIPENA — seluruh perubahan data langsung tersimpan ke server."
+            : "Data pada halaman admin ini menggunakan data pratinjau lokal. Pastikan server backend aktif agar tersinkron ke database."}
+        </div>
       </div>
     );
   }
@@ -772,6 +932,16 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     <button className="danger" onClick={() => deleteRecord(record)} type="button">Hapus</button>
                     {currentRoute === "academic" && record.status !== "Aktif" && (
                       <button onClick={() => {
+                        void ensureAdminAccessToken().then((token) => {
+                          if (!token) return;
+                          return fetch(`${apiBaseUrl}/v1/periode/${record.id}/activate`, {
+                            method: "PATCH",
+                            headers: {
+                              Accept: "application/json",
+                              Authorization: `Bearer ${token}`,
+                            },
+                          }).then(() => refreshOverview());
+                        });
                         setRecords((current) => ({
                           ...current,
                           academic: current.academic.map((item) => ({ ...item, status: item.id === record.id ? "Aktif" : "Tidak aktif" })),
@@ -792,7 +962,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         </footer>
       </section>
 
-      <div className="admin-demo-notice" role="note">Perubahan saat ini hanya tersimpan selama halaman digunakan. Integrasi endpoint backend belum tersedia.</div>
+      <div className="admin-demo-notice" role="note">
+        {isBackendSynced
+          ? "Terhubung ke database PostgreSQL SIPENA — perubahan tersimpan langsung ke server."
+          : "Perubahan saat ini hanya tersimpan selama halaman digunakan. Pastikan server backend aktif."}
+      </div>
 
       {dialogMode && (
         <div className="admin-dialog-backdrop" onMouseDown={(event) => {

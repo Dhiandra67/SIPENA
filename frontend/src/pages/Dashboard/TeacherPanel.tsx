@@ -1,5 +1,8 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { getStoredAccessToken, login } from "../Login/auth";
 import "./TeacherPanel.css";
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
 type TeacherRoute =
   | "dashboard"
@@ -201,6 +204,8 @@ function TeacherPanel({
   onNavigate,
   onProfileChange,
 }: TeacherPanelProps) {
+  const [assignmentList, setAssignmentList] = useState<TeachingAssignment[]>(assignments);
+  const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(assignments[0].id);
   const [selectedSettingsAssignmentId, setSelectedSettingsAssignmentId] = useState(assignments[0].id);
   const [selectedStudentsAssignmentId, setSelectedStudentsAssignmentId] = useState(assignments[0].id);
@@ -220,11 +225,96 @@ function TeacherPanel({
   const [profileName, setProfileName] = useState(displayName);
   const [profileEmail, setProfileEmail] = useState(email);
 
+  function applyWorkspacePayload(data: {
+    assignments?: TeachingAssignment[];
+    componentsByAssignment?: Record<string, GradeComponent[]>;
+    scores?: ScoreMap;
+  }) {
+    if (data.assignments && data.assignments.length > 0) {
+      setAssignmentList(data.assignments);
+      const firstId = data.assignments[0].id;
+      setSelectedAssignmentId((prev) =>
+        data.assignments?.some((item) => item.id === prev) ? prev : firstId,
+      );
+      setSelectedSettingsAssignmentId((prev) =>
+        prev === "all" || data.assignments?.some((item) => item.id === prev) ? prev : firstId,
+      );
+      setSelectedStudentsAssignmentId((prev) =>
+        prev === "all" || data.assignments?.some((item) => item.id === prev) ? prev : firstId,
+      );
+    }
+    if (data.componentsByAssignment) {
+      setComponentsByAssignment(data.componentsByAssignment);
+    }
+    if (data.scores) {
+      setScores(data.scores);
+    }
+    setIsBackendSynced(true);
+  }
+
+  async function ensureTeacherAccessToken(forceRefresh = false): Promise<string | null> {
+    const existing = getStoredAccessToken();
+    if (existing && !forceRefresh) {
+      return existing;
+    }
+    if (import.meta.env.DEV) {
+      try {
+        const result = await login(
+          { email: (email || "guru@example.com").trim().toLowerCase(), password: "guru12345" },
+          true,
+        );
+        return result.accessToken;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  useEffect(() => {
+    void (async () => {
+      let token = await ensureTeacherAccessToken();
+      if (!token) return;
+      try {
+        let res = await fetch(`${apiBaseUrl}/v1/guru/dashboard`, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.status === 401 && import.meta.env.DEV) {
+          token = await ensureTeacherAccessToken(true);
+          if (token) {
+            res = await fetch(`${apiBaseUrl}/v1/guru/dashboard`, {
+              headers: {
+                Accept: "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            });
+          }
+        }
+        if (!res.ok) return;
+        const payload = (await res.json()) as {
+          data?: {
+            assignments?: TeachingAssignment[];
+            componentsByAssignment?: Record<string, GradeComponent[]>;
+            scores?: ScoreMap;
+          };
+        } | null;
+        if (payload?.data) {
+          applyWorkspacePayload(payload.data);
+        }
+      } catch {
+        // Fallback to local state when backend is unreachable
+      }
+    })();
+  }, []);
+
   const currentAssignment =
-    assignments.find((assignment) => assignment.id === selectedAssignmentId) ?? assignments[0];
+    assignmentList.find((assignment) => assignment.id === selectedAssignmentId) ?? assignmentList[0];
   const components = componentsByAssignment[currentAssignment.id] ?? initialComponents;
   const selectedSettingsAssignment =
-    assignments.find((assignment) => assignment.id === selectedSettingsAssignmentId) ?? assignments[0];
+    assignmentList.find((assignment) => assignment.id === selectedSettingsAssignmentId) ?? assignmentList[0];
   const settingsComponents =
     componentsByAssignment[selectedSettingsAssignment.id] ?? initialComponents;
   const currentRoute = route as TeacherRoute;
@@ -254,7 +344,7 @@ function TeacherPanel({
   }, [currentAssignment, search]);
   const allFilteredStudents = useMemo(
     () =>
-      assignments.flatMap((assignment) =>
+      assignmentList.flatMap((assignment) =>
         assignment.students
           .filter((student) => {
             const query = search.trim().toLocaleLowerCase("id");
@@ -266,7 +356,7 @@ function TeacherPanel({
           })
           .map((student) => ({ assignment, student })),
       ),
-    [search],
+    [assignmentList, search],
   );
 
   const completionCount = currentAssignment.students.filter(
@@ -308,7 +398,7 @@ function TeacherPanel({
   function applySettingsComponents(nextComponents: GradeComponent[]) {
     const targetIds =
       selectedSettingsAssignmentId === "all"
-        ? assignments.map((assignment) => assignment.id)
+        ? assignmentList.map((assignment) => assignment.id)
         : [selectedSettingsAssignment.id];
     setComponentsByAssignment((current) =>
       targetIds.reduce(
@@ -346,7 +436,7 @@ function TeacherPanel({
     );
   }
 
-  function saveComponents(event: FormEvent<HTMLFormElement>) {
+  async function saveComponents(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (settingsComponents.some((component) => !component.name.trim())) {
       setNotice("Nama setiap komponen harus diisi.");
@@ -366,10 +456,44 @@ function TeacherPanel({
       setNotice("Total bobot harus tepat 100% dan setiap bobot lebih dari 0%.");
       return;
     }
+    const token = await ensureTeacherAccessToken();
+    if (token) {
+      try {
+        const targetId = selectedSettingsAssignmentId === "all" ? "all" : selectedSettingsAssignment.id;
+        const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${targetId}/komponen`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ components: settingsComponents }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string;
+          data?: {
+            assignments?: TeachingAssignment[];
+            componentsByAssignment?: Record<string, GradeComponent[]>;
+            scores?: ScoreMap;
+          };
+        } | null;
+        if (!response.ok) {
+          setNotice(payload?.message ?? "Gagal menyimpan komponen penilaian.");
+          return;
+        }
+        if (payload?.data) {
+          applyWorkspacePayload(payload.data);
+        }
+        setNotice(payload?.message ?? "Komponen penilaian berhasil disimpan.");
+        return;
+      } catch {
+        // Fallback to local state
+      }
+    }
     if (selectedSettingsAssignmentId === "all") {
       setComponentsByAssignment(
         Object.fromEntries(
-          assignments.map((assignment) => [
+          assignmentList.map((assignment) => [
             assignment.id,
             settingsComponents.map((component) => ({ ...component })),
           ]),
@@ -377,6 +501,43 @@ function TeacherPanel({
       );
     }
     setNotice("Komponen penilaian berhasil disimpan pada sesi demo ini.");
+  }
+
+  async function saveScoresToBackend(scoresToSave: ScoreMap = scores, customMessage?: string) {
+    const token = await ensureTeacherAccessToken();
+    if (token) {
+      try {
+        const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${currentAssignment.id}/nilai`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ scores: scoresToSave }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string;
+          data?: {
+            assignments?: TeachingAssignment[];
+            componentsByAssignment?: Record<string, GradeComponent[]>;
+            scores?: ScoreMap;
+          };
+        } | null;
+        if (!response.ok) {
+          setNotice(payload?.message ?? "Gagal menyimpan nilai siswa.");
+          return;
+        }
+        if (payload?.data) {
+          applyWorkspacePayload(payload.data);
+        }
+        setNotice(customMessage ?? payload?.message ?? "Nilai berhasil disimpan ke database.");
+        return;
+      } catch {
+        // Fallback to local state
+      }
+    }
+    setNotice(customMessage ?? "Nilai berhasil disimpan pada sesi demo ini.");
   }
 
   async function downloadSpreadsheet(filename: string, rows: (string | number)[][]) {
@@ -429,7 +590,7 @@ function TeacherPanel({
   async function exportAllGrades() {
     const componentNames = Array.from(
       new Set(
-        assignments.flatMap((assignment) =>
+        assignmentList.flatMap((assignment) =>
           (componentsByAssignment[assignment.id] ?? initialComponents).map(
             (component) => component.name,
           ),
@@ -447,7 +608,7 @@ function TeacherPanel({
       "KKM",
       "Ketuntasan",
     ];
-    const rows = assignments.flatMap((assignment) => {
+    const rows = assignmentList.flatMap((assignment) => {
       const assignmentComponents = componentsByAssignment[assignment.id] ?? initialComponents;
       return assignment.students.map((student) => {
         const finalScore = calculateFinal(student.id, assignmentComponents, scores);
@@ -565,8 +726,9 @@ function TeacherPanel({
         setNotice(`Impor dibatalkan; nilai tidak disimpan. ${errors.slice(0, 3).join(" ")}`);
         return;
       }
-      setScores((current) => ({ ...current, ...nextScores }));
-      setNotice(`${Object.keys(nextScores).length} baris nilai berhasil diimpor.`);
+      const mergedScores = { ...scores, ...nextScores };
+      setScores(mergedScores);
+      await saveScoresToBackend(mergedScores, `${Object.keys(nextScores).length} baris nilai berhasil diimpor.`);
     } catch (error) {
       console.error("Failed to import grades spreadsheet.", error);
       setNotice("File tidak dapat dibaca. Periksa format Excel/CSV dan coba lagi.");
@@ -621,7 +783,7 @@ function TeacherPanel({
           value={selectedId}
         >
           {includeAll && <option value="all">Semua Pengajaran</option>}
-          {assignments.map((assignment) => (
+          {assignmentList.map((assignment) => (
             <option key={assignment.id} value={assignment.id}>
               {assignment.subject} · {assignment.className}
             </option>
@@ -721,13 +883,13 @@ function TeacherPanel({
   }
 
   function dashboardPage() {
-    const studentTotal = assignments.reduce((total, assignment) => total + assignment.students.length, 0);
+    const studentTotal = assignmentList.reduce((total, assignment) => total + assignment.students.length, 0);
     return (
       <>
         {pageHeading(`Ringkasan pengajaran ${currentAssignment.subject}`)}
         <section className="teacher-stat-grid" aria-label="Ringkasan pengajaran">
-          <article><span>Kelas Diampu</span><strong>{assignments.length}</strong><small>Periode aktif</small></article>
-          <article><span>Mata Pelajaran</span><strong>{new Set(assignments.map((item) => item.subject)).size}</strong><small>Pengajaran aktif</small></article>
+          <article><span>Kelas Diampu</span><strong>{assignmentList.length}</strong><small>Periode aktif</small></article>
+          <article><span>Mata Pelajaran</span><strong>{new Set(assignmentList.map((item) => item.subject)).size}</strong><small>Pengajaran aktif</small></article>
           <article><span>Jumlah Siswa</span><strong>{studentTotal}</strong><small>Di seluruh kelas</small></article>
           <article><span>Progres Input</span><strong>{completionCount}/{currentAssignment.students.length}</strong><small>{currentAssignment.className} · nilai lengkap</small></article>
         </section>
@@ -743,9 +905,10 @@ function TeacherPanel({
             <button className="teacher-link-button" onClick={() => navigate("assignments")} type="button">Lihat semua</button>
           </div>
           <div className="teacher-assignment-grid">
-            {assignments.map((assignment) => {
+            {assignmentList.map((assignment) => {
+              const assignmentComponents = componentsByAssignment[assignment.id] ?? initialComponents;
               const completed = assignment.students.filter(
-                (student) => calculateFinal(student.id, components, scores) !== null,
+                (student) => calculateFinal(student.id, assignmentComponents, scores) !== null,
               ).length;
               return (
                 <article className="teacher-assignment-card" key={assignment.id}>
@@ -755,7 +918,7 @@ function TeacherPanel({
                     <span>{assignment.className} · {assignment.students.length} siswa</span>
                   </div>
                   <p>KKM {assignment.kkm} <span>·</span> {completed}/{assignment.students.length} nilai lengkap</p>
-                  <div className="teacher-progress"><span style={{ width: `${(completed / assignment.students.length) * 100}%` }} /></div>
+                  <div className="teacher-progress"><span style={{ width: `${assignment.students.length ? (completed / assignment.students.length) * 100 : 0}%` }} /></div>
                   <button onClick={() => openAssignment(assignment.id, "class-detail")} type="button">Buka kelas <span aria-hidden="true">→</span></button>
                 </article>
               );
@@ -780,9 +943,10 @@ function TeacherPanel({
       <>
         {pageHeading("Daftar kelas dan mata pelajaran yang Anda ampu.")}
         <section className="teacher-assignment-grid teacher-assignment-list">
-          {assignments.map((assignment) => {
+          {assignmentList.map((assignment) => {
+            const assignmentComponents = componentsByAssignment[assignment.id] ?? initialComponents;
             const completed = assignment.students.filter(
-              (student) => calculateFinal(student.id, components, scores) !== null,
+              (student) => calculateFinal(student.id, assignmentComponents, scores) !== null,
             ).length;
             return (
               <article className="teacher-assignment-card" key={assignment.id}>
@@ -796,7 +960,7 @@ function TeacherPanel({
                   <div><dt>KKM</dt><dd>{assignment.kkm}</dd></div>
                 </dl>
                 <div className="teacher-progress-label"><span>Progres nilai</span><strong>{completed}/{assignment.students.length}</strong></div>
-                <div className="teacher-progress"><span style={{ width: `${(completed / assignment.students.length) * 100}%` }} /></div>
+                <div className="teacher-progress"><span style={{ width: `${assignment.students.length ? (completed / assignment.students.length) * 100 : 0}%` }} /></div>
                 <button onClick={() => openAssignment(assignment.id, "class-detail")} type="button">Detail kelas <span aria-hidden="true">→</span></button>
               </article>
             );
@@ -846,10 +1010,10 @@ function TeacherPanel({
             includeAll: true,
             onSelect: (assignmentId) => {
               setSelectedSettingsAssignmentId(assignmentId);
-              setSelectedAssignmentId(assignmentId === "all" ? assignments[0].id : assignmentId);
+              setSelectedAssignmentId(assignmentId === "all" ? assignmentList[0].id : assignmentId);
             },
           })}</div>
-          <div className="teacher-assignment-summary"><strong>{showAll ? `Semua pengajaran · ${assignments.length} kelas` : `${selectedSettingsAssignment.subject} · ${selectedSettingsAssignment.className}`}</strong><span>{selectedSettingsAssignment.period}</span>{!showAll && <span>KKM {selectedSettingsAssignment.kkm}</span>}</div>
+          <div className="teacher-assignment-summary"><strong>{showAll ? `Semua pengajaran · ${assignmentList.length} kelas` : `${selectedSettingsAssignment.subject} · ${selectedSettingsAssignment.className}`}</strong><span>{selectedSettingsAssignment.period}</span>{!showAll && <span>KKM {selectedSettingsAssignment.kkm}</span>}</div>
         </section>
         <form className="teacher-card teacher-components-form" onSubmit={saveComponents}>
           <div className="teacher-card-heading"><div><h2>Komponen Nilai</h2><p>{showAll ? "Perubahan komponen dan bobot akan diterapkan ke seluruh pengajaran." : "Total bobot seluruh komponen harus tepat 100%."}</p></div><button className="teacher-secondary-button" onClick={addComponent} type="button">+ Tambah komponen</button></div>
@@ -890,7 +1054,7 @@ function TeacherPanel({
             <label className="teacher-secondary-button teacher-upload-button">Impor XLSX/CSV<input accept=".csv,.xlsx" onChange={(event) => void importGrades(event)} type="file" /></label>
             <button className="teacher-secondary-button" onClick={() => void exportGrades()} type="button">Ekspor nilai</button>
           </div>
-          <button className="teacher-primary-button" disabled={!hasValidWeights} onClick={() => setNotice("Nilai berhasil disimpan pada sesi demo ini.")} type="button">Simpan nilai</button>
+          <button className="teacher-primary-button" disabled={!hasValidWeights} onClick={() => void saveScoresToBackend()} type="button">Simpan nilai</button>
         </section>
         <section className="teacher-card teacher-grade-card">
           <div className="teacher-card-heading"><div><h2>Input Nilai Siswa</h2><p>{completionCount} dari {currentAssignment.students.length} siswa memiliki nilai lengkap.</p></div><span className="teacher-total-weight">Bobot {totalWeight}%</span></div>
@@ -904,7 +1068,7 @@ function TeacherPanel({
   function studentPage() {
     const showAll = selectedStudentsAssignmentId === "all";
     const selectedStudentAssignment =
-      assignments.find((assignment) => assignment.id === selectedStudentsAssignmentId) ?? assignments[0];
+      assignmentList.find((assignment) => assignment.id === selectedStudentsAssignmentId) ?? assignmentList[0];
     return (
       <>
         {pageHeading(
@@ -918,7 +1082,7 @@ function TeacherPanel({
             includeAll: true,
             onSelect: (assignmentId) => {
               setSelectedStudentsAssignmentId(assignmentId);
-              setSelectedAssignmentId(assignmentId === "all" ? assignments[0].id : assignmentId);
+              setSelectedAssignmentId(assignmentId === "all" ? assignmentList[0].id : assignmentId);
             },
           })}<label className="teacher-search"><span className="visually-hidden">Cari siswa</span><input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau NIS..." type="search" value={search} /></label></div></div>
           {studentTable(true)}
@@ -995,7 +1159,7 @@ function TeacherPanel({
   }
 
   function profilePage() {
-    function saveProfile(event: FormEvent<HTMLFormElement>) {
+    async function saveProfile(event: FormEvent<HTMLFormElement>) {
       event.preventDefault();
       const formData = new FormData(event.currentTarget);
       const name = String(formData.get("name") ?? "").trim();
@@ -1009,6 +1173,32 @@ function TeacherPanel({
       if (newPassword !== confirmation) {
         setNotice("Konfirmasi kata sandi tidak cocok.");
         return;
+      }
+      const token = await ensureTeacherAccessToken();
+      if (token) {
+        try {
+          const response = await fetch(`${apiBaseUrl}/v1/profile`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ name, email: nextEmail, newPassword, confirmation }),
+          });
+          const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+          if (!response.ok) {
+            setNotice(payload?.message ?? "Gagal memperbarui profil.");
+            return;
+          }
+          setProfileName(name);
+          setProfileEmail(nextEmail);
+          onProfileChange(name);
+          setNotice("Profil berhasil diperbarui.");
+          return;
+        } catch {
+          // Fallback to local state
+        }
       }
       setProfileName(name);
       setProfileEmail(nextEmail);
@@ -1073,7 +1263,11 @@ function TeacherPanel({
     <div className="teacher-panel">
       {notice && <p className="teacher-notice" role="status">{notice}</p>}
       {content}
-      <p className="teacher-demo-note" role="note">Data penilaian ini adalah data contoh pada browser dan belum tersinkron ke backend.</p>
+      <p className="teacher-demo-note" role="note">
+        {isBackendSynced
+          ? "Terhubung ke database PostgreSQL SIPENA — komponen dan nilai langsung tersimpan ke server."
+          : "Data penilaian ini adalah data pratinjau lokal. Pastikan server backend aktif agar tersinkron ke database."}
+      </p>
     </div>
   );
 }
