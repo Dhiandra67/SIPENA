@@ -17,6 +17,7 @@ class ProfileController extends Controller
         $guru = Guru::where('user_id', $user->id)->first();
 
         return response()->json([
+            'message' => 'Profil berhasil dimuat.',
             'data' => [
                 'id' => (string) $user->id,
                 'name' => $guru?->nama_lengkap ?? $user->name,
@@ -25,6 +26,7 @@ class ProfileController extends Controller
                 'nip' => $guru?->nip,
                 'no_telepon' => $guru?->no_telepon,
                 'alamat' => $guru?->alamat,
+                'status' => ($user->is_active ?? true) ? 'Aktif' : 'Tidak aktif',
             ],
         ]);
     }
@@ -82,6 +84,9 @@ class ProfileController extends Controller
             }
         });
 
-        return $this->show($request);
+        $response = $this->show($request)->getData(true);
+        $response['message'] = 'Profil akun berhasil diperbarui.';
+
+        return response()->json($response);
     }
 }
