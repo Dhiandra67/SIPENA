@@ -94,6 +94,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
   const [profileError, setProfileError] = useState("");
   const [profileNotice, setProfileNotice] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
   const navigation = isAdmin ? adminNavigation : teacherNavigation;
@@ -101,6 +102,19 @@ function Dashboard({ user, onLogout }: DashboardProps) {
     () => window.location.hash.slice(1) || "dashboard",
   );
   const initial = displayName.trim().charAt(0).toUpperCase() || "S";
+
+  function confirmAllowNavigation(targetRoute?: string): boolean {
+    if (isAdmin || !hasUnsavedChanges) return true;
+    const normalizedTarget = targetRoute?.replace(/^#/, "");
+    if (normalizedTarget && normalizedTarget === activeRoute) return true;
+    const allowed = window.confirm(
+      "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah halaman tanpa menyimpan?",
+    );
+    if (allowed) {
+      setHasUnsavedChanges(false);
+    }
+    return allowed;
+  }
 
   useEffect(() => {
     function syncRoute() {
@@ -232,7 +246,16 @@ function Dashboard({ user, onLogout }: DashboardProps) {
   return (
     <div className={`dashboard-app ${isAdmin ? "admin-dashboard" : "teacher-dashboard"}`}>
       <aside className="dashboard-sidebar">
-        <a className="dashboard-brand" href="#dashboard" aria-label="SIPENA dashboard">
+        <a
+          className="dashboard-brand"
+          href="#dashboard"
+          aria-label="SIPENA dashboard"
+          onClick={(event) => {
+            if (!confirmAllowNavigation("dashboard")) {
+              event.preventDefault();
+            }
+          }}
+        >
           <Icon name="brand" />
           <span>
             <strong>SIPENA</strong>
@@ -246,13 +269,25 @@ function Dashboard({ user, onLogout }: DashboardProps) {
               className={item.href === `#${activeRoute}` ? "navigation-link active" : "navigation-link"}
               href={item.href}
               key={item.label}
+              onClick={(event) => {
+                if (!confirmAllowNavigation(item.href)) {
+                  event.preventDefault();
+                }
+              }}
             >
               <Icon name={item.icon} />
               <span>{item.label}</span>
             </a>
           ))}
         </nav>
-        <button className="sidebar-logout" onClick={onLogout} type="button">
+        <button
+          className="sidebar-logout"
+          onClick={() => {
+            if (!confirmAllowNavigation("__logout__")) return;
+            onLogout();
+          }}
+          type="button"
+        >
           <Icon name="logout" />
           <span>Logout</span>
         </button>
@@ -333,7 +368,10 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                   </button>
                   <button
                     className="profile-popover-action danger"
-                    onClick={onLogout}
+                    onClick={() => {
+                      if (!confirmAllowNavigation("__logout__")) return;
+                      onLogout();
+                    }}
                     type="button"
                   >
                     Keluar (Logout)
@@ -345,7 +383,16 @@ function Dashboard({ user, onLogout }: DashboardProps) {
         </header>
 
         <header className="mobile-dashboard-header">
-          <a className="dashboard-brand mobile-brand" href="#dashboard" aria-label="SIPENA dashboard">
+          <a
+            className="dashboard-brand mobile-brand"
+            href="#dashboard"
+            aria-label="SIPENA dashboard"
+            onClick={(event) => {
+              if (!confirmAllowNavigation("dashboard")) {
+                event.preventDefault();
+              }
+            }}
+          >
             <Icon name="brand" />
             <strong>SIPENA</strong>
           </a>
@@ -369,13 +416,25 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                 aria-current={item.href === `#${activeRoute}` ? "page" : undefined}
                 href={item.href}
                 key={item.label}
-                onClick={() => setMenuOpen(false)}
+                onClick={(event) => {
+                  if (!confirmAllowNavigation(item.href)) {
+                    event.preventDefault();
+                    return;
+                  }
+                  setMenuOpen(false);
+                }}
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
               </a>
             ))}
-            <button onClick={onLogout} type="button">
+            <button
+              onClick={() => {
+                if (!confirmAllowNavigation("__logout__")) return;
+                onLogout();
+              }}
+              type="button"
+            >
               <Icon name="logout" />
               <span>Logout</span>
             </button>
@@ -419,6 +478,11 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                 aria-current={activeRoute === route ? "page" : undefined}
                 href={`#${route}`}
                 key={route}
+                onClick={(event) => {
+                  if (!confirmAllowNavigation(route)) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <Icon name={icon} />
                 <span>{label}</span>
@@ -451,6 +515,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                 window.location.hash = route;
               }}
               onProfileChange={setDisplayName}
+              onUnsavedChange={setHasUnsavedChanges}
               route={activeRoute}
             />
           )}

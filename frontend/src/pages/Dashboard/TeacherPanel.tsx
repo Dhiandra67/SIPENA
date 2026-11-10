@@ -54,6 +54,7 @@ interface TeacherPanelProps {
   email: string;
   onNavigate: (route: string) => void;
   onProfileChange: (name: string) => void;
+  onUnsavedChange?: (hasUnsaved: boolean) => void;
 }
 
 const period = "2026/2027 · Ganjil";
@@ -152,9 +153,12 @@ function TeacherPanel({
   email,
   onNavigate,
   onProfileChange,
+  onUnsavedChange,
 }: TeacherPanelProps) {
   const [assignmentList, setAssignmentList] = useState<TeachingAssignment[]>([]);
   const [gradeRanges, setGradeRanges] = useState<GradeRange[]>(defaultGrades);
+  const [periodList, setPeriodList] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
@@ -171,9 +175,23 @@ function TeacherPanel({
   const [profileName, setProfileName] = useState(displayName);
   const [profileEmail, setProfileEmail] = useState(email);
 
+  useEffect(() => {
+    setProfileName(displayName);
+    setProfileEmail(email);
+  }, [displayName, email]);
+
+  useEffect(() => {
+    onUnsavedChange?.(hasUnsavedScores || hasUnsavedComponents);
+  }, [hasUnsavedScores, hasUnsavedComponents, onUnsavedChange]);
+
   function getPredicate(score: number | null): string {
     if (score === null) return "—";
-    return gradeRanges.find((grade) => score >= grade.lower && score <= grade.upper)?.letter ?? "—";
+    const exactMatch = gradeRanges.find((grade) => score >= grade.lower && score <= grade.upper);
+    if (exactMatch) return exactMatch.letter;
+    const fallbackMatch = [...gradeRanges]
+      .sort((a, b) => b.lower - a.lower)
+      .find((grade) => score >= grade.lower);
+    return fallbackMatch?.letter ?? "D";
   }
 
   function applyWorkspacePayload(data: {
@@ -181,7 +199,15 @@ function TeacherPanel({
     componentsByAssignment?: Record<string, GradeComponent[]>;
     scores?: ScoreMap;
     grades?: GradeRange[];
+    periods?: { id: string; name: string; isActive: boolean }[];
+    selectedPeriod?: string | null;
   }) {
+    if (Array.isArray(data.periods)) {
+      setPeriodList(data.periods);
+    }
+    if (typeof data.selectedPeriod === "string" && data.selectedPeriod) {
+      setSelectedPeriod(data.selectedPeriod);
+    }
     if (Array.isArray(data.assignments)) {
       setAssignmentList(data.assignments);
       if (data.assignments.length > 0) {
@@ -251,56 +277,61 @@ function TeacherPanel({
     return null;
   }
 
-  useEffect(() => {
-    void (async () => {
-      let token = await ensureTeacherAccessToken();
-      if (!token) {
+  async function loadTeacherWorkspace(periodName?: string) {
+    let token = await ensureTeacherAccessToken();
+    if (!token) {
+      setIsBackendSynced(false);
+      setIsLoading(false);
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
+      return;
+    }
+    try {
+      const query = periodName ? `?period=${encodeURIComponent(periodName)}` : "";
+      let res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.status === 401 && import.meta.env.DEV) {
+        token = await ensureTeacherAccessToken(true);
+        if (token) {
+          res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
+      }
+      if (!res.ok) {
         setIsBackendSynced(false);
-        setIsLoading(false);
-        setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
+        setNotice("Gagal memuat data pengajaran dari server backend.");
         return;
       }
-      try {
-        let res = await fetch(`${apiBaseUrl}/v1/guru/dashboard`, {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (res.status === 401 && import.meta.env.DEV) {
-          token = await ensureTeacherAccessToken(true);
-          if (token) {
-            res = await fetch(`${apiBaseUrl}/v1/guru/dashboard`, {
-              headers: {
-                Accept: "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            });
-          }
-        }
-        if (!res.ok) {
-          setIsBackendSynced(false);
-          setNotice("Gagal memuat data pengajaran dari server backend.");
-          return;
-        }
-        const payload = (await res.json()) as {
-          data?: {
-            assignments?: TeachingAssignment[];
-            componentsByAssignment?: Record<string, GradeComponent[]>;
-            scores?: ScoreMap;
-            grades?: GradeRange[];
-          };
-        } | null;
-        if (payload?.data) {
-          applyWorkspacePayload(payload.data);
-        }
-      } catch {
-        setIsBackendSynced(false);
-        setNotice("Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.");
-      } finally {
-        setIsLoading(false);
+      const payload = (await res.json()) as {
+        data?: {
+          assignments?: TeachingAssignment[];
+          componentsByAssignment?: Record<string, GradeComponent[]>;
+          scores?: ScoreMap;
+          grades?: GradeRange[];
+          periods?: { id: string; name: string; isActive: boolean }[];
+          selectedPeriod?: string | null;
+        };
+      } | null;
+      if (payload?.data) {
+        applyWorkspacePayload(payload.data);
       }
-    })();
+    } catch {
+      setIsBackendSynced(false);
+      setNotice("Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadTeacherWorkspace();
   }, []);
 
   const currentAssignment =
@@ -776,7 +807,35 @@ function TeacherPanel({
           <h1>{title}</h1>
           <p>{description}</p>
         </div>
-        <span className="teacher-period-chip">{currentAssignment.period}</span>
+        {periodList.length > 0 ? (
+          <label className="teacher-select-label" style={{ minWidth: "210px" }}>
+            <span>Periode Akademik</span>
+            <select
+              value={selectedPeriod || currentAssignment.period}
+              onChange={(event) => {
+                if (
+                  (hasUnsavedScores || hasUnsavedComponents) &&
+                  !window.confirm(
+                    "Ada perubahan nilai atau komponen yang belum disimpan. Yakin ingin mengganti periode akademik?",
+                  )
+                ) {
+                  return;
+                }
+                const nextPeriod = event.target.value;
+                setSelectedPeriod(nextPeriod);
+                void loadTeacherWorkspace(nextPeriod);
+              }}
+            >
+              {periodList.map((item) => (
+                <option key={item.id} value={item.name}>
+                  {item.name}{item.isActive ? " (Aktif)" : " (Arsip)"}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <span className="teacher-period-chip">{currentAssignment.period}</span>
+        )}
       </header>
     );
   }
@@ -862,7 +921,7 @@ function TeacherPanel({
                 return score !== undefined && score !== "";
               }).length;
               return (
-                <tr key={student.id}>
+                <tr key={`${assignment.id}-${student.id}`}>
                   <td>{index + 1}</td>
                   <td>{student.nis}</td>
                   <td className="teacher-student-name">{student.name}</td>
@@ -1147,7 +1206,7 @@ function TeacherPanel({
   function statisticsPage() {
     const distribution = gradeRanges.map((grade) => ({
       ...grade,
-      count: finalScores.filter((score) => score >= grade.lower && score <= grade.upper).length,
+      count: finalScores.filter((score) => getPredicate(score) === grade.letter).length,
     }));
     const passRate = finalScores.length ? Math.round((passingCount / finalScores.length) * 100) : 0;
     return (
@@ -1290,13 +1349,13 @@ function TeacherPanel({
   } else if (assignmentList.length === 0 && currentRoute !== "profile") {
     content = (
       <>
-        {pageHeading("Daftar penugasan mengajar pada periode akademik aktif.")}
+        {pageHeading("Daftar penugasan mengajar pada periode akademik terpilih.")}
         <section className="teacher-card">
           <div className="teacher-card-heading">
             <div>
               <h2>Belum Ada Penugasan Mengajar</h2>
               <p>
-                Akun Anda belum memiliki penugasan kelas dan mata pelajaran pada periode akademik aktif. Silakan hubungi Admin Sekolah untuk menambahkan penugasan pada menu <strong>Pembagian Tugas Guru</strong>.
+                Akun Anda belum memiliki penugasan kelas dan mata pelajaran pada periode akademik ini. Silakan hubungi Admin Sekolah untuk menambahkan penugasan pada menu <strong>Pembagian Tugas Guru</strong>.
               </p>
             </div>
           </div>
