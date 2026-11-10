@@ -106,6 +106,7 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
 
             Route::post('/pengajaran', [PengajaranController::class, 'store']);
             Route::put('/pengajaran/{id}', [PengajaranController::class, 'update'])->whereNumber('id');
+            Route::patch('/pengajaran/{id}/toggle-lock', [PengajaranController::class, 'toggleLock'])->whereNumber('id');
             Route::delete('/pengajaran/{id}', [PengajaranController::class, 'destroy'])->whereNumber('id');
         });
     });

@@ -201,4 +201,35 @@ class AcademicApiTest extends TestCase
             'password' => 'sandibaru123',
         ])->assertOk();
     }
+
+    public function test_admin_can_toggle_assignment_lock_and_locked_assignment_blocks_teacher_updates(): void
+    {
+        $this->seed();
+
+        $adminToken = $this->loginAs('test@example.com', 'password');
+        $teacherToken = $this->loginAs('guru@example.com', 'guru12345');
+
+        $pengajaran = Pengajaran::whereHas('kelas', fn ($q) => $q->where('kode_kelas', 'VII-A'))->firstOrFail();
+
+        // Admin mengunci nilai pengajaran
+        $this->withToken($adminToken)
+            ->patchJson("/api/v1/pengajaran/{$pengajaran->id}/toggle-lock")
+            ->assertOk()
+            ->assertJsonPath('data.is_locked', true)
+            ->assertJsonPath('data.lockStatus', 'Terkunci');
+
+        // Guru ditolak saat mencoba mengubah nilai ketika terkunci
+        $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/nilai", [
+                'scores' => [],
+            ])
+            ->assertStatus(422);
+
+        // Admin membuka kembali kunci nilai
+        $this->withToken($adminToken)
+            ->patchJson("/api/v1/pengajaran/{$pengajaran->id}/toggle-lock")
+            ->assertOk()
+            ->assertJsonPath('data.is_locked', false)
+            ->assertJsonPath('data.lockStatus', 'Terbuka');
+    }
 }
