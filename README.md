@@ -145,6 +145,18 @@ Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` dari folder `frontend` ju
 
 Backend menyediakan `GET /api/health` dan autentikasi bearer token melalui `POST /api/auth/login`. Di environment local/testing, seeder membuat akun demo admin (`test@example.com` / `password`) dan guru (`guru@example.com` / `guru12345`); kredensial ini ditampilkan di frontend mode development dan tidak boleh digunakan di production. Endpoint `GET /api/auth/me` memeriksa sesi, sementara `POST /api/auth/logout` mencabut token. Rincian integrasi frontend ada di [frontend/README.md](frontend/README.md).
 
+### Pengujian backend
+
+Dari folder `backend`, jalankan seluruh tes fitur dan unit dengan:
+
+```powershell
+php artisan test
+```
+
+Tes kalkulasi nilai juga memeriksa jumlah query statistik pada kelas yang
+diperbesar untuk mencegah regresi pola N+1. Rincian tes frontend dan pemeriksaan
+ukuran build ada di [frontend/README.md](frontend/README.md).
+
 ## Kontribusi Terhadap SDGs Desa
 
 Proyek ini mendukung **SDGs Desa Tujuan 4: Pendidikan Desa Berkualitas** (indikator 4.1.1 – proporsi anak yang mencapai kompetensi pendidikan).
