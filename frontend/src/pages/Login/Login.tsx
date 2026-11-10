@@ -88,17 +88,23 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
     setMessage("");
     setIsSubmitting(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
-      const result = await login({ email: email.trim(), password }, rememberMe);
+      const result = await login({ email: normalizedEmail, password }, rememberMe);
       setMessage(`Berhasil masuk. Selamat datang, ${result.user.name}.`);
       setMessageType("success");
       onLoginSuccess(result.user);
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Terjadi kesalahan saat menghubungi server. Silakan coba lagi.",
-      );
+      if (error instanceof TypeError) {
+        setMessage("Tidak dapat terhubung ke server backend. Pastikan server backend sedang aktif.");
+      } else {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat menghubungi server. Silakan coba lagi.",
+        );
+      }
       setMessageType("error");
     } finally {
       setIsSubmitting(false);
@@ -247,6 +253,7 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
               <span>{isSubmitting ? "Memproses..." : "Masuk"}</span>
               {!isSubmitting && <Icon name="arrow" />}
             </button>
+
           </form>
 
           <p className="contact-copy">

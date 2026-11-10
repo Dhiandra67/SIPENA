@@ -29,8 +29,12 @@ class AuthenticateApiToken
 
         $user = User::find($token->user_id);
 
-        if (! $user) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+        if (! $user || ! ($user->is_active ?? true)) {
+            DB::table('api_tokens')->where('id', $token->id)->delete();
+
+            return response()->json([
+                'message' => 'Sesi berakhir atau akun telah dinonaktifkan.',
+            ], 401);
         }
 
         DB::table('api_tokens')
