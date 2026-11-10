@@ -170,4 +170,35 @@ class AcademicApiTest extends TestCase
             ->assertJsonPath('data.jumlah_siswa', 5)
             ->assertJsonPath('data.nilai_lengkap', 4);
     }
+
+    public function test_admin_can_reset_teacher_password(): void
+    {
+        $this->seed();
+
+        $adminToken = $this->loginAs('test@example.com', 'password');
+
+        $createRes = $this->withToken($adminToken)
+            ->postJson('/api/v1/guru', [
+                'nip' => '199305052020011055',
+                'name' => 'Fajar Nugroho, S.Pd.',
+                'gender' => 'L',
+                'email' => 'fajar@sekolah.sch.id',
+                'status' => 'Aktif',
+            ])
+            ->assertCreated();
+
+        $guruId = $createRes->json('data.id');
+
+        $this->withToken($adminToken)
+            ->postJson("/api/v1/guru/{$guruId}/reset-password", [
+                'password' => 'sandibaru123',
+            ])
+            ->assertOk()
+            ->assertJsonPath('defaultPassword', 'sandibaru123');
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'fajar@sekolah.sch.id',
+            'password' => 'sandibaru123',
+        ])->assertOk();
+    }
 }

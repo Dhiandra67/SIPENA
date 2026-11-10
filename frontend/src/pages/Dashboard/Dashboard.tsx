@@ -131,7 +131,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
       <div className="dashboard-main">
         <header className="dashboard-topbar">
           <span>
-            {isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran & Wali Kelas"}
+            {isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran"}
           </span>
           <div className="topbar-user">
             <strong>{displayName}</strong>

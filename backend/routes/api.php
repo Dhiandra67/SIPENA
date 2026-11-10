@@ -96,6 +96,7 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
             Route::get('/guru/{id}', [GuruController::class, 'show'])->whereNumber('id');
             Route::post('/guru', [GuruController::class, 'store']);
             Route::put('/guru/{id}', [GuruController::class, 'update'])->whereNumber('id');
+            Route::post('/guru/{id}/reset-password', [GuruController::class, 'resetPassword'])->whereNumber('id');
             Route::delete('/guru/{id}', [GuruController::class, 'destroy'])->whereNumber('id');
 
             Route::post('/siswa/import', [SiswaController::class, 'import']);

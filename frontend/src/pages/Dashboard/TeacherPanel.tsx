@@ -14,8 +14,7 @@ type TeacherRoute =
   | "grade-summary"
   | "statistics"
   | "reports"
-  | "profile"
-  | "homeroom";
+  | "profile";
 
 interface TeacherStudent {
   id: string;
@@ -31,7 +30,6 @@ interface TeachingAssignment {
   period: string;
   kkm: number;
   students: TeacherStudent[];
-  isHomeroom: boolean;
 }
 
 interface GradeComponent {
@@ -59,7 +57,6 @@ const assignments: TeachingAssignment[] = [
     className: "VII-A",
     period,
     kkm: 75,
-    isHomeroom: true,
     students: [
       { id: "s1", nis: "2026001", name: "Andi Pratama", gender: "L" },
       { id: "s2", nis: "2026002", name: "Budi Santoso", gender: "L" },
@@ -74,7 +71,6 @@ const assignments: TeachingAssignment[] = [
     className: "VII-B",
     period,
     kkm: 75,
-    isHomeroom: false,
     students: [
       { id: "s3", nis: "2026003", name: "Citra Lestari", gender: "P" },
       { id: "s5", nis: "2026005", name: "Eka Saputra", gender: "L" },
@@ -88,7 +84,6 @@ const assignments: TeachingAssignment[] = [
     className: "VIII-A",
     period,
     kkm: 75,
-    isHomeroom: false,
     students: [
       { id: "s4", nis: "2026004", name: "Dina Putri", gender: "P" },
       { id: "s6", nis: "2026006", name: "Fitri Handayani", gender: "P" },
@@ -746,7 +741,6 @@ function TeacherPanel({
     statistics: "Statistik",
     reports: "Laporan Nilai Mapel",
     profile: "Profil Saya",
-    homeroom: "Kelas Perwalian",
   };
   const title = titleByRoute[currentRoute] ?? "Dashboard";
 
@@ -796,7 +790,7 @@ function TeacherPanel({
   function studentTable(readOnly = false) {
     const showAllStudents =
       readOnly &&
-      (currentRoute === "students" || currentRoute === "homeroom") &&
+      currentRoute === "students" &&
       selectedStudentsAssignmentId === "all";
     const tableRows = showAllStudents
       ? allFilteredStudents
@@ -976,7 +970,7 @@ function TeacherPanel({
         {pageHeading("Ringkasan kelas, daftar siswa, dan akses penilaian.")}
         <section className="teacher-card teacher-class-summary">
           <div className="teacher-card-heading">
-            <div><span className="teacher-eyebrow">DETAIL PENGAJARAN</span><h2>{currentAssignment.subject} · Kelas {currentAssignment.className}</h2><p>{currentAssignment.period}</p>{currentAssignment.isHomeroom && <span className="teacher-status-chip">Wali kelas</span>}</div>
+            <div><span className="teacher-eyebrow">DETAIL PENGAJARAN</span><h2>{currentAssignment.subject} · Kelas {currentAssignment.className}</h2><p>{currentAssignment.period}</p></div>
             {assignmentSelector()}
           </div>
           <div className="teacher-class-metrics">
@@ -1242,7 +1236,6 @@ function TeacherPanel({
       content = gradeEntryPage();
       break;
     case "students":
-    case "homeroom":
       content = studentPage();
       break;
     case "grade-summary":

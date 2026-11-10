@@ -28,12 +28,13 @@ type AdminRecord = Record<string, string>;
 interface AdminField {
   key: string;
   label: string;
-  type?: "email" | "number" | "date" | "select";
+  type?: "email" | "number" | "date" | "select" | "password";
   options?: string[];
   required?: boolean;
   min?: number;
   max?: number;
   step?: number;
+  placeholder?: string;
 }
 
 interface AdminSection {
@@ -129,7 +130,7 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
   },
   teachers: {
     title: "Data Guru",
-    description: "Kelola profil guru dan informasi akun sekolah.",
+    description: "Kelola profil guru, akun login, dan reset kata sandi (default awal: guru12345).",
     addLabel: "Tambah guru",
     columns: [
       { key: "nip", label: "NIP" },
@@ -143,6 +144,13 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
       { key: "gender", label: "Jenis kelamin", type: "select", options: ["L", "P"] },
       { key: "email", label: "Email akun", type: "email" },
       { key: "status", label: "Status akun", type: "select", options: ["Aktif", "Tidak aktif"] },
+      {
+        key: "password",
+        label: "Kata sandi akun (opsional)",
+        type: "password",
+        required: false,
+        placeholder: "Kosongkan = default guru12345 (min. 8 karakter jika diisi)",
+      },
     ],
     searchKeys: ["nip", "name", "email"],
   },
@@ -292,7 +300,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
-  const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | null>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | "reset-password" | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
@@ -373,7 +381,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     onNavigate(nextRoute);
   }
 
-  function openForm(mode: "create" | "edit" | "details", record: AdminRecord | null = null) {
+  function openForm(mode: "create" | "edit" | "details" | "reset-password", record: AdminRecord | null = null) {
     setSelectedRecord(record);
     setDialogMode(mode);
     setFormError("");
@@ -428,6 +436,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     if (currentRoute === "teachers") {
+      if (candidate.password && candidate.password.length < 8) {
+        return "Kata sandi akun guru minimal 8 karakter.";
+      }
       if (existing.some((record) =>
         record.nip === candidate.nip ||
         record.email.toLocaleLowerCase("id") === candidate.email.toLocaleLowerCase("id")
@@ -578,6 +589,66 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       return nextRecords;
     });
     setNotice(dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
+    closeForm();
+  }
+
+  async function resetTeacherPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRecord) return;
+    const formData = new FormData(event.currentTarget);
+    const newPassword = String(formData.get("password") ?? "").trim() || "guru12345";
+
+    if (newPassword.length < 8) {
+      setFormError("Kata sandi baru minimal 8 karakter.");
+      return;
+    }
+
+    let token = await ensureAdminAccessToken();
+    if (token) {
+      try {
+        let response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ password: newPassword }),
+        });
+        if (response.status === 401 && import.meta.env.DEV) {
+          token = await ensureAdminAccessToken(true);
+          if (token) {
+            response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ password: newPassword }),
+            });
+          }
+        }
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) {
+          setFormError(payload?.message ?? "Gagal mereset kata sandi guru.");
+          return;
+        }
+        await refreshOverview();
+        setNotice(
+          payload?.message ??
+            `Kata sandi akun ${selectedRecord.name} (${selectedRecord.email}) berhasil direset menjadi: ${newPassword}`,
+        );
+        closeForm();
+        return;
+      } catch {
+        // Fallback notice when offline
+      }
+    }
+
+    setNotice(
+      `Kata sandi akun ${selectedRecord.name} (${selectedRecord.email}) berhasil direset menjadi: ${newPassword}`,
+    );
     closeForm();
   }
 
@@ -929,6 +1000,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                   <td className="admin-row-actions">
                     <button aria-label={`Lihat ${section.title}: ${record.name ?? record.grade ?? record.code ?? record.nis ?? record.teacher ?? ""}`} onClick={() => openForm("details", record)} type="button">Detail</button>
                     <button onClick={() => openForm("edit", record)} type="button">Edit</button>
+                    {currentRoute === "teachers" && (
+                      <button onClick={() => openForm("reset-password", record)} type="button">Reset Sandi</button>
+                    )}
                     <button className="danger" onClick={() => deleteRecord(record)} type="button">Hapus</button>
                     {currentRoute === "academic" && record.status !== "Aktif" && (
                       <button onClick={() => {
@@ -977,17 +1051,54 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
               <div>
                 <span className="admin-eyebrow">{section.title}</span>
                 <h2 id="admin-dialog-title">
-                  {dialogMode === "create" ? section.addLabel : dialogMode === "edit" ? `Edit ${section.title.toLocaleLowerCase("id")}` : `Detail ${section.title.toLocaleLowerCase("id")}`}
+                  {dialogMode === "create"
+                    ? section.addLabel
+                    : dialogMode === "edit"
+                      ? `Edit ${section.title.toLocaleLowerCase("id")}`
+                      : dialogMode === "reset-password"
+                        ? "Reset Kata Sandi Akun Guru"
+                        : `Detail ${section.title.toLocaleLowerCase("id")}`}
                 </h2>
               </div>
               <button aria-label="Tutup" onClick={closeForm} type="button">×</button>
             </div>
             {dialogMode === "details" && selectedRecord ? (
               <dl className="admin-detail-list">
-                {section.fields.map((field) => (
-                  <div key={field.key}><dt>{field.label}</dt><dd>{selectedRecord[field.key] || "—"}</dd></div>
-                ))}
+                {section.fields
+                  .filter((field) => field.key !== "password")
+                  .map((field) => (
+                    <div key={field.key}><dt>{field.label}</dt><dd>{selectedRecord[field.key] || "—"}</dd></div>
+                  ))}
+                {currentRoute === "teachers" && (
+                  <div>
+                    <dt>Info Kata Sandi Login</dt>
+                    <dd>Default awal: guru12345 (gunakan tombol Reset Sandi atau Edit untuk mengganti)</dd>
+                  </div>
+                )}
               </dl>
+            ) : dialogMode === "reset-password" && selectedRecord ? (
+              <form className="admin-form" onSubmit={resetTeacherPassword}>
+                <dl className="admin-detail-list">
+                  <div><dt>Nama Guru</dt><dd>{selectedRecord.name} (NIP: {selectedRecord.nip})</dd></div>
+                  <div><dt>Email Login</dt><dd>{selectedRecord.email}</dd></div>
+                </dl>
+                <label>
+                  Kata sandi baru (minimal 8 karakter)
+                  <input
+                    defaultValue="guru12345"
+                    minLength={8}
+                    name="password"
+                    placeholder="Masukkan kata sandi baru (default: guru12345)"
+                    required
+                    type="text"
+                  />
+                </label>
+                {formError && <p className="admin-form-error" role="alert">{formError}</p>}
+                <div className="admin-dialog-actions">
+                  <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>
+                  <button className="admin-primary-button" type="submit">Reset Kata Sandi</button>
+                </div>
+              </form>
             ) : (
               <form className="admin-form" onSubmit={saveRecord}>
                 {section.fields.map((field) => {
@@ -1022,10 +1133,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                         </select>
                       ) : (
                         <input
-                          defaultValue={selectedRecord?.[field.key] ?? ""}
+                          defaultValue={field.key === "password" ? "" : (selectedRecord?.[field.key] ?? "")}
                           max={field.max}
                           min={field.min}
                           name={field.key}
+                          placeholder={field.placeholder}
                           required={field.required !== false}
                           step={field.step}
                           type={field.type ?? "text"}

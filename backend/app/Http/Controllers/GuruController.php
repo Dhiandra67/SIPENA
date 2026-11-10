@@ -54,7 +54,7 @@ class GuruController extends Controller
         $guru->load('user');
 
         return response()->json([
-            'message' => 'Data guru berhasil ditambahkan.',
+            'message' => "Data guru berhasil ditambahkan. Akun login ({$payload['email']}) aktif dengan kata sandi awal: {$payload['password']}",
             'data' => $this->formatGuru($guru),
         ], 201);
     }
@@ -86,8 +86,43 @@ class GuruController extends Controller
             ]);
         });
 
+        $message = $payload['password_provided']
+            ? "Data guru dan kata sandi akun ({$payload['email']}) berhasil diperbarui."
+            : 'Data guru berhasil diperbarui.';
+
         return response()->json([
-            'message' => 'Data guru berhasil diperbarui.',
+            'message' => $message,
+            'data' => $this->formatGuru($guru->fresh('user')),
+        ]);
+    }
+
+    public function resetPassword(Request $request, int $id): JsonResponse
+    {
+        $guru = Guru::with('user')->findOrFail($id);
+        $newPassword = trim((string) ($request->input('password') ?? ''));
+        if ($newPassword === '') {
+            $newPassword = 'guru12345';
+        }
+
+        if (strlen($newPassword) < 8) {
+            return response()->json([
+                'message' => 'Kata sandi baru minimal 8 karakter.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($guru, $newPassword): void {
+            if ($guru->user) {
+                $guru->user->update([
+                    'password' => $newPassword,
+                ]);
+            }
+        });
+
+        $email = $guru->user?->email ?? '-';
+
+        return response()->json([
+            'message' => "Kata sandi akun {$guru->nama_lengkap} ({$email}) berhasil direset menjadi: {$newPassword}",
+            'defaultPassword' => $newPassword,
             'data' => $this->formatGuru($guru->fresh('user')),
         ]);
     }
@@ -171,8 +206,12 @@ class GuruController extends Controller
             ? (bool) $request->boolean('is_active')
             : (! is_string($statusInput) || strtolower(trim($statusInput)) !== 'tidak aktif');
 
-        $passwordProvided = $request->filled('password');
-        $password = $passwordProvided ? (string) $request->input('password') : 'guru12345';
+        $rawPassword = trim((string) ($request->input('password') ?? ''));
+        $passwordProvided = $rawPassword !== '';
+        if ($passwordProvided && strlen($rawPassword) < 8) {
+            abort(response()->json(['message' => 'Kata sandi akun guru minimal 8 karakter.'], 422));
+        }
+        $password = $passwordProvided ? $rawPassword : 'guru12345';
 
         return [
             'nip' => $nip,
