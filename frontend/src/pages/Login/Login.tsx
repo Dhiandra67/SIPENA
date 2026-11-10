@@ -88,47 +88,23 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
     setMessage("");
     setIsSubmitting(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-
-      if (
-        import.meta.env.DEV &&
-        normalizedEmail === "guru@example.com" &&
-        password === "guru12345"
-      ) {
-        onLoginSuccess({
-          id: "teacher-demo",
-          name: "Guru Demo",
-          email: normalizedEmail,
-          role: "teacher",
-        });
-        return;
-      }
-
-      if (
-        import.meta.env.DEV &&
-        normalizedEmail === "test@example.com" &&
-        password === "password"
-      ) {
-        onLoginSuccess({
-          id: "admin-demo",
-          name: "Admin Demo",
-          email: normalizedEmail,
-          role: "admin",
-        });
-        return;
-      }
-
       const result = await login({ email: normalizedEmail, password }, rememberMe);
       setMessage(`Berhasil masuk. Selamat datang, ${result.user.name}.`);
       setMessageType("success");
       onLoginSuccess(result.user);
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Terjadi kesalahan saat menghubungi server. Silakan coba lagi.",
-      );
+      if (error instanceof TypeError) {
+        setMessage("Tidak dapat terhubung ke server backend. Pastikan server backend sedang aktif.");
+      } else {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat menghubungi server. Silakan coba lagi.",
+        );
+      }
       setMessageType("error");
     } finally {
       setIsSubmitting(false);

@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
-import type { AuthUser } from "../Login/auth";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { getStoredAccessToken, type AuthUser } from "../Login/auth";
 import AdminPanel from "./AdminPanel";
 import TeacherPanel from "./TeacherPanel";
 import "./Dashboard.css";
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
 type IconName =
   | "brand"
@@ -84,11 +86,35 @@ function Dashboard({ user, onLogout }: DashboardProps) {
   const isAdmin = user.role.toLowerCase().includes("admin");
   const [menuOpen, setMenuOpen] = useState(false);
   const [displayName, setDisplayName] = useState(user.name || "Ibu Sari");
+  const [profileEmail, setProfileEmail] = useState(user.email || "");
+  const [profileNip, setProfileNip] = useState<string>("");
+  const [profileStatus, setProfileStatus] = useState<string>("Aktif");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileNotice, setProfileNotice] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
   const navigation = isAdmin ? adminNavigation : teacherNavigation;
   const [activeRoute, setActiveRoute] = useState(
     () => window.location.hash.slice(1) || "dashboard",
   );
   const initial = displayName.trim().charAt(0).toUpperCase() || "S";
+
+  function confirmAllowNavigation(targetRoute?: string): boolean {
+    if (isAdmin || !hasUnsavedChanges) return true;
+    const normalizedTarget = targetRoute?.replace(/^#/, "");
+    if (normalizedTarget && normalizedTarget === activeRoute) return true;
+    const allowed = window.confirm(
+      "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah halaman tanpa menyimpan?",
+    );
+    if (allowed) {
+      setHasUnsavedChanges(false);
+    }
+    return allowed;
+  }
 
   useEffect(() => {
     function syncRoute() {
@@ -99,10 +125,137 @@ function Dashboard({ user, onLogout }: DashboardProps) {
     return () => window.removeEventListener("hashchange", syncRoute);
   }, []);
 
+  useEffect(() => {
+    const token = getStoredAccessToken();
+    if (!token) return;
+
+    void fetch(`${apiBaseUrl}/v1/profile`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload: {
+        data?: {
+          name?: string;
+          email?: string;
+          nip?: string | null;
+          status?: string;
+        };
+      } | null) => {
+        if (payload?.data) {
+          if (payload.data.name) setDisplayName(payload.data.name);
+          if (payload.data.email) setProfileEmail(payload.data.email);
+          if (payload.data.nip) setProfileNip(payload.data.nip);
+          if (payload.data.status) setProfileStatus(payload.data.status);
+        }
+      })
+      .catch(() => {
+        // Ignore background profile refresh error
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [profileMenuOpen]);
+
+  async function handleSaveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProfileError("");
+    setProfileNotice("");
+
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get("name") ?? "").trim();
+    const nextEmail = String(formData.get("email") ?? "").trim();
+    const newPassword = String(formData.get("newPassword") ?? "");
+    const confirmation = String(formData.get("confirmation") ?? "");
+
+    if (!name || !nextEmail) {
+      setProfileError("Nama lengkap dan email wajib diisi.");
+      return;
+    }
+    if (newPassword && newPassword.length < 8) {
+      setProfileError("Kata sandi baru minimal 8 karakter.");
+      return;
+    }
+    if (newPassword !== confirmation) {
+      setProfileError("Konfirmasi kata sandi tidak cocok.");
+      return;
+    }
+
+    const token = getStoredAccessToken();
+    if (!token) {
+      setProfileError("Sesi autentikasi tidak ditemukan. Silakan login kembali.");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, email: nextEmail, newPassword, confirmation }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        data?: { name?: string; email?: string; nip?: string | null; status?: string };
+      } | null;
+
+      if (!response.ok) {
+        setProfileError(payload?.message ?? "Gagal memperbarui profil akun.");
+        return;
+      }
+
+      setDisplayName(payload?.data?.name ?? name);
+      setProfileEmail(payload?.data?.email ?? nextEmail);
+      if (payload?.data?.nip !== undefined) {
+        setProfileNip(payload.data.nip ?? "");
+      }
+      setProfileNotice(payload?.message ?? "Profil akun berhasil diperbarui.");
+    } catch {
+      setProfileError("Tidak dapat terhubung ke server backend. Perubahan tidak disimpan.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
   return (
     <div className={`dashboard-app ${isAdmin ? "admin-dashboard" : "teacher-dashboard"}`}>
       <aside className="dashboard-sidebar">
-        <a className="dashboard-brand" href="#dashboard" aria-label="SIPENA dashboard">
+        <a
+          className="dashboard-brand"
+          href="#dashboard"
+          aria-label="SIPENA dashboard"
+          onClick={(event) => {
+            if (!confirmAllowNavigation("dashboard")) {
+              event.preventDefault();
+            }
+          }}
+        >
           <Icon name="brand" />
           <span>
             <strong>SIPENA</strong>
@@ -116,13 +269,25 @@ function Dashboard({ user, onLogout }: DashboardProps) {
               className={item.href === `#${activeRoute}` ? "navigation-link active" : "navigation-link"}
               href={item.href}
               key={item.label}
+              onClick={(event) => {
+                if (!confirmAllowNavigation(item.href)) {
+                  event.preventDefault();
+                }
+              }}
             >
               <Icon name={item.icon} />
               <span>{item.label}</span>
             </a>
           ))}
         </nav>
-        <button className="sidebar-logout" onClick={onLogout} type="button">
+        <button
+          className="sidebar-logout"
+          onClick={() => {
+            if (!confirmAllowNavigation("__logout__")) return;
+            onLogout();
+          }}
+          type="button"
+        >
           <Icon name="logout" />
           <span>Logout</span>
         </button>
@@ -131,16 +296,103 @@ function Dashboard({ user, onLogout }: DashboardProps) {
       <div className="dashboard-main">
         <header className="dashboard-topbar">
           <span>
-            {isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran & Wali Kelas"}
+            {isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran"}
           </span>
-          <div className="topbar-user">
-            <strong>{displayName}</strong>
-            <span className="user-avatar">{initial}</span>
+          <div className="topbar-user-container" ref={popoverRef}>
+            <button
+              aria-expanded={profileMenuOpen}
+              aria-haspopup="dialog"
+              className="topbar-user-button"
+              onClick={() => setProfileMenuOpen((open) => !open)}
+              type="button"
+            >
+              <strong>{displayName}</strong>
+              <span className="user-avatar">{initial}</span>
+            </button>
+
+            {profileMenuOpen && (
+              <section
+                aria-label="Informasi profil pengguna"
+                className="profile-popover"
+                role="dialog"
+              >
+                <div className="profile-popover-header">
+                  <span className="profile-popover-avatar" aria-hidden="true">
+                    {initial}
+                  </span>
+                  <div className="profile-popover-identity">
+                    <strong>{displayName}</strong>
+                    <small>{profileEmail}</small>
+                  </div>
+                </div>
+
+                <dl className="profile-popover-details">
+                  <div>
+                    <dt>Nama Lengkap</dt>
+                    <dd>{displayName}</dd>
+                  </div>
+                  <div>
+                    <dt>Email Login</dt>
+                    <dd>{profileEmail}</dd>
+                  </div>
+                  <div>
+                    <dt>Peran Akun</dt>
+                    <dd>{isAdmin ? "Admin Sekolah" : "Guru Mata Pelajaran"}</dd>
+                  </div>
+                  {!isAdmin && (
+                    <div>
+                      <dt>NIP</dt>
+                      <dd>{profileNip || "—"}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt>Status Akun</dt>
+                    <dd>
+                      <span className="profile-status-badge">{profileStatus}</span>
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="profile-popover-actions">
+                  <button
+                    className="profile-popover-action primary"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      setProfileError("");
+                      setProfileNotice("");
+                      setProfileModalOpen(true);
+                    }}
+                    type="button"
+                  >
+                    Edit Profil &amp; Ubah Sandi
+                  </button>
+                  <button
+                    className="profile-popover-action danger"
+                    onClick={() => {
+                      if (!confirmAllowNavigation("__logout__")) return;
+                      onLogout();
+                    }}
+                    type="button"
+                  >
+                    Keluar (Logout)
+                  </button>
+                </div>
+              </section>
+            )}
           </div>
         </header>
 
         <header className="mobile-dashboard-header">
-          <a className="dashboard-brand mobile-brand" href="#dashboard" aria-label="SIPENA dashboard">
+          <a
+            className="dashboard-brand mobile-brand"
+            href="#dashboard"
+            aria-label="SIPENA dashboard"
+            onClick={(event) => {
+              if (!confirmAllowNavigation("dashboard")) {
+                event.preventDefault();
+              }
+            }}
+          >
             <Icon name="brand" />
             <strong>SIPENA</strong>
           </a>
@@ -164,13 +416,25 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                 aria-current={item.href === `#${activeRoute}` ? "page" : undefined}
                 href={item.href}
                 key={item.label}
-                onClick={() => setMenuOpen(false)}
+                onClick={(event) => {
+                  if (!confirmAllowNavigation(item.href)) {
+                    event.preventDefault();
+                    return;
+                  }
+                  setMenuOpen(false);
+                }}
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
               </a>
             ))}
-            <button onClick={onLogout} type="button">
+            <button
+              onClick={() => {
+                if (!confirmAllowNavigation("__logout__")) return;
+                onLogout();
+              }}
+              type="button"
+            >
               <Icon name="logout" />
               <span>Logout</span>
             </button>
@@ -214,6 +478,11 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                 aria-current={activeRoute === route ? "page" : undefined}
                 href={`#${route}`}
                 key={route}
+                onClick={(event) => {
+                  if (!confirmAllowNavigation(route)) {
+                    event.preventDefault();
+                  }
+                }}
               >
                 <Icon name={icon} />
                 <span>{label}</span>
@@ -241,16 +510,127 @@ function Dashboard({ user, onLogout }: DashboardProps) {
           ) : (
             <TeacherPanel
               displayName={displayName}
-              email={user.email}
+              email={profileEmail}
               onNavigate={(route) => {
                 window.location.hash = route;
               }}
               onProfileChange={setDisplayName}
+              onUnsavedChange={setHasUnsavedChanges}
               route={activeRoute}
             />
           )}
         </main>
 
+        {profileModalOpen && (
+          <div
+            className="profile-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setProfileModalOpen(false);
+              }
+            }}
+          >
+            <section
+              aria-labelledby="profile-modal-title"
+              aria-modal="true"
+              className="profile-modal"
+              role="dialog"
+            >
+              <div className="profile-modal-heading">
+                <div>
+                  <span className="profile-modal-eyebrow">
+                    {isAdmin ? "SIPENA · ADMIN SEKOLAH" : "SIPENA · GURU PENGAJAR"}
+                  </span>
+                  <h2 id="profile-modal-title">Edit Profil &amp; Keamanan Akun</h2>
+                </div>
+                <button
+                  aria-label="Tutup"
+                  className="profile-modal-close"
+                  onClick={() => setProfileModalOpen(false)}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="profile-modal-summary">
+                <span className="profile-popover-avatar" aria-hidden="true">
+                  {initial}
+                </span>
+                <div>
+                  <strong>{displayName}</strong>
+                  <p>
+                    {isAdmin ? "Admin Sekolah" : `Guru Mata Pelajaran${profileNip ? ` · NIP ${profileNip}` : ""}`}
+                  </p>
+                  <span className="profile-status-badge">{profileStatus}</span>
+                </div>
+              </div>
+
+              <form className="profile-modal-form" onSubmit={handleSaveProfile}>
+                <label>
+                  Nama lengkap
+                  <input defaultValue={displayName} name="name" required type="text" />
+                </label>
+                <label>
+                  Email login
+                  <input defaultValue={profileEmail} name="email" required type="email" />
+                </label>
+                {!isAdmin && (
+                  <label>
+                    NIP Guru
+                    <input disabled readOnly type="text" value={profileNip || "—"} />
+                  </label>
+                )}
+                <label>
+                  Kata sandi baru <span>(opsional, min. 8 karakter)</span>
+                  <input
+                    autoComplete="new-password"
+                    name="newPassword"
+                    placeholder="Kosongkan jika tidak ingin mengubah kata sandi"
+                    type="password"
+                  />
+                </label>
+                <label>
+                  Konfirmasi kata sandi baru
+                  <input
+                    autoComplete="new-password"
+                    name="confirmation"
+                    placeholder="Ulangi kata sandi baru"
+                    type="password"
+                  />
+                </label>
+
+                {profileError && (
+                  <p className="profile-modal-error" role="alert">
+                    {profileError}
+                  </p>
+                )}
+                {profileNotice && (
+                  <p className="profile-modal-notice" role="status">
+                    {profileNotice}
+                  </p>
+                )}
+
+                <div className="profile-modal-actions">
+                  <button
+                    className="profile-modal-btn secondary"
+                    onClick={() => setProfileModalOpen(false)}
+                    type="button"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    className="profile-modal-btn primary"
+                    disabled={isSavingProfile}
+                    type="submit"
+                  >
+                    {isSavingProfile ? "Menyimpan..." : "Simpan Perubahan"}
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        )}
       </div>
     </div>
   );

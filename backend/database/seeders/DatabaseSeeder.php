@@ -32,5 +32,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'guru@example.com',
             'password' => 'guru12345',
         ]);
+
+        $this->call(AcademicGradingSeeder::class);
     }
 }

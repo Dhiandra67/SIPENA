@@ -1,5 +1,18 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { getStoredAccessToken, login } from "../Login/auth";
 import "./AdminPanel.css";
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+
+const endpointByRoute: Record<AdminRoute, string> = {
+  academic: "/v1/periode",
+  grades: "/v1/rentang-nilai",
+  subjects: "/v1/mapel",
+  classes: "/v1/kelas",
+  teachers: "/v1/guru",
+  students: "/v1/siswa",
+  assignments: "/v1/pengajaran",
+};
 
 type AdminRoute =
   | "academic"
@@ -15,12 +28,13 @@ type AdminRecord = Record<string, string>;
 interface AdminField {
   key: string;
   label: string;
-  type?: "email" | "number" | "date" | "select";
+  type?: "email" | "number" | "date" | "select" | "password";
   options?: string[];
   required?: boolean;
   min?: number;
   max?: number;
   step?: number;
+  placeholder?: string;
 }
 
 interface AdminSection {
@@ -116,7 +130,7 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
   },
   teachers: {
     title: "Data Guru",
-    description: "Kelola profil guru dan informasi akun sekolah.",
+    description: "Kelola profil guru, akun login, dan reset kata sandi (default awal: guru12345).",
     addLabel: "Tambah guru",
     columns: [
       { key: "nip", label: "NIP" },
@@ -130,6 +144,13 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
       { key: "gender", label: "Jenis kelamin", type: "select", options: ["L", "P"] },
       { key: "email", label: "Email akun", type: "email" },
       { key: "status", label: "Status akun", type: "select", options: ["Aktif", "Tidak aktif"] },
+      {
+        key: "password",
+        label: "Kata sandi akun (opsional)",
+        type: "password",
+        required: false,
+        placeholder: "Kosongkan = default guru12345 (min. 8 karakter jika diisi)",
+      },
     ],
     searchKeys: ["nip", "name", "email"],
   },
@@ -156,7 +177,7 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
   },
   assignments: {
     title: "Pembagian Tugas Guru",
-    description: "Plot guru, mata pelajaran, dan kelas pada periode akademik aktif.",
+    description: "Plot guru, mata pelajaran, kelas, pantau progres nilai, serta kunci/buka pengisian nilai.",
     addLabel: "Tambah penugasan",
     columns: [
       { key: "teacher", label: "Guru" },
@@ -164,6 +185,8 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
       { key: "className", label: "Kelas" },
       { key: "period", label: "Periode" },
       { key: "kkm", label: "KKM" },
+      { key: "progress", label: "Progres Nilai" },
+      { key: "lockStatus", label: "Status Nilai" },
     ],
     fields: [
       { key: "teacher", label: "Guru", type: "select" },
@@ -176,50 +199,14 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
   },
 };
 
-const initialRecords: RecordSet = {
-  academic: [
-    { id: "p1", name: "2026/2027 · Ganjil", startDate: "2026-07-13", endDate: "2026-12-19", status: "Aktif" },
-    { id: "p2", name: "2025/2026 · Genap", startDate: "2026-01-05", endDate: "2026-06-20", status: "Tidak aktif" },
-  ],
-  grades: [
-    { id: "g1", grade: "A", lower: "85", upper: "100", description: "Sangat Baik" },
-    { id: "g2", grade: "B", lower: "70", upper: "84.99", description: "Baik" },
-    { id: "g3", grade: "C", lower: "55", upper: "69.99", description: "Cukup" },
-    { id: "g4", grade: "D", lower: "0", upper: "54.99", description: "Perlu Bimbingan" },
-  ],
-  subjects: [
-    { id: "m1", code: "MAT", name: "Matematika", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m2", code: "BIN", name: "Bahasa Indonesia", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m3", code: "IPA", name: "Ilmu Pengetahuan Alam", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m4", code: "IPS", name: "Ilmu Pengetahuan Sosial", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m5", code: "SBD", name: "Seni Budaya", group: "Muatan Lokal", kkm: "70", status: "Aktif" },
-  ],
-  classes: [
-    { id: "k1", code: "VII-A", name: "VII-A", level: "VII", homeroom: "Sari Wulandari, S.Pd.", period: activePeriod, students: "30" },
-    { id: "k2", code: "VII-B", name: "VII-B", level: "VII", homeroom: "Dedi Saputra, S.Pd.", period: activePeriod, students: "29" },
-    { id: "k3", code: "VIII-A", name: "VIII-A", level: "VIII", homeroom: "Ratna Dewi, S.Pd.", period: activePeriod, students: "31" },
-    { id: "k4", code: "VIII-B", name: "VIII-B", level: "VIII", homeroom: "Sari Wulandari, S.Pd.", period: activePeriod, students: "30" },
-  ],
-  teachers: [
-    { id: "t1", nip: "198501012010011001", name: "Sari Wulandari, S.Pd.", gender: "P", email: "sari@sekolah.sch.id", status: "Aktif" },
-    { id: "t2", nip: "198702152012021002", name: "Dedi Saputra, S.Pd.", gender: "L", email: "dedi@sekolah.sch.id", status: "Aktif" },
-    { id: "t3", nip: "199003102015031003", name: "Ratna Dewi, S.Pd.", gender: "P", email: "ratna@sekolah.sch.id", status: "Aktif" },
-  ],
-  students: [
-    { id: "s1", nis: "2026001", nisn: "0123456701", name: "Andi Pratama", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s2", nis: "2026002", nisn: "0123456702", name: "Budi Santoso", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s3", nis: "2026003", nisn: "0123456703", name: "Citra Lestari", gender: "P", className: "VII-B", status: "Aktif" },
-    { id: "s4", nis: "2026004", nisn: "0123456704", name: "Dina Putri", gender: "P", className: "VIII-A", status: "Aktif" },
-    { id: "s5", nis: "2026005", nisn: "0123456705", name: "Eka Saputra", gender: "L", className: "VII-B", status: "Aktif" },
-    { id: "s6", nis: "2026006", nisn: "0123456706", name: "Fitri Handayani", gender: "P", className: "VIII-A", status: "Aktif" },
-    { id: "s7", nis: "2026007", nisn: "0123456707", name: "Galih Ramadhan", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s8", nis: "2026008", nisn: "0123456708", name: "Hana Permata", gender: "P", className: "VIII-B", status: "Aktif" },
-  ],
-  assignments: [
-    { id: "a1", teacher: "Sari Wulandari, S.Pd.", subject: "Matematika", className: "VII-A", period: activePeriod, kkm: "75" },
-    { id: "a2", teacher: "Dedi Saputra, S.Pd.", subject: "Bahasa Indonesia", className: "VII-B", period: activePeriod, kkm: "75" },
-    { id: "a3", teacher: "Ratna Dewi, S.Pd.", subject: "Ilmu Pengetahuan Alam", className: "VIII-A", period: activePeriod, kkm: "75" },
-  ],
+const emptyRecords: RecordSet = {
+  academic: [],
+  grades: [],
+  subjects: [],
+  classes: [],
+  teachers: [],
+  students: [],
+  assignments: [],
 };
 
 function createId() {
@@ -274,14 +261,83 @@ interface AdminPanelProps {
 }
 
 function AdminPanel({ route, onNavigate }: AdminPanelProps) {
-  const [records, setRecords] = useState<RecordSet>(initialRecords);
+  const [records, setRecords] = useState<RecordSet>(emptyRecords);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
-  const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | null>(null);
+  const [selectedPeriodFilter, setSelectedPeriodFilter] = useState("Periode Aktif");
+  const [dialogMode, setDialogMode] = useState<
+    "create" | "edit" | "details" | "reset-password" | "copy-period" | null
+  >(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
+
+  async function ensureAdminAccessToken(forceRefresh = false): Promise<string | null> {
+    const existing = getStoredAccessToken();
+    if (existing && !forceRefresh) {
+      return existing;
+    }
+    if (import.meta.env.DEV) {
+      try {
+        const result = await login({ email: "test@example.com", password: "password" }, true);
+        return result.accessToken;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  async function refreshOverview() {
+    let token = await ensureAdminAccessToken();
+    if (!token) {
+      setIsBackendSynced(false);
+      setIsLoading(false);
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak merespons. Silakan login kembali.");
+      return;
+    }
+    try {
+      let response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.status === 401 && import.meta.env.DEV) {
+        token = await ensureAdminAccessToken(true);
+        if (token) {
+          response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
+      }
+      if (!response.ok) {
+        setIsBackendSynced(false);
+        setNotice("Gagal memuat data dari server backend. Silakan muat ulang halaman.");
+        return;
+      }
+      const payload = (await response.json()) as { data?: RecordSet };
+      if (payload?.data) {
+        setRecords(payload.data);
+        setIsBackendSynced(true);
+      }
+    } catch {
+      setIsBackendSynced(false);
+      setNotice("Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshOverview();
+  }, []);
 
   const currentRoute: AdminRoute | null = Object.prototype.hasOwnProperty.call(sectionConfig, route)
     ? (route as AdminRoute)
@@ -289,25 +345,40 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const section = currentRoute ? sectionConfig[currentRoute] : null;
   const rows = currentRoute ? records[currentRoute] : [];
   const currentPeriod = records.academic.find((record) => record.status === "Aktif")?.name ?? activePeriod;
+  const effectivePeriodFilter =
+    selectedPeriodFilter === "Periode Aktif" ? currentPeriod : selectedPeriodFilter;
   const visibleRows = useMemo(() => {
     if (!section) return [];
     const query = search.trim().toLocaleLowerCase("id");
-    return rows.filter((record) =>
-      (!query || section.searchKeys.some((key) => record[key]?.toLocaleLowerCase("id").includes(query))) &&
-      (currentRoute !== "students" || selectedClass === "Semua Kelas" || record.className === selectedClass) &&
-      (currentRoute !== "students" || selectedStatus === "Semua Status" || record.status === selectedStatus),
-    );
-  }, [currentRoute, rows, search, section, selectedClass, selectedStatus]);
+    return rows.filter((record) => {
+      const matchesSearch =
+        !query || section.searchKeys.some((key) => record[key]?.toLocaleLowerCase("id").includes(query));
+      const matchesStudentClass =
+        currentRoute !== "students" || selectedClass === "Semua Kelas" || record.className === selectedClass;
+      const matchesStudentStatus =
+        currentRoute !== "students" || selectedStatus === "Semua Status" || record.status === selectedStatus;
+      const matchesPeriod =
+        (currentRoute !== "classes" && currentRoute !== "assignments" && currentRoute !== "grades") ||
+        effectivePeriodFilter === "Semua Periode" ||
+        !record.period ||
+        record.period === effectivePeriodFilter;
+      return matchesSearch && matchesStudentClass && matchesStudentStatus && matchesPeriod;
+    });
+  }, [currentRoute, effectivePeriodFilter, rows, search, section, selectedClass, selectedStatus]);
 
   function navigate(nextRoute: string) {
     setSearch("");
     setSelectedClass("Semua Kelas");
     setSelectedStatus("Semua Status");
+    setSelectedPeriodFilter("Periode Aktif");
     setNotice("");
     onNavigate(nextRoute);
   }
 
-  function openForm(mode: "create" | "edit" | "details", record: AdminRecord | null = null) {
+  function openForm(
+    mode: "create" | "edit" | "details" | "reset-password" | "copy-period",
+    record: AdminRecord | null = null,
+  ) {
     setSelectedRecord(record);
     setDialogMode(mode);
     setFormError("");
@@ -327,6 +398,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       if (candidate.startDate && candidate.endDate && candidate.endDate <= candidate.startDate) {
         return "Tanggal selesai harus setelah tanggal mulai.";
       }
+      if (dialogMode === "edit" && selectedRecord?.status === "Aktif" && candidate.status === "Tidak aktif") {
+        return "Periode aktif tidak dapat dinonaktifkan secara langsung. Aktifkan periode lain terlebih dahulu.";
+      }
       if (existing.some((record) => record.name.toLocaleLowerCase("id") === candidate.name.toLocaleLowerCase("id"))) {
         return "Nama periode sudah terdaftar.";
       }
@@ -338,15 +412,36 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       if (!Number.isFinite(lower) || !Number.isFinite(upper) || lower < 0 || upper > 100 || lower > upper) {
         return "Rentang nilai harus berada pada 0–100 dan nilai minimum tidak boleh melebihi maksimum.";
       }
-      if (existing.some((record) => record.grade.toUpperCase() === candidate.grade.toUpperCase())) {
+      const targetPeriod = selectedRecord?.period || currentPeriod;
+      const periodExisting = existing.filter((record) => !record.period || record.period === targetPeriod);
+      if (periodExisting.some((record) => record.grade.toUpperCase() === candidate.grade.toUpperCase())) {
         return "Predikat tersebut sudah digunakan.";
       }
-      const overlaps = existing.some((record) => {
+      const overlaps = periodExisting.some((record) => {
         const otherLower = Number(record.lower);
         const otherUpper = Number(record.upper);
         return lower <= otherUpper && upper >= otherLower;
       });
       if (overlaps) return "Rentang nilai tidak boleh tumpang tindih dengan predikat lain.";
+
+      if (dialogMode === "edit" || periodExisting.length >= 3) {
+        const combined = [
+          ...periodExisting.map((r) => ({
+            grade: r.grade,
+            lower: Number(r.lower),
+            upper: Number(r.upper),
+          })),
+          { grade: candidate.grade.toUpperCase(), lower, upper },
+        ].sort((a, b) => a.lower - b.lower);
+
+        for (let i = 1; i < combined.length; i += 1) {
+          const prev = combined[i - 1];
+          const curr = combined[i];
+          if (curr.lower - prev.upper > 1.0) {
+            return `Rentang nilai tidak boleh menyisakan celah nilai antara predikat ${prev.grade} (${prev.upper}) dan ${curr.grade} (${curr.lower}).`;
+          }
+        }
+      }
     }
 
     if (currentRoute === "subjects") {
@@ -362,6 +457,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     if (currentRoute === "teachers") {
+      if (candidate.password && candidate.password.length < 8) {
+        return "Kata sandi akun guru minimal 8 karakter.";
+      }
       if (existing.some((record) =>
         record.nip === candidate.nip ||
         record.email.toLocaleLowerCase("id") === candidate.email.toLocaleLowerCase("id")
@@ -413,7 +511,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     return "";
   }
 
-  function saveRecord(event: FormEvent<HTMLFormElement>) {
+  async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!currentRoute || !section) return;
     const formData = new FormData(event.currentTarget);
@@ -426,51 +524,157 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       return;
     }
 
-    const id = selectedRecord?.id ?? createId();
-    setRecords((current) => {
-      const existing = current[currentRoute];
-      let updated = dialogMode === "edit"
-        ? existing.map((record) => record.id === id ? { ...candidate, id } : record)
-        : [...existing, { ...candidate, id }];
-      let nextRecords = { ...current, [currentRoute]: updated };
+    let token = await ensureAdminAccessToken();
+    if (!token) {
+      setFormError("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
+      return;
+    }
 
-      if (currentRoute === "academic" && candidate.status === "Aktif") {
-        updated = updated.map((record) => ({ ...record, status: record.id === id ? "Aktif" : "Tidak aktif" }));
-        nextRecords = { ...nextRecords, academic: updated };
-      }
-      if (dialogMode === "edit" && selectedRecord) {
-        if (currentRoute === "academic" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            classes: current.classes.map((record) => record.period === selectedRecord.name ? { ...record, period: candidate.name } : record),
-            assignments: current.assignments.map((record) => record.period === selectedRecord.name ? { ...record, period: candidate.name } : record),
-          };
-        } else if (currentRoute === "classes" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            students: current.students.map((record) => record.className === selectedRecord.code ? { ...record, className: candidate.code } : record),
-            assignments: current.assignments.map((record) => record.className === selectedRecord.name ? { ...record, className: candidate.name } : record),
-          };
-        } else if (currentRoute === "teachers" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            classes: current.classes.map((record) => record.homeroom === selectedRecord.name ? { ...record, homeroom: candidate.name } : record),
-            assignments: current.assignments.map((record) => record.teacher === selectedRecord.name ? { ...record, teacher: candidate.name } : record),
-          };
-        } else if (currentRoute === "subjects" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            assignments: current.assignments.map((record) => record.subject === selectedRecord.name ? { ...record, subject: candidate.name } : record),
-          };
+    try {
+      const endpoint = endpointByRoute[currentRoute];
+      const url =
+        dialogMode === "edit" && selectedRecord
+          ? `${apiBaseUrl}${endpoint}/${selectedRecord.id}`
+          : `${apiBaseUrl}${endpoint}`;
+      let response = await fetch(url, {
+        method: dialogMode === "edit" ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(candidate),
+      });
+      if (response.status === 401 && import.meta.env.DEV) {
+        token = await ensureAdminAccessToken(true);
+        if (token) {
+          response = await fetch(url, {
+            method: dialogMode === "edit" ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(candidate),
+          });
         }
       }
-      return nextRecords;
-    });
-    setNotice(dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
-    closeForm();
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setFormError(payload?.message ?? "Gagal menyimpan data ke server backend.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? (dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan."));
+      closeForm();
+    } catch {
+      setFormError("Tidak dapat terhubung ke server backend. Data tidak disimpan.");
+    }
   }
 
-  function deleteRecord(record: AdminRecord) {
+  async function resetTeacherPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRecord) return;
+    const formData = new FormData(event.currentTarget);
+    const newPassword = String(formData.get("password") ?? "").trim() || "guru12345";
+
+    if (newPassword.length < 8) {
+      setFormError("Kata sandi baru minimal 8 karakter.");
+      return;
+    }
+
+    let token = await ensureAdminAccessToken();
+    if (!token) {
+      setFormError("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
+      return;
+    }
+
+    try {
+      let response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      if (response.status === 401 && import.meta.env.DEV) {
+        token = await ensureAdminAccessToken(true);
+        if (token) {
+          response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ password: newPassword }),
+          });
+        }
+      }
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setFormError(payload?.message ?? "Gagal mereset kata sandi guru di server.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(
+        payload?.message ??
+          `Kata sandi akun ${selectedRecord.name} (${selectedRecord.email}) berhasil direset menjadi: ${newPassword}`,
+      );
+      closeForm();
+    } catch {
+      setFormError("Tidak dapat terhubung ke server backend. Kata sandi tidak direset.");
+    }
+  }
+
+  async function copyPeriodData(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRecord) return;
+    const formData = new FormData(event.currentTarget);
+    const sourcePeriod = String(formData.get("source_period") ?? "").trim();
+    const mode = String(formData.get("mode") ?? "same_class").trim();
+
+    if (!sourcePeriod || sourcePeriod === selectedRecord.name) {
+      setFormError("Pilih periode sumber yang berbeda dari periode tujuan.");
+      return;
+    }
+
+    const token = await ensureAdminAccessToken();
+    if (!token) {
+      setFormError("Sesi autentikasi tidak ditemukan atau server backend tidak aktif.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/periode/${selectedRecord.id}/copy-from`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          source_period: sourcePeriod,
+          mode,
+          copy_assignments: true,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setFormError(payload?.message ?? "Gagal menyalin atau mempromosikan data kelas dari periode sumber.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? "Transisi kelas dan siswa berhasil disinkronkan.");
+      closeForm();
+    } catch {
+      setFormError("Tidak dapat terhubung ke server backend. Transisi periode dibatalkan.");
+    }
+  }
+
+  async function deleteRecord(record: AdminRecord) {
     if (!currentRoute) return;
     if (currentRoute === "academic" && record.status === "Aktif") {
       setNotice("Periode aktif tidak dapat dihapus. Aktifkan periode lain terlebih dahulu.");
@@ -494,11 +698,32 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     if (!window.confirm(`Hapus data "${record.name ?? record.grade ?? record.code ?? record.nis ?? record.teacher ?? ""}"?`)) {
       return;
     }
-    setRecords((current) => ({
-      ...current,
-      [currentRoute]: current[currentRoute].filter((item) => item.id !== record.id),
-    }));
-    setNotice("Data berhasil dihapus.");
+
+    const token = await ensureAdminAccessToken();
+    if (!token) {
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Data tidak dihapus.");
+      return;
+    }
+
+    try {
+      const endpoint = endpointByRoute[currentRoute];
+      const response = await fetch(`${apiBaseUrl}${endpoint}/${record.id}`, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Data tidak dapat dihapus dari server.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? "Data berhasil dihapus.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. Data tidak dihapus.");
+    }
   }
 
   async function exportStudents() {
@@ -620,11 +845,30 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         setNotice("Tidak ada baris siswa yang dapat diimpor.");
         return;
       }
-      setRecords((current) => ({ ...current, students: [...current.students, ...imported] }));
-      setNotice(`${imported.length} data siswa berhasil diimpor.`);
+      const token = await ensureAdminAccessToken();
+      if (!token) {
+        setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Impor siswa dibatalkan.");
+        return;
+      }
+      const response = await fetch(`${apiBaseUrl}/v1/siswa/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ students: imported }),
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Impor siswa ditolak oleh server.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? `${imported.length} data siswa berhasil diimpor.`);
     } catch (error) {
       console.error("Failed to import student spreadsheet.", error);
-      setNotice("File tidak dapat dibaca. Periksa format Excel/CSV dan coba lagi.");
+      setNotice("Gagal mengimpor data siswa ke server backend. Periksa format file dan koneksi server.");
     }
   }
 
@@ -683,7 +927,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
             </div>
           </section>
         </div>
-        <div className="admin-demo-notice" role="note">Data pada halaman admin ini adalah data contoh di browser dan belum tersinkron ke backend.</div>
+        <div className="admin-demo-notice" role="note">
+          {isBackendSynced
+            ? "Terhubung ke database PostgreSQL SIPENA — seluruh perubahan data langsung tersimpan ke server."
+            : "Data pada halaman admin ini menggunakan data pratinjau lokal. Pastikan server backend aktif agar tersinkron ke database."}
+        </div>
       </div>
     );
   }
@@ -718,7 +966,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                 <span className="visually-hidden">Filter kelas</span>
                 <select onChange={(event) => setSelectedClass(event.target.value)} value={selectedClass}>
                   <option>Semua Kelas</option>
-                  {records.classes.map((record) => <option key={record.id} value={record.code}>{record.code}</option>)}
+                  {records.classes
+                    .filter((record) => record.period === currentPeriod)
+                    .map((record) => <option key={record.id} value={record.code}>{record.code}</option>)}
                 </select>
               </label>
               <label>
@@ -729,6 +979,26 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                   <option>Lulus</option>
                   <option>Pindah</option>
                   <option>Nonaktif</option>
+                </select>
+              </label>
+            </div>
+          )}
+          {(currentRoute === "classes" || currentRoute === "assignments" || currentRoute === "grades") && (
+            <div className="admin-student-filters">
+              <label>
+                <span className="visually-hidden">Filter periode akademik</span>
+                <select
+                  aria-label="Filter periode akademik"
+                  onChange={(event) => setSelectedPeriodFilter(event.target.value)}
+                  value={selectedPeriodFilter}
+                >
+                  <option value="Periode Aktif">Periode Aktif ({currentPeriod})</option>
+                  <option value="Semua Periode">Semua Periode</option>
+                  {records.academic.map((periodRecord) => (
+                    <option key={periodRecord.id} value={periodRecord.name}>
+                      {periodRecord.name}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -761,6 +1031,10 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     <td key={column.key}>
                       {column.key === "status" ? (
                         <span className={`admin-status ${record[column.key] === "Aktif" ? "active" : "inactive"}`}>{record[column.key]}</span>
+                      ) : column.key === "lockStatus" ? (
+                        <span className={`admin-status ${record.lockStatus === "Terkunci" ? "inactive" : "active"}`}>
+                          {record.lockStatus ?? "Terbuka"}
+                        </span>
                       ) : currentRoute === "classes" && column.key === "students" ? (
                         records.students.filter((student) => student.className === record.code && student.status === "Aktif").length
                       ) : record[column.key] ?? "—"}
@@ -769,20 +1043,86 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                   <td className="admin-row-actions">
                     <button aria-label={`Lihat ${section.title}: ${record.name ?? record.grade ?? record.code ?? record.nis ?? record.teacher ?? ""}`} onClick={() => openForm("details", record)} type="button">Detail</button>
                     <button onClick={() => openForm("edit", record)} type="button">Edit</button>
+                    {currentRoute === "teachers" && (
+                      <button onClick={() => openForm("reset-password", record)} type="button">Reset Sandi</button>
+                    )}
+                    {currentRoute === "academic" && records.academic.length > 1 && (
+                      <button onClick={() => openForm("copy-period", record)} type="button">Transisi Kelas</button>
+                    )}
+                    {currentRoute === "assignments" && (
+                      <button
+                        onClick={() => {
+                          void (async () => {
+                            const token = await ensureAdminAccessToken();
+                            if (!token) {
+                              setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif.");
+                              return;
+                            }
+                            try {
+                              const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${record.id}/toggle-lock`, {
+                                method: "PATCH",
+                                headers: {
+                                  Accept: "application/json",
+                                  Authorization: `Bearer ${token}`,
+                                },
+                              });
+                              const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+                              if (!response.ok) {
+                                setNotice(payload?.message ?? "Gagal mengubah status kunci nilai.");
+                                return;
+                              }
+                              await refreshOverview();
+                              setNotice(payload?.message ?? "Status kunci pengajaran berhasil diperbarui.");
+                            } catch {
+                              setNotice("Tidak dapat terhubung ke server backend. Status kunci tidak diubah.");
+                            }
+                          })();
+                        }}
+                        type="button"
+                      >
+                        {record.lockStatus === "Terkunci" ? "Buka Kunci" : "Kunci Nilai"}
+                      </button>
+                    )}
                     <button className="danger" onClick={() => deleteRecord(record)} type="button">Hapus</button>
                     {currentRoute === "academic" && record.status !== "Aktif" && (
                       <button onClick={() => {
-                        setRecords((current) => ({
-                          ...current,
-                          academic: current.academic.map((item) => ({ ...item, status: item.id === record.id ? "Aktif" : "Tidak aktif" })),
-                        }));
-                        setNotice("Periode akademik aktif telah diperbarui.");
+                        void (async () => {
+                          const token = await ensureAdminAccessToken();
+                          if (!token) {
+                            setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif.");
+                            return;
+                          }
+                          try {
+                            const response = await fetch(`${apiBaseUrl}/v1/periode/${record.id}/activate`, {
+                              method: "PATCH",
+                              headers: {
+                                Accept: "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
+                            });
+                            const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+                            if (!response.ok) {
+                              setNotice(payload?.message ?? "Gagal mengaktifkan periode akademik di server.");
+                              return;
+                            }
+                            await refreshOverview();
+                            setNotice(payload?.message ?? "Periode akademik aktif telah diperbarui.");
+                          } catch {
+                            setNotice("Tidak dapat terhubung ke server backend. Periode tidak diubah.");
+                          }
+                        })();
                       }} type="button">Aktifkan</button>
                     )}
                   </td>
                 </tr>
               ))}
-              {visibleRows.length === 0 && <tr><td className="admin-empty" colSpan={section.columns.length + 1}>Data tidak ditemukan.</td></tr>}
+              {visibleRows.length === 0 && (
+                <tr>
+                  <td className="admin-empty" colSpan={section.columns.length + 1}>
+                    {isLoading ? "Memuat data dari database..." : "Data tidak ditemukan."}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -792,7 +1132,13 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         </footer>
       </section>
 
-      <div className="admin-demo-notice" role="note">Perubahan saat ini hanya tersimpan selama halaman digunakan. Integrasi endpoint backend belum tersedia.</div>
+      <div className="admin-demo-notice" role="note">
+        {isLoading
+          ? "Menghubungkan ke database PostgreSQL SIPENA..."
+          : isBackendSynced
+            ? "Terhubung ke database PostgreSQL SIPENA — perubahan tersimpan langsung ke server."
+            : "Tidak terhubung ke server backend SIPENA. Pastikan server backend aktif agar data dapat dimuat dan disimpan."}
+      </div>
 
       {dialogMode && (
         <div className="admin-dialog-backdrop" onMouseDown={(event) => {
@@ -803,17 +1149,110 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
               <div>
                 <span className="admin-eyebrow">{section.title}</span>
                 <h2 id="admin-dialog-title">
-                  {dialogMode === "create" ? section.addLabel : dialogMode === "edit" ? `Edit ${section.title.toLocaleLowerCase("id")}` : `Detail ${section.title.toLocaleLowerCase("id")}`}
+                  {dialogMode === "create"
+                    ? section.addLabel
+                    : dialogMode === "edit"
+                      ? `Edit ${section.title.toLocaleLowerCase("id")}`
+                      : dialogMode === "reset-password"
+                        ? "Reset Kata Sandi Akun Guru"
+                        : dialogMode === "copy-period"
+                          ? "Transisi & Promosi Kelas Antar Periode"
+                          : `Detail ${section.title.toLocaleLowerCase("id")}`}
                 </h2>
               </div>
               <button aria-label="Tutup" onClick={closeForm} type="button">×</button>
             </div>
             {dialogMode === "details" && selectedRecord ? (
               <dl className="admin-detail-list">
-                {section.fields.map((field) => (
-                  <div key={field.key}><dt>{field.label}</dt><dd>{selectedRecord[field.key] || "—"}</dd></div>
-                ))}
+                {section.fields
+                  .filter((field) => field.key !== "password")
+                  .map((field) => (
+                    <div key={field.key}><dt>{field.label}</dt><dd>{selectedRecord[field.key] || "—"}</dd></div>
+                  ))}
+                {currentRoute === "teachers" && (
+                  <div>
+                    <dt>Info Kata Sandi Login</dt>
+                    <dd>Default awal: guru12345 (gunakan tombol Reset Sandi atau Edit untuk mengganti)</dd>
+                  </div>
+                )}
+                {currentRoute === "assignments" && (
+                  <>
+                    <div>
+                      <dt>Progres Input Nilai</dt>
+                      <dd>{selectedRecord.progress || "0/0 siswa"}</dd>
+                    </div>
+                    <div>
+                      <dt>Status Kunci Nilai</dt>
+                      <dd>{selectedRecord.lockStatus || "Terbuka"}</dd>
+                    </div>
+                  </>
+                )}
               </dl>
+            ) : dialogMode === "reset-password" && selectedRecord ? (
+              <form className="admin-form" onSubmit={resetTeacherPassword}>
+                <dl className="admin-detail-list">
+                  <div><dt>Nama Guru</dt><dd>{selectedRecord.name} (NIP: {selectedRecord.nip})</dd></div>
+                  <div><dt>Email Login</dt><dd>{selectedRecord.email}</dd></div>
+                </dl>
+                <label>
+                  Kata sandi baru (minimal 8 karakter)
+                  <input
+                    defaultValue="guru12345"
+                    minLength={8}
+                    name="password"
+                    placeholder="Masukkan kata sandi baru (default: guru12345)"
+                    required
+                    type="text"
+                  />
+                </label>
+                {formError && <p className="admin-form-error" role="alert">{formError}</p>}
+                <div className="admin-dialog-actions">
+                  <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>
+                  <button className="admin-primary-button" type="submit">Reset Kata Sandi</button>
+                </div>
+              </form>
+            ) : dialogMode === "copy-period" && selectedRecord ? (
+              <form className="admin-form" onSubmit={copyPeriodData}>
+                <dl className="admin-detail-list">
+                  <div><dt>Periode Tujuan</dt><dd>{selectedRecord.name}</dd></div>
+                </dl>
+                <label>
+                  Salin data dari Periode Sumber
+                  <select
+                    defaultValue={
+                      records.academic.find((item) => item.name !== selectedRecord.name && item.status === "Aktif")?.name ??
+                      records.academic.find((item) => item.name !== selectedRecord.name)?.name ??
+                      ""
+                    }
+                    name="source_period"
+                    required
+                  >
+                    {records.academic
+                      .filter((item) => item.name !== selectedRecord.name)
+                      .map((item) => (
+                        <option key={item.id} value={item.name}>
+                          {item.name} ({item.status})
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  Mode Transisi Kelas &amp; Siswa
+                  <select defaultValue="same_class" name="mode" required>
+                    <option value="same_class">
+                      Transisi Semester (Salin kelas, siswa aktif &amp; penugasan ke kelas yang sama)
+                    </option>
+                    <option value="promote_level">
+                      Promosi Kenaikan Tingkat (Naikkan siswa aktif VII → VIII dan VIII → IX)
+                    </option>
+                  </select>
+                </label>
+                {formError && <p className="admin-form-error" role="alert">{formError}</p>}
+                <div className="admin-dialog-actions">
+                  <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>
+                  <button className="admin-primary-button" type="submit">Proses Transisi</button>
+                </div>
+              </form>
             ) : (
               <form className="admin-form" onSubmit={saveRecord}>
                 {section.fields.map((field) => {
@@ -848,10 +1287,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                         </select>
                       ) : (
                         <input
-                          defaultValue={selectedRecord?.[field.key] ?? ""}
+                          defaultValue={field.key === "password" ? "" : (selectedRecord?.[field.key] ?? "")}
                           max={field.max}
                           min={field.min}
                           name={field.key}
+                          placeholder={field.placeholder}
                           required={field.required !== false}
                           step={field.step}
                           type={field.type ?? "text"}
