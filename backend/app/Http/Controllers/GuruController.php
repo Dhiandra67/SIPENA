@@ -75,6 +75,10 @@ class GuruController extends Controller
                     $userUpdates['password'] = $payload['password'];
                 }
                 $guru->user->update($userUpdates);
+
+                if ($payload['password_provided'] || ! $payload['is_active']) {
+                    DB::table('api_tokens')->where('user_id', $guru->user->id)->delete();
+                }
             }
 
             $guru->update([
@@ -115,6 +119,7 @@ class GuruController extends Controller
                 $guru->user->update([
                     'password' => $newPassword,
                 ]);
+                DB::table('api_tokens')->where('user_id', $guru->user->id)->delete();
             }
         });
 
@@ -204,7 +209,7 @@ class GuruController extends Controller
         $statusInput = $request->input('status');
         $isActive = $request->has('is_active')
             ? (bool) $request->boolean('is_active')
-            : (! is_string($statusInput) || strtolower(trim($statusInput)) !== 'tidak aktif');
+            : (! is_string($statusInput) || ! in_array(strtolower(trim($statusInput)), ['tidak aktif', 'nonaktif'], true));
 
         $rawPassword = trim((string) ($request->input('password') ?? ''));
         $passwordProvided = $rawPassword !== '';

@@ -71,6 +71,15 @@ class ProfileController extends Controller
             }
             $user->update($updates);
 
+            if ($newPassword !== '') {
+                $currentToken = (string) $request->bearerToken();
+                $tokenQuery = DB::table('api_tokens')->where('user_id', $user->id);
+                if ($currentToken !== '') {
+                    $tokenQuery->where('token_hash', '!=', hash('sha256', $currentToken));
+                }
+                $tokenQuery->delete();
+            }
+
             $guru = Guru::where('user_id', $user->id)->first();
             if ($guru) {
                 $guruUpdates = ['nama_lengkap' => $name];
