@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Pengajaran;
 use App\Models\PeriodeAkademik;
 use App\Models\RentangNilai;
+use App\Services\GradeCalculationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class RentangNilaiController extends Controller
 {
+    public function __construct(
+        private readonly GradeCalculationService $gradeService
+    ) {}
     public function index(Request $request): JsonResponse
     {
         $periodeId = $this->resolvePeriodeId($request->input('periode_id'));
@@ -32,6 +37,7 @@ class RentangNilaiController extends Controller
 
         $payload = $this->validateRentang($request, $periodeId);
         $rentang = RentangNilai::create($payload);
+        $this->recalculatePeriodeGrades($periodeId);
 
         return response()->json([
             'message' => 'Rentang nilai berhasil ditambahkan.',
@@ -44,6 +50,7 @@ class RentangNilaiController extends Controller
         $rentang = RentangNilai::findOrFail($id);
         $payload = $this->validateRentang($request, $rentang->periode_id, $rentang->id);
         $rentang->update($payload);
+        $this->recalculatePeriodeGrades($rentang->periode_id);
 
         return response()->json([
             'message' => 'Rentang nilai berhasil diperbarui.',
@@ -54,9 +61,19 @@ class RentangNilaiController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $rentang = RentangNilai::findOrFail($id);
+        $periodeId = $rentang->periode_id;
         $rentang->delete();
+        $this->recalculatePeriodeGrades($periodeId);
 
         return response()->json(['message' => 'Rentang nilai berhasil dihapus.']);
+    }
+
+    private function recalculatePeriodeGrades(int $periodeId): void
+    {
+        $pengajaranList = Pengajaran::where('periode_id', $periodeId)->get();
+        foreach ($pengajaranList as $pengajaran) {
+            $this->gradeService->recalculateForPengajaran($pengajaran);
+        }
     }
 
     /**

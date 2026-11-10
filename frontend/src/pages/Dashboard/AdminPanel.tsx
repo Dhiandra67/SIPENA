@@ -323,7 +323,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
 
   async function refreshOverview() {
     let token = await ensureAdminAccessToken();
-    if (!token) return;
+    if (!token) {
+      setIsBackendSynced(false);
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak merespons. Silakan login kembali.");
+      return;
+    }
     try {
       let response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
         headers: {
@@ -342,14 +346,19 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           });
         }
       }
-      if (!response.ok) return;
+      if (!response.ok) {
+        setIsBackendSynced(false);
+        setNotice("Gagal memuat data dari server backend. Silakan muat ulang halaman.");
+        return;
+      }
       const payload = (await response.json()) as { data?: RecordSet };
       if (payload?.data) {
         setRecords(payload.data);
         setIsBackendSynced(true);
       }
     } catch {
-      // Fallback to local state when backend is unreachable
+      setIsBackendSynced(false);
+      setNotice("Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.");
     }
   }
 
@@ -504,92 +513,51 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     let token = await ensureAdminAccessToken();
-    if (token) {
-      try {
-        const endpoint = endpointByRoute[currentRoute];
-        const url =
-          dialogMode === "edit" && selectedRecord
-            ? `${apiBaseUrl}${endpoint}/${selectedRecord.id}`
-            : `${apiBaseUrl}${endpoint}`;
-        let response = await fetch(url, {
-          method: dialogMode === "edit" ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(candidate),
-        });
-        if (response.status === 401 && import.meta.env.DEV) {
-          token = await ensureAdminAccessToken(true);
-          if (token) {
-            response = await fetch(url, {
-              method: dialogMode === "edit" ? "PUT" : "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(candidate),
-            });
-          }
-        }
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        if (!response.ok) {
-          setFormError(payload?.message ?? "Gagal menyimpan data ke server.");
-          return;
-        }
-        await refreshOverview();
-        setNotice(payload?.message ?? (dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan."));
-        closeForm();
-        return;
-      } catch {
-        // Fallback to local state update
-      }
+    if (!token) {
+      setFormError("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
+      return;
     }
 
-    const id = selectedRecord?.id ?? createId();
-    setRecords((current) => {
-      const existing = current[currentRoute];
-      let updated = dialogMode === "edit"
-        ? existing.map((record) => record.id === id ? { ...candidate, id } : record)
-        : [...existing, { ...candidate, id }];
-      let nextRecords = { ...current, [currentRoute]: updated };
-
-      if (currentRoute === "academic" && candidate.status === "Aktif") {
-        updated = updated.map((record) => ({ ...record, status: record.id === id ? "Aktif" : "Tidak aktif" }));
-        nextRecords = { ...nextRecords, academic: updated };
-      }
-      if (dialogMode === "edit" && selectedRecord) {
-        if (currentRoute === "academic" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            classes: current.classes.map((record) => record.period === selectedRecord.name ? { ...record, period: candidate.name } : record),
-            assignments: current.assignments.map((record) => record.period === selectedRecord.name ? { ...record, period: candidate.name } : record),
-          };
-        } else if (currentRoute === "classes" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            students: current.students.map((record) => record.className === selectedRecord.code ? { ...record, className: candidate.code } : record),
-            assignments: current.assignments.map((record) => record.className === selectedRecord.name ? { ...record, className: candidate.name } : record),
-          };
-        } else if (currentRoute === "teachers" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            classes: current.classes.map((record) => record.homeroom === selectedRecord.name ? { ...record, homeroom: candidate.name } : record),
-            assignments: current.assignments.map((record) => record.teacher === selectedRecord.name ? { ...record, teacher: candidate.name } : record),
-          };
-        } else if (currentRoute === "subjects" && selectedRecord.name !== candidate.name) {
-          nextRecords = {
-            ...nextRecords,
-            assignments: current.assignments.map((record) => record.subject === selectedRecord.name ? { ...record, subject: candidate.name } : record),
-          };
+    try {
+      const endpoint = endpointByRoute[currentRoute];
+      const url =
+        dialogMode === "edit" && selectedRecord
+          ? `${apiBaseUrl}${endpoint}/${selectedRecord.id}`
+          : `${apiBaseUrl}${endpoint}`;
+      let response = await fetch(url, {
+        method: dialogMode === "edit" ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(candidate),
+      });
+      if (response.status === 401 && import.meta.env.DEV) {
+        token = await ensureAdminAccessToken(true);
+        if (token) {
+          response = await fetch(url, {
+            method: dialogMode === "edit" ? "PUT" : "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(candidate),
+          });
         }
       }
-      return nextRecords;
-    });
-    setNotice(dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
-    closeForm();
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setFormError(payload?.message ?? "Gagal menyimpan data ke server backend.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? (dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan."));
+      closeForm();
+    } catch {
+      setFormError("Tidak dapat terhubung ke server backend. Data tidak disimpan.");
+    }
   }
 
   async function resetTeacherPassword(event: FormEvent<HTMLFormElement>) {
@@ -604,52 +572,49 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     let token = await ensureAdminAccessToken();
-    if (token) {
-      try {
-        let response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ password: newPassword }),
-        });
-        if (response.status === 401 && import.meta.env.DEV) {
-          token = await ensureAdminAccessToken(true);
-          if (token) {
-            response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ password: newPassword }),
-            });
-          }
-        }
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        if (!response.ok) {
-          setFormError(payload?.message ?? "Gagal mereset kata sandi guru.");
-          return;
-        }
-        await refreshOverview();
-        setNotice(
-          payload?.message ??
-            `Kata sandi akun ${selectedRecord.name} (${selectedRecord.email}) berhasil direset menjadi: ${newPassword}`,
-        );
-        closeForm();
-        return;
-      } catch {
-        // Fallback notice when offline
-      }
+    if (!token) {
+      setFormError("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
+      return;
     }
 
-    setNotice(
-      `Kata sandi akun ${selectedRecord.name} (${selectedRecord.email}) berhasil direset menjadi: ${newPassword}`,
-    );
-    closeForm();
+    try {
+      let response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      if (response.status === 401 && import.meta.env.DEV) {
+        token = await ensureAdminAccessToken(true);
+        if (token) {
+          response = await fetch(`${apiBaseUrl}/v1/guru/${selectedRecord.id}/reset-password`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ password: newPassword }),
+          });
+        }
+      }
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setFormError(payload?.message ?? "Gagal mereset kata sandi guru di server.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(
+        payload?.message ??
+          `Kata sandi akun ${selectedRecord.name} (${selectedRecord.email}) berhasil direset menjadi: ${newPassword}`,
+      );
+      closeForm();
+    } catch {
+      setFormError("Tidak dapat terhubung ke server backend. Kata sandi tidak direset.");
+    }
   }
 
   async function deleteRecord(record: AdminRecord) {
@@ -678,34 +643,30 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     const token = await ensureAdminAccessToken();
-    if (token) {
-      try {
-        const endpoint = endpointByRoute[currentRoute];
-        const response = await fetch(`${apiBaseUrl}${endpoint}/${record.id}`, {
-          method: "DELETE",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        if (!response.ok) {
-          setNotice(payload?.message ?? "Data tidak dapat dihapus.");
-          return;
-        }
-        await refreshOverview();
-        setNotice(payload?.message ?? "Data berhasil dihapus.");
-        return;
-      } catch {
-        // Fallback to local state
-      }
+    if (!token) {
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Data tidak dihapus.");
+      return;
     }
 
-    setRecords((current) => ({
-      ...current,
-      [currentRoute]: current[currentRoute].filter((item) => item.id !== record.id),
-    }));
-    setNotice("Data berhasil dihapus.");
+    try {
+      const endpoint = endpointByRoute[currentRoute];
+      const response = await fetch(`${apiBaseUrl}${endpoint}/${record.id}`, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Data tidak dapat dihapus dari server.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? "Data berhasil dihapus.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. Data tidak dihapus.");
+    }
   }
 
   async function exportStudents() {
@@ -828,30 +789,29 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         return;
       }
       const token = await ensureAdminAccessToken();
-      if (token) {
-        const response = await fetch(`${apiBaseUrl}/v1/siswa/import`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ students: imported }),
-        });
-        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        if (!response.ok) {
-          setNotice(payload?.message ?? "Impor siswa ditolak oleh server.");
-          return;
-        }
-        await refreshOverview();
-        setNotice(payload?.message ?? `${imported.length} data siswa berhasil diimpor.`);
+      if (!token) {
+        setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Impor siswa dibatalkan.");
         return;
       }
-      setRecords((current) => ({ ...current, students: [...current.students, ...imported] }));
-      setNotice(`${imported.length} data siswa berhasil diimpor.`);
+      const response = await fetch(`${apiBaseUrl}/v1/siswa/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ students: imported }),
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Impor siswa ditolak oleh server.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? `${imported.length} data siswa berhasil diimpor.`);
     } catch (error) {
       console.error("Failed to import student spreadsheet.", error);
-      setNotice("File tidak dapat dibaca. Periksa format Excel/CSV dan coba lagi.");
+      setNotice("Gagal mengimpor data siswa ke server backend. Periksa format file dan koneksi server.");
     }
   }
 
@@ -1006,21 +966,31 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     <button className="danger" onClick={() => deleteRecord(record)} type="button">Hapus</button>
                     {currentRoute === "academic" && record.status !== "Aktif" && (
                       <button onClick={() => {
-                        void ensureAdminAccessToken().then((token) => {
-                          if (!token) return;
-                          return fetch(`${apiBaseUrl}/v1/periode/${record.id}/activate`, {
-                            method: "PATCH",
-                            headers: {
-                              Accept: "application/json",
-                              Authorization: `Bearer ${token}`,
-                            },
-                          }).then(() => refreshOverview());
-                        });
-                        setRecords((current) => ({
-                          ...current,
-                          academic: current.academic.map((item) => ({ ...item, status: item.id === record.id ? "Aktif" : "Tidak aktif" })),
-                        }));
-                        setNotice("Periode akademik aktif telah diperbarui.");
+                        void (async () => {
+                          const token = await ensureAdminAccessToken();
+                          if (!token) {
+                            setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif.");
+                            return;
+                          }
+                          try {
+                            const response = await fetch(`${apiBaseUrl}/v1/periode/${record.id}/activate`, {
+                              method: "PATCH",
+                              headers: {
+                                Accept: "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
+                            });
+                            const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+                            if (!response.ok) {
+                              setNotice(payload?.message ?? "Gagal mengaktifkan periode akademik di server.");
+                              return;
+                            }
+                            await refreshOverview();
+                            setNotice(payload?.message ?? "Periode akademik aktif telah diperbarui.");
+                          } catch {
+                            setNotice("Tidak dapat terhubung ke server backend. Periode tidak diubah.");
+                          }
+                        })();
                       }} type="button">Aktifkan</button>
                     )}
                   </td>

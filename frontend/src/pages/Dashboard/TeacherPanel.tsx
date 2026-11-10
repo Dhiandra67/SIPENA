@@ -38,6 +38,13 @@ interface GradeComponent {
   weight: string;
 }
 
+interface GradeRange {
+  letter: string;
+  lower: number;
+  upper: number;
+  description?: string;
+}
+
 type ScoreMap = Record<string, Record<string, string>>;
 
 interface TeacherPanelProps {
@@ -187,11 +194,6 @@ function calculateFinal(
   return Math.round((weightedScore + Number.EPSILON) * 100) / 100;
 }
 
-function getPredicate(score: number | null): string {
-  if (score === null) return "—";
-  return defaultGrades.find((grade) => score >= grade.lower && score <= grade.upper)?.letter ?? "—";
-}
-
 function TeacherPanel({
   route,
   displayName,
@@ -200,6 +202,7 @@ function TeacherPanel({
   onProfileChange,
 }: TeacherPanelProps) {
   const [assignmentList, setAssignmentList] = useState<TeachingAssignment[]>(assignments);
+  const [gradeRanges, setGradeRanges] = useState<GradeRange[]>(defaultGrades);
   const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(assignments[0].id);
   const [selectedSettingsAssignmentId, setSelectedSettingsAssignmentId] = useState(assignments[0].id);
@@ -220,10 +223,16 @@ function TeacherPanel({
   const [profileName, setProfileName] = useState(displayName);
   const [profileEmail, setProfileEmail] = useState(email);
 
+  function getPredicate(score: number | null): string {
+    if (score === null) return "—";
+    return gradeRanges.find((grade) => score >= grade.lower && score <= grade.upper)?.letter ?? "—";
+  }
+
   function applyWorkspacePayload(data: {
     assignments?: TeachingAssignment[];
     componentsByAssignment?: Record<string, GradeComponent[]>;
     scores?: ScoreMap;
+    grades?: GradeRange[];
   }) {
     if (data.assignments && data.assignments.length > 0) {
       setAssignmentList(data.assignments);
@@ -243,6 +252,16 @@ function TeacherPanel({
     }
     if (data.scores) {
       setScores(data.scores);
+    }
+    if (data.grades && data.grades.length > 0) {
+      setGradeRanges(
+        data.grades.map((grade) => ({
+          letter: grade.letter,
+          lower: Number(grade.lower),
+          upper: Number(grade.upper),
+          description: grade.description,
+        })),
+      );
     }
     setIsBackendSynced(true);
   }
@@ -269,7 +288,11 @@ function TeacherPanel({
   useEffect(() => {
     void (async () => {
       let token = await ensureTeacherAccessToken();
-      if (!token) return;
+      if (!token) {
+        setIsBackendSynced(false);
+        setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
+        return;
+      }
       try {
         let res = await fetch(`${apiBaseUrl}/v1/guru/dashboard`, {
           headers: {
@@ -288,19 +311,25 @@ function TeacherPanel({
             });
           }
         }
-        if (!res.ok) return;
+        if (!res.ok) {
+          setIsBackendSynced(false);
+          setNotice("Gagal memuat data pengajaran dari server backend.");
+          return;
+        }
         const payload = (await res.json()) as {
           data?: {
             assignments?: TeachingAssignment[];
             componentsByAssignment?: Record<string, GradeComponent[]>;
             scores?: ScoreMap;
+            grades?: GradeRange[];
           };
         } | null;
         if (payload?.data) {
           applyWorkspacePayload(payload.data);
         }
       } catch {
-        // Fallback to local state when backend is unreachable
+        setIsBackendSynced(false);
+        setNotice("Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.");
       }
     })();
   }, []);
@@ -452,87 +481,79 @@ function TeacherPanel({
       return;
     }
     const token = await ensureTeacherAccessToken();
-    if (token) {
-      try {
-        const targetId = selectedSettingsAssignmentId === "all" ? "all" : selectedSettingsAssignment.id;
-        const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${targetId}/komponen`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ components: settingsComponents }),
-        });
-        const payload = (await response.json().catch(() => null)) as {
-          message?: string;
-          data?: {
-            assignments?: TeachingAssignment[];
-            componentsByAssignment?: Record<string, GradeComponent[]>;
-            scores?: ScoreMap;
-          };
-        } | null;
-        if (!response.ok) {
-          setNotice(payload?.message ?? "Gagal menyimpan komponen penilaian.");
-          return;
-        }
-        if (payload?.data) {
-          applyWorkspacePayload(payload.data);
-        }
-        setNotice(payload?.message ?? "Komponen penilaian berhasil disimpan.");
+    if (!token) {
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Komponen tidak disimpan.");
+      return;
+    }
+    try {
+      const targetId = selectedSettingsAssignmentId === "all" ? "all" : selectedSettingsAssignment.id;
+      const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${targetId}/komponen`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ components: settingsComponents }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        data?: {
+          assignments?: TeachingAssignment[];
+          componentsByAssignment?: Record<string, GradeComponent[]>;
+          scores?: ScoreMap;
+          grades?: GradeRange[];
+        };
+      } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Gagal menyimpan komponen penilaian ke server.");
         return;
-      } catch {
-        // Fallback to local state
       }
+      if (payload?.data) {
+        applyWorkspacePayload(payload.data);
+      }
+      setNotice(payload?.message ?? "Komponen penilaian berhasil disimpan.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. Komponen penilaian gagal disimpan.");
     }
-    if (selectedSettingsAssignmentId === "all") {
-      setComponentsByAssignment(
-        Object.fromEntries(
-          assignmentList.map((assignment) => [
-            assignment.id,
-            settingsComponents.map((component) => ({ ...component })),
-          ]),
-        ),
-      );
-    }
-    setNotice("Komponen penilaian berhasil disimpan pada sesi demo ini.");
   }
 
   async function saveScoresToBackend(scoresToSave: ScoreMap = scores, customMessage?: string) {
     const token = await ensureTeacherAccessToken();
-    if (token) {
-      try {
-        const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${currentAssignment.id}/nilai`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ scores: scoresToSave }),
-        });
-        const payload = (await response.json().catch(() => null)) as {
-          message?: string;
-          data?: {
-            assignments?: TeachingAssignment[];
-            componentsByAssignment?: Record<string, GradeComponent[]>;
-            scores?: ScoreMap;
-          };
-        } | null;
-        if (!response.ok) {
-          setNotice(payload?.message ?? "Gagal menyimpan nilai siswa.");
-          return;
-        }
-        if (payload?.data) {
-          applyWorkspacePayload(payload.data);
-        }
-        setNotice(customMessage ?? payload?.message ?? "Nilai berhasil disimpan ke database.");
-        return;
-      } catch {
-        // Fallback to local state
-      }
+    if (!token) {
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Nilai tidak disimpan.");
+      return;
     }
-    setNotice(customMessage ?? "Nilai berhasil disimpan pada sesi demo ini.");
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${currentAssignment.id}/nilai`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ scores: scoresToSave }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        data?: {
+          assignments?: TeachingAssignment[];
+          componentsByAssignment?: Record<string, GradeComponent[]>;
+          scores?: ScoreMap;
+          grades?: GradeRange[];
+        };
+      } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Gagal menyimpan nilai siswa ke server.");
+        return;
+      }
+      if (payload?.data) {
+        applyWorkspacePayload(payload.data);
+      }
+      setNotice(customMessage ?? payload?.message ?? "Nilai berhasil disimpan ke database.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. Nilai siswa gagal disimpan.");
+    }
   }
 
   async function downloadSpreadsheet(filename: string, rows: (string | number)[][]) {
@@ -1086,7 +1107,7 @@ function TeacherPanel({
   }
 
   function statisticsPage() {
-    const distribution = defaultGrades.map((grade) => ({
+    const distribution = gradeRanges.map((grade) => ({
       ...grade,
       count: finalScores.filter((score) => score >= grade.lower && score <= grade.upper).length,
     }));
@@ -1169,35 +1190,32 @@ function TeacherPanel({
         return;
       }
       const token = await ensureTeacherAccessToken();
-      if (token) {
-        try {
-          const response = await fetch(`${apiBaseUrl}/v1/profile`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ name, email: nextEmail, newPassword, confirmation }),
-          });
-          const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-          if (!response.ok) {
-            setNotice(payload?.message ?? "Gagal memperbarui profil.");
-            return;
-          }
-          setProfileName(name);
-          setProfileEmail(nextEmail);
-          onProfileChange(name);
-          setNotice("Profil berhasil diperbarui.");
-          return;
-        } catch {
-          // Fallback to local state
-        }
+      if (!token) {
+        setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Profil tidak diperbarui.");
+        return;
       }
-      setProfileName(name);
-      setProfileEmail(nextEmail);
-      onProfileChange(name);
-      setNotice("Profil diperbarui pada sesi demo ini.");
+      try {
+        const response = await fetch(`${apiBaseUrl}/v1/profile`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name, email: nextEmail, newPassword, confirmation }),
+        });
+        const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response.ok) {
+          setNotice(payload?.message ?? "Gagal memperbarui profil di server.");
+          return;
+        }
+        setProfileName(name);
+        setProfileEmail(nextEmail);
+        onProfileChange(name);
+        setNotice("Profil berhasil diperbarui.");
+      } catch {
+        setNotice("Tidak dapat terhubung ke server backend. Profil gagal diperbarui.");
+      }
     }
 
     return (

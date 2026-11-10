@@ -6,6 +6,7 @@ use App\Models\KomponenNilai;
 use App\Models\NilaiAkhirMapel;
 use App\Models\NilaiDetail;
 use App\Models\Pengajaran;
+use App\Models\PeriodeAkademik;
 use App\Models\RentangNilai;
 use Illuminate\Support\Collection;
 
@@ -157,8 +158,12 @@ class GradeCalculationService
      */
     public function getRentangNilaiForPeriode(?int $periodeId): array
     {
-        if ($periodeId !== null) {
-            $ranges = RentangNilai::where('periode_id', $periodeId)
+        $resolvedPeriodeId = $periodeId
+            ?? PeriodeAkademik::where('is_active', true)->value('id')
+            ?? PeriodeAkademik::orderByDesc('id')->value('id');
+
+        if ($resolvedPeriodeId !== null) {
+            $ranges = RentangNilai::where('periode_id', $resolvedPeriodeId)
                 ->orderByDesc('batas_bawah')
                 ->get();
 
