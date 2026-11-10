@@ -78,6 +78,7 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
             Route::post('/periode', [PeriodeController::class, 'store']);
             Route::put('/periode/{id}', [PeriodeController::class, 'update'])->whereNumber('id');
             Route::patch('/periode/{id}/activate', [PeriodeController::class, 'activate'])->whereNumber('id');
+            Route::post('/periode/{id}/copy-from', [PeriodeController::class, 'copyFromPeriode'])->whereNumber('id');
             Route::delete('/periode/{id}', [PeriodeController::class, 'destroy'])->whereNumber('id');
 
             Route::post('/rentang-nilai', [RentangNilaiController::class, 'store']);

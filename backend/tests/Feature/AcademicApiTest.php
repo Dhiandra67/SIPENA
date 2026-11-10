@@ -232,4 +232,128 @@ class AcademicApiTest extends TestCase
             ->assertJsonPath('data.is_locked', false)
             ->assertJsonPath('data.lockStatus', 'Terbuka');
     }
+
+    public function test_deactivated_teacher_cannot_login_and_tokens_are_revoked_on_reset_or_deactivation(): void
+    {
+        $this->seed();
+
+        $adminToken = $this->loginAs('test@example.com', 'password');
+
+        $createRes = $this->withToken($adminToken)
+            ->postJson('/api/v1/guru', [
+                'nip' => '199305052020011077',
+                'name' => 'Rina Kartika, S.Pd.',
+                'gender' => 'P',
+                'email' => 'rina@sekolah.sch.id',
+                'status' => 'Aktif',
+            ])
+            ->assertCreated();
+
+        $guruId = $createRes->json('data.id');
+        $rinaToken = $this->loginAs('rina@sekolah.sch.id', 'guru12345');
+
+        // Reset password mencabut token aktif Rina
+        $this->withToken($adminToken)
+            ->postJson("/api/v1/guru/{$guruId}/reset-password", [
+                'password' => 'rinabaru123',
+            ])
+            ->assertOk();
+
+        $this->withToken($rinaToken)
+            ->getJson('/api/v1/guru/dashboard')
+            ->assertUnauthorized();
+
+        // Login ulang dengan password baru lalu nonaktifkan guru
+        $newRinaToken = $this->loginAs('rina@sekolah.sch.id', 'rinabaru123');
+
+        $this->withToken($adminToken)
+            ->putJson("/api/v1/guru/{$guruId}", [
+                'nip' => '199305052020011077',
+                'name' => 'Rina Kartika, S.Pd.',
+                'gender' => 'P',
+                'email' => 'rina@sekolah.sch.id',
+                'status' => 'Nonaktif',
+            ])
+            ->assertOk();
+
+        // Token yang sudah ada langsung ditolak (401) dan login baru ditolak (403)
+        $this->withToken($newRinaToken)
+            ->getJson('/api/v1/guru/dashboard')
+            ->assertUnauthorized();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'rina@sekolah.sch.id',
+            'password' => 'rinabaru123',
+        ])->assertForbidden();
+    }
+
+    public function test_updating_locked_assignment_preserves_lock_and_grade_range_rejects_large_gaps(): void
+    {
+        $this->seed();
+        $adminToken = $this->loginAs('test@example.com', 'password');
+
+        $pengajaran = Pengajaran::with(['guru', 'mataPelajaran', 'kelas', 'periode'])
+            ->whereHas('kelas', fn ($q) => $q->where('kode_kelas', 'VII-A'))
+            ->firstOrFail();
+
+        // Kunci pengajaran terlebih dahulu
+        $this->withToken($adminToken)
+            ->patchJson("/api/v1/pengajaran/{$pengajaran->id}/toggle-lock")
+            ->assertOk()
+            ->assertJsonPath('data.is_locked', true);
+
+        // Edit pengajaran tanpa mengirim field is_locked -> harus tetap terkunci
+        $this->withToken($adminToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}", [
+                'teacher' => $pengajaran->guru->nama_lengkap,
+                'subject' => $pengajaran->mataPelajaran->nama_mapel,
+                'className' => $pengajaran->kelas->nama_kelas,
+                'period' => $pengajaran->periode->nama_periode,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.is_locked', true)
+            ->assertJsonPath('data.lockStatus', 'Terkunci');
+
+        // Coba ubah rentang nilai B menjadi 75-80 sehingga muncul celah > 1 poin antara B (80) dan A (85)
+        $rentangB = \App\Models\RentangNilai::where('predikat', 'B')->firstOrFail();
+        $this->withToken($adminToken)
+            ->putJson("/api/v1/rentang-nilai/{$rentangB->id}", [
+                'letter' => 'B',
+                'lower' => 75,
+                'upper' => 80,
+                'description' => 'Baik',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_admin_can_copy_period_classes_and_assignments(): void
+    {
+        $this->seed();
+        $adminToken = $this->loginAs('test@example.com', 'password');
+
+        // Buat periode akademik baru
+        $newPeriodRes = $this->withToken($adminToken)
+            ->postJson('/api/v1/periode', [
+                'year' => '2026/2027',
+                'semester' => 'Genap',
+                'status' => 'Tidak Aktif',
+                'start' => '2027-01-04',
+                'end' => '2027-06-25',
+            ])
+            ->assertCreated();
+
+        $targetPeriodId = $newPeriodRes->json('data.id');
+        $sourcePeriod = \App\Models\PeriodeAkademik::where('is_active', true)->firstOrFail();
+
+        // Salin kelas, anggota siswa, dan penugasan dari Ganjil ke Genap
+        $this->withToken($adminToken)
+            ->postJson("/api/v1/periode/{$targetPeriodId}/copy-from", [
+                'source_periode_id' => $sourcePeriod->id,
+                'mode' => 'same_class',
+                'copy_students' => true,
+                'copy_assignments' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.copiedClasses', 4);
+    }
 }
