@@ -267,7 +267,10 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
   const [selectedStatus, setSelectedStatus] = useState("Semua Status");
-  const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | "reset-password" | null>(null);
+  const [selectedPeriodFilter, setSelectedPeriodFilter] = useState("Periode Aktif");
+  const [dialogMode, setDialogMode] = useState<
+    "create" | "edit" | "details" | "reset-password" | "copy-period" | null
+  >(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
@@ -342,25 +345,40 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const section = currentRoute ? sectionConfig[currentRoute] : null;
   const rows = currentRoute ? records[currentRoute] : [];
   const currentPeriod = records.academic.find((record) => record.status === "Aktif")?.name ?? activePeriod;
+  const effectivePeriodFilter =
+    selectedPeriodFilter === "Periode Aktif" ? currentPeriod : selectedPeriodFilter;
   const visibleRows = useMemo(() => {
     if (!section) return [];
     const query = search.trim().toLocaleLowerCase("id");
-    return rows.filter((record) =>
-      (!query || section.searchKeys.some((key) => record[key]?.toLocaleLowerCase("id").includes(query))) &&
-      (currentRoute !== "students" || selectedClass === "Semua Kelas" || record.className === selectedClass) &&
-      (currentRoute !== "students" || selectedStatus === "Semua Status" || record.status === selectedStatus),
-    );
-  }, [currentRoute, rows, search, section, selectedClass, selectedStatus]);
+    return rows.filter((record) => {
+      const matchesSearch =
+        !query || section.searchKeys.some((key) => record[key]?.toLocaleLowerCase("id").includes(query));
+      const matchesStudentClass =
+        currentRoute !== "students" || selectedClass === "Semua Kelas" || record.className === selectedClass;
+      const matchesStudentStatus =
+        currentRoute !== "students" || selectedStatus === "Semua Status" || record.status === selectedStatus;
+      const matchesPeriod =
+        (currentRoute !== "classes" && currentRoute !== "assignments" && currentRoute !== "grades") ||
+        effectivePeriodFilter === "Semua Periode" ||
+        !record.period ||
+        record.period === effectivePeriodFilter;
+      return matchesSearch && matchesStudentClass && matchesStudentStatus && matchesPeriod;
+    });
+  }, [currentRoute, effectivePeriodFilter, rows, search, section, selectedClass, selectedStatus]);
 
   function navigate(nextRoute: string) {
     setSearch("");
     setSelectedClass("Semua Kelas");
     setSelectedStatus("Semua Status");
+    setSelectedPeriodFilter("Periode Aktif");
     setNotice("");
     onNavigate(nextRoute);
   }
 
-  function openForm(mode: "create" | "edit" | "details" | "reset-password", record: AdminRecord | null = null) {
+  function openForm(
+    mode: "create" | "edit" | "details" | "reset-password" | "copy-period",
+    record: AdminRecord | null = null,
+  ) {
     setSelectedRecord(record);
     setDialogMode(mode);
     setFormError("");
@@ -380,6 +398,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       if (candidate.startDate && candidate.endDate && candidate.endDate <= candidate.startDate) {
         return "Tanggal selesai harus setelah tanggal mulai.";
       }
+      if (dialogMode === "edit" && selectedRecord?.status === "Aktif" && candidate.status === "Tidak aktif") {
+        return "Periode aktif tidak dapat dinonaktifkan secara langsung. Aktifkan periode lain terlebih dahulu.";
+      }
       if (existing.some((record) => record.name.toLocaleLowerCase("id") === candidate.name.toLocaleLowerCase("id"))) {
         return "Nama periode sudah terdaftar.";
       }
@@ -391,15 +412,36 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       if (!Number.isFinite(lower) || !Number.isFinite(upper) || lower < 0 || upper > 100 || lower > upper) {
         return "Rentang nilai harus berada pada 0–100 dan nilai minimum tidak boleh melebihi maksimum.";
       }
-      if (existing.some((record) => record.grade.toUpperCase() === candidate.grade.toUpperCase())) {
+      const targetPeriod = selectedRecord?.period || currentPeriod;
+      const periodExisting = existing.filter((record) => !record.period || record.period === targetPeriod);
+      if (periodExisting.some((record) => record.grade.toUpperCase() === candidate.grade.toUpperCase())) {
         return "Predikat tersebut sudah digunakan.";
       }
-      const overlaps = existing.some((record) => {
+      const overlaps = periodExisting.some((record) => {
         const otherLower = Number(record.lower);
         const otherUpper = Number(record.upper);
         return lower <= otherUpper && upper >= otherLower;
       });
       if (overlaps) return "Rentang nilai tidak boleh tumpang tindih dengan predikat lain.";
+
+      if (dialogMode === "edit" || periodExisting.length >= 3) {
+        const combined = [
+          ...periodExisting.map((r) => ({
+            grade: r.grade,
+            lower: Number(r.lower),
+            upper: Number(r.upper),
+          })),
+          { grade: candidate.grade.toUpperCase(), lower, upper },
+        ].sort((a, b) => a.lower - b.lower);
+
+        for (let i = 1; i < combined.length; i += 1) {
+          const prev = combined[i - 1];
+          const curr = combined[i];
+          if (curr.lower - prev.upper > 1.0) {
+            return `Rentang nilai tidak boleh menyisakan celah nilai antara predikat ${prev.grade} (${prev.upper}) dan ${curr.grade} (${curr.lower}).`;
+          }
+        }
+      }
     }
 
     if (currentRoute === "subjects") {
@@ -584,6 +626,51 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       closeForm();
     } catch {
       setFormError("Tidak dapat terhubung ke server backend. Kata sandi tidak direset.");
+    }
+  }
+
+  async function copyPeriodData(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedRecord) return;
+    const formData = new FormData(event.currentTarget);
+    const sourcePeriod = String(formData.get("source_period") ?? "").trim();
+    const mode = String(formData.get("mode") ?? "same_class").trim();
+
+    if (!sourcePeriod || sourcePeriod === selectedRecord.name) {
+      setFormError("Pilih periode sumber yang berbeda dari periode tujuan.");
+      return;
+    }
+
+    const token = await ensureAdminAccessToken();
+    if (!token) {
+      setFormError("Sesi autentikasi tidak ditemukan atau server backend tidak aktif.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/periode/${selectedRecord.id}/copy-from`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          source_period: sourcePeriod,
+          mode,
+          copy_assignments: true,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setFormError(payload?.message ?? "Gagal menyalin atau mempromosikan data kelas dari periode sumber.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? "Transisi kelas dan siswa berhasil disinkronkan.");
+      closeForm();
+    } catch {
+      setFormError("Tidak dapat terhubung ke server backend. Transisi periode dibatalkan.");
     }
   }
 
@@ -879,7 +966,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                 <span className="visually-hidden">Filter kelas</span>
                 <select onChange={(event) => setSelectedClass(event.target.value)} value={selectedClass}>
                   <option>Semua Kelas</option>
-                  {records.classes.map((record) => <option key={record.id} value={record.code}>{record.code}</option>)}
+                  {records.classes
+                    .filter((record) => record.period === currentPeriod)
+                    .map((record) => <option key={record.id} value={record.code}>{record.code}</option>)}
                 </select>
               </label>
               <label>
@@ -890,6 +979,26 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                   <option>Lulus</option>
                   <option>Pindah</option>
                   <option>Nonaktif</option>
+                </select>
+              </label>
+            </div>
+          )}
+          {(currentRoute === "classes" || currentRoute === "assignments" || currentRoute === "grades") && (
+            <div className="admin-student-filters">
+              <label>
+                <span className="visually-hidden">Filter periode akademik</span>
+                <select
+                  aria-label="Filter periode akademik"
+                  onChange={(event) => setSelectedPeriodFilter(event.target.value)}
+                  value={selectedPeriodFilter}
+                >
+                  <option value="Periode Aktif">Periode Aktif ({currentPeriod})</option>
+                  <option value="Semua Periode">Semua Periode</option>
+                  {records.academic.map((periodRecord) => (
+                    <option key={periodRecord.id} value={periodRecord.name}>
+                      {periodRecord.name}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -936,6 +1045,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     <button onClick={() => openForm("edit", record)} type="button">Edit</button>
                     {currentRoute === "teachers" && (
                       <button onClick={() => openForm("reset-password", record)} type="button">Reset Sandi</button>
+                    )}
+                    {currentRoute === "academic" && records.academic.length > 1 && (
+                      <button onClick={() => openForm("copy-period", record)} type="button">Transisi Kelas</button>
                     )}
                     {currentRoute === "assignments" && (
                       <button
@@ -1043,7 +1155,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                       ? `Edit ${section.title.toLocaleLowerCase("id")}`
                       : dialogMode === "reset-password"
                         ? "Reset Kata Sandi Akun Guru"
-                        : `Detail ${section.title.toLocaleLowerCase("id")}`}
+                        : dialogMode === "copy-period"
+                          ? "Transisi & Promosi Kelas Antar Periode"
+                          : `Detail ${section.title.toLocaleLowerCase("id")}`}
                 </h2>
               </div>
               <button aria-label="Tutup" onClick={closeForm} type="button">×</button>
@@ -1095,6 +1209,48 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                 <div className="admin-dialog-actions">
                   <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>
                   <button className="admin-primary-button" type="submit">Reset Kata Sandi</button>
+                </div>
+              </form>
+            ) : dialogMode === "copy-period" && selectedRecord ? (
+              <form className="admin-form" onSubmit={copyPeriodData}>
+                <dl className="admin-detail-list">
+                  <div><dt>Periode Tujuan</dt><dd>{selectedRecord.name}</dd></div>
+                </dl>
+                <label>
+                  Salin data dari Periode Sumber
+                  <select
+                    defaultValue={
+                      records.academic.find((item) => item.name !== selectedRecord.name && item.status === "Aktif")?.name ??
+                      records.academic.find((item) => item.name !== selectedRecord.name)?.name ??
+                      ""
+                    }
+                    name="source_period"
+                    required
+                  >
+                    {records.academic
+                      .filter((item) => item.name !== selectedRecord.name)
+                      .map((item) => (
+                        <option key={item.id} value={item.name}>
+                          {item.name} ({item.status})
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  Mode Transisi Kelas &amp; Siswa
+                  <select defaultValue="same_class" name="mode" required>
+                    <option value="same_class">
+                      Transisi Semester (Salin kelas, siswa aktif &amp; penugasan ke kelas yang sama)
+                    </option>
+                    <option value="promote_level">
+                      Promosi Kenaikan Tingkat (Naikkan siswa aktif VII → VIII dan VIII → IX)
+                    </option>
+                  </select>
+                </label>
+                {formError && <p className="admin-form-error" role="alert">{formError}</p>}
+                <div className="admin-dialog-actions">
+                  <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>
+                  <button className="admin-primary-button" type="submit">Proses Transisi</button>
                 </div>
               </form>
             ) : (

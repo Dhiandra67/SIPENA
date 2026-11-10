@@ -200,6 +200,15 @@ class GradeCalculationService
             }
         }
 
+        foreach ($rentangList as $range) {
+            if ($nilaiAkhir >= $range['batas_bawah']) {
+                return [
+                    'predikat' => $range['predikat'],
+                    'keterangan' => $range['keterangan'],
+                ];
+            }
+        }
+
         return [
             'predikat' => 'D',
             'keterangan' => 'Perlu Bimbingan',

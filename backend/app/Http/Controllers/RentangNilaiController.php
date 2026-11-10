@@ -16,9 +16,9 @@ class RentangNilaiController extends Controller
     ) {}
     public function index(Request $request): JsonResponse
     {
-        $periodeId = $this->resolvePeriodeId($request->input('periode_id'));
+        $periodeId = $this->resolvePeriodeId($request);
 
-        $query = RentangNilai::query()->orderByDesc('batas_bawah');
+        $query = RentangNilai::with('periode')->orderByDesc('batas_bawah');
         if ($periodeId !== null) {
             $query->where('periode_id', $periodeId);
         }
@@ -30,13 +30,14 @@ class RentangNilaiController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $periodeId = $this->resolvePeriodeId($request->input('periode_id'));
+        $periodeId = $this->resolvePeriodeId($request);
         if ($periodeId === null) {
             return response()->json(['message' => 'Periode akademik aktif belum tersedia.'], 422);
         }
 
         $payload = $this->validateRentang($request, $periodeId);
         $rentang = RentangNilai::create($payload);
+        $rentang->load('periode');
         $this->recalculatePeriodeGrades($periodeId);
 
         return response()->json([
@@ -48,13 +49,14 @@ class RentangNilaiController extends Controller
     public function update(Request $request, int $id): JsonResponse
     {
         $rentang = RentangNilai::findOrFail($id);
-        $payload = $this->validateRentang($request, $rentang->periode_id, $rentang->id);
+        $targetPeriodeId = $this->resolvePeriodeId($request, $rentang->periode_id);
+        $payload = $this->validateRentang($request, $targetPeriodeId, $rentang->id);
         $rentang->update($payload);
-        $this->recalculatePeriodeGrades($rentang->periode_id);
+        $this->recalculatePeriodeGrades($targetPeriodeId);
 
         return response()->json([
             'message' => 'Rentang nilai berhasil diperbarui.',
-            'data' => $this->formatRentang($rentang->fresh()),
+            'data' => $this->formatRentang($rentang->fresh('periode')),
         ]);
     }
 
@@ -87,6 +89,7 @@ class RentangNilaiController extends Controller
         return [
             'id' => (string) $r->id,
             'periode_id' => (string) $r->periode_id,
+            'period' => $r->periode?->nama_periode ?? '',
             'grade' => $r->predikat,
             'predikat' => $r->predikat,
             'lower' => $lower,
@@ -98,10 +101,19 @@ class RentangNilaiController extends Controller
         ];
     }
 
-    private function resolvePeriodeId(mixed $requestedPeriodeId): ?int
+    private function resolvePeriodeId(Request $request, ?int $fallbackId = null): ?int
     {
-        if ($requestedPeriodeId !== null && $requestedPeriodeId !== '') {
-            return (int) $requestedPeriodeId;
+        if ($request->filled('periode_id')) {
+            return (int) $request->input('periode_id');
+        }
+        if ($request->filled('period')) {
+            $byName = PeriodeAkademik::where('nama_periode', trim((string) $request->input('period')))->first();
+            if ($byName) {
+                return $byName->id;
+            }
+        }
+        if ($fallbackId !== null) {
+            return $fallbackId;
         }
 
         $active = PeriodeAkademik::where('is_active', true)->first()
@@ -147,6 +159,33 @@ class RentangNilaiController extends Controller
                 abort(response()->json([
                     'message' => 'Rentang nilai tidak boleh tumpang tindih dengan predikat lain.',
                 ], 422));
+            }
+        }
+
+        if ($ignoreId !== null || $existingList->count() >= 3) {
+            $allRanges = $existingList
+                ->map(fn (RentangNilai $r) => [
+                    'predikat' => $r->predikat,
+                    'lower' => (float) $r->batas_bawah,
+                    'upper' => (float) $r->batas_atas,
+                ])
+                ->push([
+                    'predikat' => $predikat,
+                    'lower' => $lowerVal,
+                    'upper' => $upperVal,
+                ])
+                ->sortBy('lower')
+                ->values()
+                ->all();
+
+            for ($i = 1; $i < count($allRanges); $i++) {
+                $prev = $allRanges[$i - 1];
+                $curr = $allRanges[$i];
+                if (($curr['lower'] - $prev['upper']) > 1.0) {
+                    abort(response()->json([
+                        'message' => "Rentang nilai tidak boleh menyisakan celah nilai antara predikat {$prev['predikat']} ({$prev['upper']}) dan {$curr['predikat']} ({$curr['lower']}).",
+                    ], 422));
+                }
             }
         }
 
