@@ -177,7 +177,7 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
   },
   assignments: {
     title: "Pembagian Tugas Guru",
-    description: "Plot guru, mata pelajaran, dan kelas pada periode akademik aktif.",
+    description: "Plot guru, mata pelajaran, kelas, pantau progres nilai, serta kunci/buka pengisian nilai.",
     addLabel: "Tambah penugasan",
     columns: [
       { key: "teacher", label: "Guru" },
@@ -185,6 +185,8 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
       { key: "className", label: "Kelas" },
       { key: "period", label: "Periode" },
       { key: "kkm", label: "KKM" },
+      { key: "progress", label: "Progres Nilai" },
+      { key: "lockStatus", label: "Status Nilai" },
     ],
     fields: [
       { key: "teacher", label: "Guru", type: "select" },
@@ -197,50 +199,14 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
   },
 };
 
-const initialRecords: RecordSet = {
-  academic: [
-    { id: "p1", name: "2026/2027 · Ganjil", startDate: "2026-07-13", endDate: "2026-12-19", status: "Aktif" },
-    { id: "p2", name: "2025/2026 · Genap", startDate: "2026-01-05", endDate: "2026-06-20", status: "Tidak aktif" },
-  ],
-  grades: [
-    { id: "g1", grade: "A", lower: "85", upper: "100", description: "Sangat Baik" },
-    { id: "g2", grade: "B", lower: "70", upper: "84.99", description: "Baik" },
-    { id: "g3", grade: "C", lower: "55", upper: "69.99", description: "Cukup" },
-    { id: "g4", grade: "D", lower: "0", upper: "54.99", description: "Perlu Bimbingan" },
-  ],
-  subjects: [
-    { id: "m1", code: "MAT", name: "Matematika", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m2", code: "BIN", name: "Bahasa Indonesia", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m3", code: "IPA", name: "Ilmu Pengetahuan Alam", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m4", code: "IPS", name: "Ilmu Pengetahuan Sosial", group: "Umum", kkm: "75", status: "Aktif" },
-    { id: "m5", code: "SBD", name: "Seni Budaya", group: "Muatan Lokal", kkm: "70", status: "Aktif" },
-  ],
-  classes: [
-    { id: "k1", code: "VII-A", name: "VII-A", level: "VII", homeroom: "Sari Wulandari, S.Pd.", period: activePeriod, students: "30" },
-    { id: "k2", code: "VII-B", name: "VII-B", level: "VII", homeroom: "Dedi Saputra, S.Pd.", period: activePeriod, students: "29" },
-    { id: "k3", code: "VIII-A", name: "VIII-A", level: "VIII", homeroom: "Ratna Dewi, S.Pd.", period: activePeriod, students: "31" },
-    { id: "k4", code: "VIII-B", name: "VIII-B", level: "VIII", homeroom: "Sari Wulandari, S.Pd.", period: activePeriod, students: "30" },
-  ],
-  teachers: [
-    { id: "t1", nip: "198501012010011001", name: "Sari Wulandari, S.Pd.", gender: "P", email: "sari@sekolah.sch.id", status: "Aktif" },
-    { id: "t2", nip: "198702152012021002", name: "Dedi Saputra, S.Pd.", gender: "L", email: "dedi@sekolah.sch.id", status: "Aktif" },
-    { id: "t3", nip: "199003102015031003", name: "Ratna Dewi, S.Pd.", gender: "P", email: "ratna@sekolah.sch.id", status: "Aktif" },
-  ],
-  students: [
-    { id: "s1", nis: "2026001", nisn: "0123456701", name: "Andi Pratama", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s2", nis: "2026002", nisn: "0123456702", name: "Budi Santoso", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s3", nis: "2026003", nisn: "0123456703", name: "Citra Lestari", gender: "P", className: "VII-B", status: "Aktif" },
-    { id: "s4", nis: "2026004", nisn: "0123456704", name: "Dina Putri", gender: "P", className: "VIII-A", status: "Aktif" },
-    { id: "s5", nis: "2026005", nisn: "0123456705", name: "Eka Saputra", gender: "L", className: "VII-B", status: "Aktif" },
-    { id: "s6", nis: "2026006", nisn: "0123456706", name: "Fitri Handayani", gender: "P", className: "VIII-A", status: "Aktif" },
-    { id: "s7", nis: "2026007", nisn: "0123456707", name: "Galih Ramadhan", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s8", nis: "2026008", nisn: "0123456708", name: "Hana Permata", gender: "P", className: "VIII-B", status: "Aktif" },
-  ],
-  assignments: [
-    { id: "a1", teacher: "Sari Wulandari, S.Pd.", subject: "Matematika", className: "VII-A", period: activePeriod, kkm: "75" },
-    { id: "a2", teacher: "Dedi Saputra, S.Pd.", subject: "Bahasa Indonesia", className: "VII-B", period: activePeriod, kkm: "75" },
-    { id: "a3", teacher: "Ratna Dewi, S.Pd.", subject: "Ilmu Pengetahuan Alam", className: "VIII-A", period: activePeriod, kkm: "75" },
-  ],
+const emptyRecords: RecordSet = {
+  academic: [],
+  grades: [],
+  subjects: [],
+  classes: [],
+  teachers: [],
+  students: [],
+  assignments: [],
 };
 
 function createId() {
@@ -295,7 +261,8 @@ interface AdminPanelProps {
 }
 
 function AdminPanel({ route, onNavigate }: AdminPanelProps) {
-  const [records, setRecords] = useState<RecordSet>(initialRecords);
+  const [records, setRecords] = useState<RecordSet>(emptyRecords);
+  const [isLoading, setIsLoading] = useState(true);
   const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
@@ -325,6 +292,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     let token = await ensureAdminAccessToken();
     if (!token) {
       setIsBackendSynced(false);
+      setIsLoading(false);
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak merespons. Silakan login kembali.");
       return;
     }
@@ -359,6 +327,8 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     } catch {
       setIsBackendSynced(false);
       setNotice("Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -952,6 +922,10 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     <td key={column.key}>
                       {column.key === "status" ? (
                         <span className={`admin-status ${record[column.key] === "Aktif" ? "active" : "inactive"}`}>{record[column.key]}</span>
+                      ) : column.key === "lockStatus" ? (
+                        <span className={`admin-status ${record.lockStatus === "Terkunci" ? "inactive" : "active"}`}>
+                          {record.lockStatus ?? "Terbuka"}
+                        </span>
                       ) : currentRoute === "classes" && column.key === "students" ? (
                         records.students.filter((student) => student.className === record.code && student.status === "Aktif").length
                       ) : record[column.key] ?? "—"}
@@ -962,6 +936,40 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     <button onClick={() => openForm("edit", record)} type="button">Edit</button>
                     {currentRoute === "teachers" && (
                       <button onClick={() => openForm("reset-password", record)} type="button">Reset Sandi</button>
+                    )}
+                    {currentRoute === "assignments" && (
+                      <button
+                        onClick={() => {
+                          void (async () => {
+                            const token = await ensureAdminAccessToken();
+                            if (!token) {
+                              setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif.");
+                              return;
+                            }
+                            try {
+                              const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${record.id}/toggle-lock`, {
+                                method: "PATCH",
+                                headers: {
+                                  Accept: "application/json",
+                                  Authorization: `Bearer ${token}`,
+                                },
+                              });
+                              const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+                              if (!response.ok) {
+                                setNotice(payload?.message ?? "Gagal mengubah status kunci nilai.");
+                                return;
+                              }
+                              await refreshOverview();
+                              setNotice(payload?.message ?? "Status kunci pengajaran berhasil diperbarui.");
+                            } catch {
+                              setNotice("Tidak dapat terhubung ke server backend. Status kunci tidak diubah.");
+                            }
+                          })();
+                        }}
+                        type="button"
+                      >
+                        {record.lockStatus === "Terkunci" ? "Buka Kunci" : "Kunci Nilai"}
+                      </button>
                     )}
                     <button className="danger" onClick={() => deleteRecord(record)} type="button">Hapus</button>
                     {currentRoute === "academic" && record.status !== "Aktif" && (
@@ -996,7 +1004,13 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                   </td>
                 </tr>
               ))}
-              {visibleRows.length === 0 && <tr><td className="admin-empty" colSpan={section.columns.length + 1}>Data tidak ditemukan.</td></tr>}
+              {visibleRows.length === 0 && (
+                <tr>
+                  <td className="admin-empty" colSpan={section.columns.length + 1}>
+                    {isLoading ? "Memuat data dari database..." : "Data tidak ditemukan."}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -1007,9 +1021,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       </section>
 
       <div className="admin-demo-notice" role="note">
-        {isBackendSynced
-          ? "Terhubung ke database PostgreSQL SIPENA — perubahan tersimpan langsung ke server."
-          : "Perubahan saat ini hanya tersimpan selama halaman digunakan. Pastikan server backend aktif."}
+        {isLoading
+          ? "Menghubungkan ke database PostgreSQL SIPENA..."
+          : isBackendSynced
+            ? "Terhubung ke database PostgreSQL SIPENA — perubahan tersimpan langsung ke server."
+            : "Tidak terhubung ke server backend SIPENA. Pastikan server backend aktif agar data dapat dimuat dan disimpan."}
       </div>
 
       {dialogMode && (
@@ -1044,6 +1060,18 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     <dt>Info Kata Sandi Login</dt>
                     <dd>Default awal: guru12345 (gunakan tombol Reset Sandi atau Edit untuk mengganti)</dd>
                   </div>
+                )}
+                {currentRoute === "assignments" && (
+                  <>
+                    <div>
+                      <dt>Progres Input Nilai</dt>
+                      <dd>{selectedRecord.progress || "0/0 siswa"}</dd>
+                    </div>
+                    <div>
+                      <dt>Status Kunci Nilai</dt>
+                      <dd>{selectedRecord.lockStatus || "Terbuka"}</dd>
+                    </div>
+                  </>
                 )}
               </dl>
             ) : dialogMode === "reset-password" && selectedRecord ? (

@@ -29,6 +29,7 @@ interface TeachingAssignment {
   className: string;
   period: string;
   kkm: number;
+  isLocked?: boolean;
   students: TeacherStudent[];
 }
 
@@ -55,50 +56,17 @@ interface TeacherPanelProps {
   onProfileChange: (name: string) => void;
 }
 
-const period = "Semester Ganjil 2026/2027";
+const period = "2026/2027 · Ganjil";
 
-const assignments: TeachingAssignment[] = [
-  {
-    id: "math-vii-a",
-    subject: "Matematika",
-    className: "VII-A",
-    period,
-    kkm: 75,
-    students: [
-      { id: "s1", nis: "2026001", name: "Andi Pratama", gender: "L" },
-      { id: "s2", nis: "2026002", name: "Budi Santoso", gender: "L" },
-      { id: "s7", nis: "2026007", name: "Galih Ramadhan", gender: "L" },
-      { id: "s9", nis: "2026009", name: "Intan Permata", gender: "P" },
-      { id: "s10", nis: "2026010", name: "Joko Saputra", gender: "L" },
-    ],
-  },
-  {
-    id: "math-vii-b",
-    subject: "Matematika",
-    className: "VII-B",
-    period,
-    kkm: 75,
-    students: [
-      { id: "s3", nis: "2026003", name: "Citra Lestari", gender: "P" },
-      { id: "s5", nis: "2026005", name: "Eka Saputra", gender: "L" },
-      { id: "s11", nis: "2026011", name: "Laras Wati", gender: "P" },
-      { id: "s12", nis: "2026012", name: "Miko Ardiansyah", gender: "L" },
-    ],
-  },
-  {
-    id: "math-viii-a",
-    subject: "Matematika",
-    className: "VIII-A",
-    period,
-    kkm: 75,
-    students: [
-      { id: "s4", nis: "2026004", name: "Dina Putri", gender: "P" },
-      { id: "s6", nis: "2026006", name: "Fitri Handayani", gender: "P" },
-      { id: "s13", nis: "2026013", name: "Nadia Putri", gender: "P" },
-      { id: "s14", nis: "2026014", name: "Rafi Firmansyah", gender: "L" },
-    ],
-  },
-];
+const emptyAssignment: TeachingAssignment = {
+  id: "none",
+  subject: "Belum Ada Pengajaran",
+  className: "—",
+  period,
+  kkm: 75,
+  isLocked: false,
+  students: [],
+};
 
 const initialComponents: GradeComponent[] = [
   { id: "daily", name: "Tugas Harian", weight: "20" },
@@ -106,22 +74,6 @@ const initialComponents: GradeComponent[] = [
   { id: "midterm", name: "STS", weight: "25" },
   { id: "final", name: "UAS", weight: "30" },
 ];
-
-const initialScores: ScoreMap = {
-  s1: { daily: "88", quiz: "84", midterm: "86", final: "90" },
-  s2: { daily: "78", quiz: "82", midterm: "76", final: "80" },
-  s7: { daily: "92", quiz: "90", midterm: "88", final: "94" },
-  s9: { daily: "70", quiz: "74", midterm: "72", final: "" },
-  s10: { daily: "80", quiz: "78", midterm: "", final: "" },
-  s3: { daily: "86", quiz: "82", midterm: "84", final: "80" },
-  s5: { daily: "72", quiz: "76", midterm: "74", final: "78" },
-  s11: { daily: "90", quiz: "88", midterm: "92", final: "90" },
-  s12: { daily: "68", quiz: "72", midterm: "", final: "" },
-  s4: { daily: "82", quiz: "86", midterm: "84", final: "88" },
-  s6: { daily: "94", quiz: "92", midterm: "96", final: "94" },
-  s13: { daily: "76", quiz: "80", midterm: "78", final: "" },
-  s14: { daily: "88", quiz: "84", midterm: "86", final: "82" },
-};
 
 const defaultGrades = [
   { letter: "A", lower: 85, upper: 100 },
@@ -201,23 +153,19 @@ function TeacherPanel({
   onNavigate,
   onProfileChange,
 }: TeacherPanelProps) {
-  const [assignmentList, setAssignmentList] = useState<TeachingAssignment[]>(assignments);
+  const [assignmentList, setAssignmentList] = useState<TeachingAssignment[]>([]);
   const [gradeRanges, setGradeRanges] = useState<GradeRange[]>(defaultGrades);
+  const [isLoading, setIsLoading] = useState(true);
   const [isBackendSynced, setIsBackendSynced] = useState(false);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState(assignments[0].id);
-  const [selectedSettingsAssignmentId, setSelectedSettingsAssignmentId] = useState(assignments[0].id);
-  const [selectedStudentsAssignmentId, setSelectedStudentsAssignmentId] = useState(assignments[0].id);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
+  const [selectedSettingsAssignmentId, setSelectedSettingsAssignmentId] = useState("");
+  const [selectedStudentsAssignmentId, setSelectedStudentsAssignmentId] = useState("");
   const [componentsByAssignment, setComponentsByAssignment] = useState<
     Record<string, GradeComponent[]>
-  >(() =>
-    Object.fromEntries(
-      assignments.map((assignment) => [
-        assignment.id,
-        initialComponents.map((component) => ({ ...component })),
-      ]),
-    ),
-  );
-  const [scores, setScores] = useState(initialScores);
+  >({});
+  const [scores, setScores] = useState<ScoreMap>({});
+  const [hasUnsavedScores, setHasUnsavedScores] = useState(false);
+  const [hasUnsavedComponents, setHasUnsavedComponents] = useState(false);
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
   const [profileName, setProfileName] = useState(displayName);
@@ -234,18 +182,24 @@ function TeacherPanel({
     scores?: ScoreMap;
     grades?: GradeRange[];
   }) {
-    if (data.assignments && data.assignments.length > 0) {
+    if (Array.isArray(data.assignments)) {
       setAssignmentList(data.assignments);
-      const firstId = data.assignments[0].id;
-      setSelectedAssignmentId((prev) =>
-        data.assignments?.some((item) => item.id === prev) ? prev : firstId,
-      );
-      setSelectedSettingsAssignmentId((prev) =>
-        prev === "all" || data.assignments?.some((item) => item.id === prev) ? prev : firstId,
-      );
-      setSelectedStudentsAssignmentId((prev) =>
-        prev === "all" || data.assignments?.some((item) => item.id === prev) ? prev : firstId,
-      );
+      if (data.assignments.length > 0) {
+        const firstId = data.assignments[0].id;
+        setSelectedAssignmentId((prev) =>
+          data.assignments?.some((item) => item.id === prev) ? prev : firstId,
+        );
+        setSelectedSettingsAssignmentId((prev) =>
+          prev === "all" || data.assignments?.some((item) => item.id === prev) ? prev : firstId,
+        );
+        setSelectedStudentsAssignmentId((prev) =>
+          prev === "all" || data.assignments?.some((item) => item.id === prev) ? prev : firstId,
+        );
+      } else {
+        setSelectedAssignmentId("");
+        setSelectedSettingsAssignmentId("");
+        setSelectedStudentsAssignmentId("");
+      }
     }
     if (data.componentsByAssignment) {
       setComponentsByAssignment(data.componentsByAssignment);
@@ -263,8 +217,20 @@ function TeacherPanel({
         })),
       );
     }
+    setHasUnsavedScores(false);
+    setHasUnsavedComponents(false);
     setIsBackendSynced(true);
   }
+
+  useEffect(() => {
+    if (!hasUnsavedScores && !hasUnsavedComponents) return;
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedScores, hasUnsavedComponents]);
 
   async function ensureTeacherAccessToken(forceRefresh = false): Promise<string | null> {
     const existing = getStoredAccessToken();
@@ -290,6 +256,7 @@ function TeacherPanel({
       let token = await ensureTeacherAccessToken();
       if (!token) {
         setIsBackendSynced(false);
+        setIsLoading(false);
         setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.");
         return;
       }
@@ -330,15 +297,21 @@ function TeacherPanel({
       } catch {
         setIsBackendSynced(false);
         setNotice("Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.");
+      } finally {
+        setIsLoading(false);
       }
     })();
   }, []);
 
   const currentAssignment =
-    assignmentList.find((assignment) => assignment.id === selectedAssignmentId) ?? assignmentList[0];
+    assignmentList.find((assignment) => assignment.id === selectedAssignmentId) ??
+    assignmentList[0] ??
+    emptyAssignment;
   const components = componentsByAssignment[currentAssignment.id] ?? initialComponents;
   const selectedSettingsAssignment =
-    assignmentList.find((assignment) => assignment.id === selectedSettingsAssignmentId) ?? assignmentList[0];
+    assignmentList.find((assignment) => assignment.id === selectedSettingsAssignmentId) ??
+    assignmentList[0] ??
+    emptyAssignment;
   const settingsComponents =
     componentsByAssignment[selectedSettingsAssignment.id] ?? initialComponents;
   const currentRoute = route as TeacherRoute;
@@ -397,12 +370,32 @@ function TeacherPanel({
   const passingCount = finalScores.filter((score) => score >= currentAssignment.kkm).length;
 
   function navigate(nextRoute: string) {
+    if (
+      (hasUnsavedScores || hasUnsavedComponents) &&
+      !window.confirm(
+        "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah halaman tanpa menyimpan?",
+      )
+    ) {
+      return;
+    }
+    setHasUnsavedScores(false);
+    setHasUnsavedComponents(false);
     setSearch("");
     setNotice("");
     onNavigate(nextRoute);
   }
 
   function openAssignment(assignmentId: string, nextRoute: string) {
+    if (
+      (hasUnsavedScores || hasUnsavedComponents) &&
+      !window.confirm(
+        "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah kelas tanpa menyimpan?",
+      )
+    ) {
+      return;
+    }
+    setHasUnsavedScores(false);
+    setHasUnsavedComponents(false);
     setSelectedAssignmentId(assignmentId);
     setSearch("");
     setNotice("");
@@ -410,9 +403,14 @@ function TeacherPanel({
   }
 
   function updateScore(studentId: string, componentId: string, value: string) {
+    if (currentAssignment.isLocked) {
+      setNotice("Pengisian nilai pada kelas ini telah dikunci oleh Admin Sekolah.");
+      return;
+    }
     if (value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)) {
       return;
     }
+    setHasUnsavedScores(true);
     setScores((current) => ({
       ...current,
       [studentId]: { ...current[studentId], [componentId]: value },
@@ -420,10 +418,15 @@ function TeacherPanel({
   }
 
   function applySettingsComponents(nextComponents: GradeComponent[]) {
+    if (selectedSettingsAssignmentId !== "all" && selectedSettingsAssignment.isLocked) {
+      setNotice("Komponen penilaian kelas ini tidak dapat diubah karena pengisian nilai sedang dikunci Admin.");
+      return;
+    }
     const targetIds =
       selectedSettingsAssignmentId === "all"
         ? assignmentList.map((assignment) => assignment.id)
         : [selectedSettingsAssignment.id];
+    setHasUnsavedComponents(true);
     setComponentsByAssignment((current) =>
       targetIds.reduce(
         (updated, assignmentId) => ({
@@ -792,6 +795,16 @@ function TeacherPanel({
         <span>Pilih pengajaran</span>
         <select
           onChange={(event) => {
+            if (
+              (hasUnsavedScores || hasUnsavedComponents) &&
+              !window.confirm(
+                "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah pengajaran tanpa menyimpan?",
+              )
+            ) {
+              return;
+            }
+            setHasUnsavedScores(false);
+            setHasUnsavedComponents(false);
             onSelect(event.target.value);
             setNotice("");
           }}
@@ -800,7 +813,7 @@ function TeacherPanel({
           {includeAll && <option value="all">Semua Pengajaran</option>}
           {assignmentList.map((assignment) => (
             <option key={assignment.id} value={assignment.id}>
-              {assignment.subject} · {assignment.className}
+              {assignment.subject} · {assignment.className}{assignment.isLocked ? " (Terkunci)" : ""}
             </option>
           ))}
         </select>
@@ -863,6 +876,7 @@ function TeacherPanel({
                         <input
                           aria-label={`${component.name} ${student.name}`}
                           className="teacher-score-input"
+                          disabled={Boolean(assignment.isLocked)}
                           max={100}
                           min={0}
                           onChange={(event) =>
@@ -1016,6 +1030,7 @@ function TeacherPanel({
 
   function gradeSettingsPage() {
     const showAll = selectedSettingsAssignmentId === "all";
+    const isSettingsLocked = !showAll && Boolean(selectedSettingsAssignment.isLocked);
     return (
       <>
         {pageHeading("Atur komponen penilaian dan bobot untuk satu atau seluruh pengajaran.")}
@@ -1025,20 +1040,30 @@ function TeacherPanel({
             includeAll: true,
             onSelect: (assignmentId) => {
               setSelectedSettingsAssignmentId(assignmentId);
-              setSelectedAssignmentId(assignmentId === "all" ? assignmentList[0].id : assignmentId);
+              setSelectedAssignmentId(assignmentId === "all" ? (assignmentList[0]?.id ?? "") : assignmentId);
             },
           })}</div>
           <div className="teacher-assignment-summary"><strong>{showAll ? `Semua pengajaran · ${assignmentList.length} kelas` : `${selectedSettingsAssignment.subject} · ${selectedSettingsAssignment.className}`}</strong><span>{selectedSettingsAssignment.period}</span>{!showAll && <span>KKM {selectedSettingsAssignment.kkm}</span>}</div>
         </section>
+        {isSettingsLocked && (
+          <p className="teacher-inline-warning" role="alert">
+            Pengisian nilai dan pengaturan komponen untuk kelas ini sedang dikunci oleh Admin Sekolah.
+          </p>
+        )}
+        {hasUnsavedComponents && (
+          <p className="teacher-inline-warning" role="status">
+            Ada perubahan komponen penilaian yang belum disimpan ke database. Klik tombol <strong>Simpan komponen</strong> sebelum berpindah halaman.
+          </p>
+        )}
         <form className="teacher-card teacher-components-form" onSubmit={saveComponents}>
-          <div className="teacher-card-heading"><div><h2>Komponen Nilai</h2><p>{showAll ? "Perubahan komponen dan bobot akan diterapkan ke seluruh pengajaran." : "Total bobot seluruh komponen harus tepat 100%."}</p></div><button className="teacher-secondary-button" onClick={addComponent} type="button">+ Tambah komponen</button></div>
+          <div className="teacher-card-heading"><div><h2>Komponen Nilai</h2><p>{showAll ? "Perubahan komponen dan bobot akan diterapkan ke seluruh pengajaran." : "Total bobot seluruh komponen harus tepat 100%."}</p></div><button className="teacher-secondary-button" disabled={isSettingsLocked} onClick={addComponent} type="button">+ Tambah komponen</button></div>
           <div className="teacher-component-list">
             {settingsComponents.map((component, index) => (
               <div className="teacher-component-row" key={component.id}>
                 <span className="teacher-component-index">{String(index + 1).padStart(2, "0")}</span>
-                <label><span>Nama komponen</span><input onChange={(event) => updateComponent(component.id, "name", event.target.value)} required value={component.name} /></label>
-                <label className="teacher-weight-field"><span>Bobot (%)</span><input max={100} min={0.01} onChange={(event) => updateComponent(component.id, "weight", event.target.value)} required step="0.01" type="number" value={component.weight} /></label>
-                <button aria-label={`Hapus ${component.name || "komponen"}`} className="teacher-remove-button" onClick={() => removeComponent(component.id)} type="button">Hapus</button>
+                <label><span>Nama komponen</span><input disabled={isSettingsLocked} onChange={(event) => updateComponent(component.id, "name", event.target.value)} required value={component.name} /></label>
+                <label className="teacher-weight-field"><span>Bobot (%)</span><input disabled={isSettingsLocked} max={100} min={0.01} onChange={(event) => updateComponent(component.id, "weight", event.target.value)} required step="0.01" type="number" value={component.weight} /></label>
+                <button aria-label={`Hapus ${component.name || "komponen"}`} className="teacher-remove-button" disabled={isSettingsLocked} onClick={() => removeComponent(component.id)} type="button">Hapus</button>
               </div>
             ))}
           </div>
@@ -1047,13 +1072,14 @@ function TeacherPanel({
             <div className="teacher-weight-track"><span style={{ width: `${Math.min(settingsTotalWeight, 100)}%` }} /></div>
             <small>{settingsHasValidWeights ? "Bobot sudah tepat 100%." : "Sesuaikan bobot hingga tepat 100% sebelum menyimpan."}</small>
           </div>
-          <div className="teacher-form-actions"><button className="teacher-primary-button" disabled={!settingsHasValidWeights} type="submit">Simpan komponen</button></div>
+          <div className="teacher-form-actions"><button className="teacher-primary-button" disabled={!settingsHasValidWeights || isSettingsLocked} type="submit">Simpan komponen</button></div>
         </form>
       </>
     );
   }
 
   function gradeEntryPage() {
+    const isGradeLocked = Boolean(currentAssignment.isLocked);
     return (
       <>
         {pageHeading("Masukkan nilai siswa. Nilai akhir dan predikat diperbarui otomatis.")}
@@ -1061,15 +1087,25 @@ function TeacherPanel({
           <div><span>Pengajaran aktif</span><strong>{currentAssignment.subject} · Kelas {currentAssignment.className}</strong><small>{currentAssignment.period} · KKM {currentAssignment.kkm}</small></div>
           {assignmentSelector()}
         </section>
+        {isGradeLocked && (
+          <p className="teacher-inline-warning" role="alert">
+            Pengisian nilai untuk kelas ini sedang dikunci oleh Admin Sekolah. Hubungi Admin jika perlu melakukan revisi nilai.
+          </p>
+        )}
+        {hasUnsavedScores && !isGradeLocked && (
+          <p className="teacher-inline-warning" role="status">
+            Ada perubahan nilai yang belum disimpan ke database. Klik tombol <strong>Simpan nilai</strong> sebelum berpindah halaman atau menutup tab.
+          </p>
+        )}
         {!hasValidWeights && <p className="teacher-inline-warning" role="alert">Total bobot komponen belum 100%. Perbaiki komponen sebelum menghitung nilai akhir.</p>}
         <section className="teacher-grade-toolbar">
           <label className="teacher-search"><span className="visually-hidden">Cari siswa</span><input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau NIS..." type="search" value={search} /></label>
           <div className="teacher-file-actions">
             <button className="teacher-secondary-button" onClick={() => void downloadGradeTemplate()} type="button">Template XLSX</button>
-            <label className="teacher-secondary-button teacher-upload-button">Impor XLSX/CSV<input accept=".csv,.xlsx" onChange={(event) => void importGrades(event)} type="file" /></label>
+            <label className="teacher-secondary-button teacher-upload-button">Impor XLSX/CSV<input accept=".csv,.xlsx" disabled={isGradeLocked} onChange={(event) => void importGrades(event)} type="file" /></label>
             <button className="teacher-secondary-button" onClick={() => void exportGrades()} type="button">Ekspor nilai</button>
           </div>
-          <button className="teacher-primary-button" disabled={!hasValidWeights} onClick={() => void saveScoresToBackend()} type="button">Simpan nilai</button>
+          <button className="teacher-primary-button" disabled={!hasValidWeights || isGradeLocked} onClick={() => void saveScoresToBackend()} type="button">Simpan nilai</button>
         </section>
         <section className="teacher-card teacher-grade-card">
           <div className="teacher-card-heading"><div><h2>Input Nilai Siswa</h2><p>{completionCount} dari {currentAssignment.students.length} siswa memiliki nilai lengkap.</p></div><span className="teacher-total-weight">Bobot {totalWeight}%</span></div>
@@ -1083,7 +1119,9 @@ function TeacherPanel({
   function studentPage() {
     const showAll = selectedStudentsAssignmentId === "all";
     const selectedStudentAssignment =
-      assignmentList.find((assignment) => assignment.id === selectedStudentsAssignmentId) ?? assignmentList[0];
+      assignmentList.find((assignment) => assignment.id === selectedStudentsAssignmentId) ??
+      assignmentList[0] ??
+      emptyAssignment;
     return (
       <>
         {pageHeading(
@@ -1097,7 +1135,7 @@ function TeacherPanel({
             includeAll: true,
             onSelect: (assignmentId) => {
               setSelectedStudentsAssignmentId(assignmentId);
-              setSelectedAssignmentId(assignmentId === "all" ? assignmentList[0].id : assignmentId);
+              setSelectedAssignmentId(assignmentId === "all" ? (assignmentList[0]?.id ?? "") : assignmentId);
             },
           })}<label className="teacher-search"><span className="visually-hidden">Cari siswa</span><input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau NIS..." type="search" value={search} /></label></div></div>
           {studentTable(true)}
@@ -1240,34 +1278,66 @@ function TeacherPanel({
   }
 
   let content;
-  switch (currentRoute) {
-    case "assignments":
-      content = assignmentPage();
-      break;
-    case "class-detail":
-      content = classDetailPage();
-      break;
-    case "grade-settings":
-      content = gradeSettingsPage();
-      break;
-    case "grade-entry":
-      content = gradeEntryPage();
-      break;
-    case "students":
-      content = studentPage();
-      break;
-    case "grade-summary":
-    case "statistics":
-      content = statisticsPage();
-      break;
-    case "reports":
-      content = reportsPage();
-      break;
-    case "profile":
-      content = profilePage();
-      break;
-    default:
-      content = dashboardPage();
+  if (isLoading) {
+    content = (
+      <>
+        {pageHeading("Memuat data pengajaran dan nilai dari server...")}
+        <section className="teacher-card">
+          <p className="teacher-empty">Memuat data pengajaran dari database...</p>
+        </section>
+      </>
+    );
+  } else if (assignmentList.length === 0 && currentRoute !== "profile") {
+    content = (
+      <>
+        {pageHeading("Daftar penugasan mengajar pada periode akademik aktif.")}
+        <section className="teacher-card">
+          <div className="teacher-card-heading">
+            <div>
+              <h2>Belum Ada Penugasan Mengajar</h2>
+              <p>
+                Akun Anda belum memiliki penugasan kelas dan mata pelajaran pada periode akademik aktif. Silakan hubungi Admin Sekolah untuk menambahkan penugasan pada menu <strong>Pembagian Tugas Guru</strong>.
+              </p>
+            </div>
+          </div>
+          <div className="teacher-button-row">
+            <button className="teacher-secondary-button" onClick={() => navigate("profile")} type="button">
+              Buka Profil Saya
+            </button>
+          </div>
+        </section>
+      </>
+    );
+  } else {
+    switch (currentRoute) {
+      case "assignments":
+        content = assignmentPage();
+        break;
+      case "class-detail":
+        content = classDetailPage();
+        break;
+      case "grade-settings":
+        content = gradeSettingsPage();
+        break;
+      case "grade-entry":
+        content = gradeEntryPage();
+        break;
+      case "students":
+        content = studentPage();
+        break;
+      case "grade-summary":
+      case "statistics":
+        content = statisticsPage();
+        break;
+      case "reports":
+        content = reportsPage();
+        break;
+      case "profile":
+        content = profilePage();
+        break;
+      default:
+        content = dashboardPage();
+    }
   }
 
   return (
@@ -1275,9 +1345,11 @@ function TeacherPanel({
       {notice && <p className="teacher-notice" role="status">{notice}</p>}
       {content}
       <p className="teacher-demo-note" role="note">
-        {isBackendSynced
-          ? "Terhubung ke database PostgreSQL SIPENA — komponen dan nilai langsung tersimpan ke server."
-          : "Data penilaian ini adalah data pratinjau lokal. Pastikan server backend aktif agar tersinkron ke database."}
+        {isLoading
+          ? "Menghubungkan ke database PostgreSQL SIPENA..."
+          : isBackendSynced
+            ? "Terhubung ke database PostgreSQL SIPENA — komponen dan nilai langsung tersimpan ke server."
+            : "Tidak terhubung ke server backend SIPENA. Pastikan server backend aktif agar data dapat dimuat dan disimpan."}
       </p>
     </div>
   );
