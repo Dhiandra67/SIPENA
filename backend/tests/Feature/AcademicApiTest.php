@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\KomponenNilai;
 use App\Models\NilaiAkhirMapel;
+use App\Models\NilaiDetail;
 use App\Models\Pengajaran;
 use App\Models\Siswa;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -169,6 +170,78 @@ class AcademicApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.jumlah_siswa', 5)
             ->assertJsonPath('data.nilai_lengkap', 4);
+    }
+
+    public function test_teacher_cannot_submit_duplicate_component_ids(): void
+    {
+        $this->seed();
+        $teacherToken = $this->loginAs('guru@example.com', 'guru12345');
+        $pengajaran = Pengajaran::whereHas('kelas', fn ($q) => $q->where('kode_kelas', 'VII-A'))->firstOrFail();
+        $components = $pengajaran->komponenNilai()->orderBy('urutan')->get();
+        $detailsBefore = NilaiDetail::count();
+
+        $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/komponen", [
+                'components' => [
+                    ['id' => $components[0]->id, 'name' => 'Tugas Harian', 'weight' => 50],
+                    ['id' => $components[0]->id, 'name' => 'UAS', 'weight' => 50],
+                ],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'ID komponen tidak boleh digunakan lebih dari satu kali.');
+
+        $this->assertSame(4, $pengajaran->komponenNilai()->count());
+        $this->assertSame($detailsBefore, NilaiDetail::count());
+        $this->assertDatabaseHas('nilai_akhir_mapel', [
+            'pengajaran_id' => $pengajaran->id,
+            'anggota_kelas_id' => $pengajaran->kelas->anggotaKelas()->firstOrFail()->id,
+        ]);
+    }
+
+    public function test_updating_assignment_kkm_recalculates_student_passing_status(): void
+    {
+        $this->seed();
+        $adminToken = $this->loginAs('test@example.com', 'password');
+        $teacherToken = $this->loginAs('guru@example.com', 'guru12345');
+        $pengajaran = Pengajaran::with(['guru', 'mataPelajaran', 'kelas', 'periode'])
+            ->whereHas('kelas', fn ($q) => $q->where('kode_kelas', 'VII-A'))
+            ->firstOrFail();
+
+        $intan = Siswa::where('nis', '2026009')->firstOrFail();
+        $anggotaIntan = $intan->anggotaKelas()->firstOrFail();
+        $uasKomponen = $pengajaran->komponenNilai()
+            ->where('nama_komponen', 'UAS')
+            ->firstOrFail();
+
+        $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/nilai", [
+                'scores' => [
+                    (string) $intan->id => [
+                        (string) $uasKomponen->id => '80',
+                    ],
+                ],
+            ])
+            ->assertOk();
+
+        $nilaiSebelum = NilaiAkhirMapel::where('pengajaran_id', $pengajaran->id)
+            ->where('anggota_kelas_id', $anggotaIntan->id)
+            ->firstOrFail();
+        $this->assertSame('74.50', $nilaiSebelum->nilai_akhir);
+        $this->assertFalse($nilaiSebelum->is_tuntas);
+
+        $this->withToken($adminToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}", [
+                'teacher' => $pengajaran->guru->nama_lengkap,
+                'subject' => $pengajaran->mataPelajaran->nama_mapel,
+                'className' => $pengajaran->kelas->nama_kelas,
+                'period' => $pengajaran->periode->nama_periode,
+                'kkm' => 74.5,
+            ])
+            ->assertOk();
+
+        $nilaiSesudah = $nilaiSebelum->fresh();
+        $this->assertSame('74.50', $nilaiSesudah->nilai_akhir);
+        $this->assertTrue($nilaiSesudah->is_tuntas);
     }
 
     public function test_admin_can_reset_teacher_password(): void
