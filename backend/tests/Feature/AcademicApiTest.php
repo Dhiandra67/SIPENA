@@ -72,7 +72,7 @@ class AcademicApiTest extends TestCase
             ->assertJsonPath('data.name', 'Zaki Pratama Putra')
             ->assertJsonPath('data.className', 'VII-B');
 
-        // Tambah guru baru (sekaligus membuat user login)
+        // Tambah guru baru tanpa password (sistem membuat password sementara guru12345)
         $this->withToken($token)
             ->postJson('/api/v1/guru', [
                 'nip' => '199205122019031009',
@@ -82,12 +82,28 @@ class AcademicApiTest extends TestCase
                 'status' => 'Aktif',
             ])
             ->assertCreated()
+            ->assertJsonPath('temporaryPassword', 'guru12345')
             ->assertJsonPath('data.email', 'hendra@sekolah.sch.id');
 
         $this->assertDatabaseHas('users', [
             'email' => 'hendra@sekolah.sch.id',
             'role' => 'teacher',
         ]);
+
+        // Guru baru dapat login menggunakan password sementara guru12345 lalu mengubah password di laman profil guru
+        $hendraToken = $this->loginAs('hendra@sekolah.sch.id', 'guru12345');
+
+        $this->withToken($hendraToken)
+            ->putJson('/api/v1/profile', [
+                'name' => 'Hendra Wijaya, S.Pd.',
+                'email' => 'hendra@sekolah.sch.id',
+                'newPassword' => 'hendrabaru123',
+                'confirmation' => 'hendrabaru123',
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Profil dan kata sandi akun berhasil diperbarui.');
+
+        $this->loginAs('hendra@sekolah.sch.id', 'hendrabaru123');
     }
 
     public function test_teacher_cannot_access_admin_write_endpoints(): void
