@@ -1272,7 +1272,8 @@ function TeacherPanel({
   function profilePage() {
     async function saveProfile(event: FormEvent<HTMLFormElement>) {
       event.preventDefault();
-      const formData = new FormData(event.currentTarget);
+      const formElement = event.currentTarget;
+      const formData = new FormData(formElement);
       const name = String(formData.get("name") ?? "").trim();
       const nextEmail = String(formData.get("email") ?? "").trim();
       const newPassword = String(formData.get("newPassword") ?? "");
@@ -1308,7 +1309,14 @@ function TeacherPanel({
         setProfileName(name);
         setProfileEmail(nextEmail);
         onProfileChange(name);
-        setNotice("Profil berhasil diperbarui.");
+        const newPasswordInput = formElement.elements.namedItem("newPassword") as HTMLInputElement | null;
+        const confirmationInput = formElement.elements.namedItem("confirmation") as HTMLInputElement | null;
+        if (newPasswordInput) newPasswordInput.value = "";
+        if (confirmationInput) confirmationInput.value = "";
+        setNotice(
+          payload?.message ??
+            (newPassword ? "Profil dan kata sandi berhasil diperbarui." : "Profil berhasil diperbarui."),
+        );
       } catch {
         setNotice("Tidak dapat terhubung ke server backend. Profil gagal diperbarui.");
       }
@@ -1316,18 +1324,41 @@ function TeacherPanel({
 
     return (
       <>
-        {pageHeading("Kelola informasi kontak dan kata sandi akun Anda.")}
+        {pageHeading("Kelola informasi kontak dan ubah kata sandi akun Anda.")}
         <section className="teacher-card teacher-profile-card">
           <div className="teacher-profile-avatar" aria-hidden="true">{profileName.trim().charAt(0).toUpperCase() || "G"}</div>
           <div><h2>{profileName}</h2><p>Guru Mata Pelajaran · {profileEmail}</p><span className="teacher-status-chip">Akun aktif</span></div>
         </section>
         <form className="teacher-card teacher-profile-form" onSubmit={saveProfile}>
-          <div className="teacher-card-heading"><div><h2>Informasi Profil</h2><p>Perbarui informasi yang digunakan pada akun Anda.</p></div></div>
+          <div className="teacher-card-heading">
+            <div>
+              <h2>Informasi Profil &amp; Ubah Kata Sandi</h2>
+              <p>Perbarui informasi profil atau ganti kata sandi sementara (guru12345) dengan kata sandi baru Anda.</p>
+            </div>
+          </div>
           <div className="teacher-profile-fields">
-            <label>Nama lengkap<input defaultValue={profileName} name="name" required /></label>
-            <label>Email<input defaultValue={profileEmail} name="email" required type="email" /></label>
-            <label>Kata sandi baru <span>(opsional)</span><input autoComplete="new-password" name="newPassword" type="password" /></label>
-            <label>Konfirmasi kata sandi<input autoComplete="new-password" name="confirmation" type="password" /></label>
+            <label>Nama lengkap<input defaultValue={profileName} key={`name-${profileName}`} name="name" required /></label>
+            <label>Email<input defaultValue={profileEmail} key={`email-${profileEmail}`} name="email" required type="email" /></label>
+            <label>
+              Kata sandi baru <span>(opsional, min. 8 karakter)</span>
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                name="newPassword"
+                placeholder="Kosongkan jika tidak ingin mengubah kata sandi"
+                type="password"
+              />
+            </label>
+            <label>
+              Konfirmasi kata sandi baru
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                name="confirmation"
+                placeholder="Ulangi kata sandi baru"
+                type="password"
+              />
+            </label>
           </div>
           <div className="teacher-form-actions"><button className="teacher-primary-button" type="submit">Simpan perubahan</button></div>
         </form>

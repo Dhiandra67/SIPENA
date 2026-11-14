@@ -31,12 +31,13 @@ class GuruController extends Controller
     public function store(Request $request): JsonResponse
     {
         $payload = $this->validateGuru($request);
+        $temporaryPassword = 'guru12345';
 
-        $guru = DB::transaction(function () use ($payload): Guru {
+        $guru = DB::transaction(function () use ($payload, $temporaryPassword): Guru {
             $user = User::create([
                 'name' => $payload['nama_lengkap'],
                 'email' => $payload['email'],
-                'password' => $payload['password'],
+                'password' => $temporaryPassword,
                 'role' => 'teacher',
                 'is_active' => $payload['is_active'],
             ]);
@@ -54,7 +55,8 @@ class GuruController extends Controller
         $guru->load('user');
 
         return response()->json([
-            'message' => "Data guru berhasil ditambahkan. Akun login ({$payload['email']}) aktif dengan kata sandi awal: {$payload['password']}",
+            'message' => "Data guru berhasil ditambahkan. Sistem telah membuat kata sandi sementara untuk akun ({$payload['email']}): {$temporaryPassword}",
+            'temporaryPassword' => $temporaryPassword,
             'data' => $this->formatGuru($guru),
         ], 201);
     }

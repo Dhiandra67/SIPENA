@@ -36,8 +36,11 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $name = trim((string) ($request->input('name') ?? $request->input('nama_lengkap') ?? ''));
-        $email = strtolower(trim((string) ($request->input('email') ?? '')));
+        $guru = Guru::where('user_id', $user->id)->first();
+        $defaultName = $guru?->nama_lengkap ?? $user->name;
+
+        $name = trim((string) ($request->input('name') ?? $request->input('nama_lengkap') ?? $defaultName));
+        $email = strtolower(trim((string) ($request->input('email') ?? $user->email)));
         $newPassword = (string) ($request->input('newPassword') ?? $request->input('password') ?? '');
         $confirmation = (string) ($request->input('confirmation') ?? $request->input('password_confirmation') ?? $newPassword);
 
@@ -94,7 +97,9 @@ class ProfileController extends Controller
         });
 
         $response = $this->show($request)->getData(true);
-        $response['message'] = 'Profil akun berhasil diperbarui.';
+        $response['message'] = $newPassword !== ''
+            ? 'Profil dan kata sandi akun berhasil diperbarui.'
+            : 'Profil akun berhasil diperbarui.';
 
         return response()->json($response);
     }
