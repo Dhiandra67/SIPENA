@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AuthUser } from "../Login/auth";
 import AdminPanel from "./AdminPanel";
-import TeacherPanel from "./TeacherPanel";
+import TeacherPanel from "../Teacher/TeacherPanel";
 import "./Dashboard.css";
 
 type IconName =
@@ -71,12 +71,8 @@ const adminNavigation: { label: string; icon: IconName; href: string }[] = [
 
 const teacherNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Dashboard", icon: "dashboard", href: "#dashboard" },
-  { label: "Pengajaran Saya", icon: "subjects", href: "#assignments" },
   { label: "Pengaturan Komponen Nilai", icon: "settings", href: "#grade-settings" },
   { label: "Input dan Kelola Nilai", icon: "grades", href: "#grade-entry" },
-  { label: "Data Siswa", icon: "students", href: "#students" },
-  { label: "Statistik", icon: "tasks", href: "#statistics" },
-  { label: "Laporan Nilai Mapel", icon: "classes", href: "#reports" },
   { label: "Profil Saya", icon: "teacher", href: "#profile" },
 ];
 
@@ -106,7 +102,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
           <Icon name="brand" />
           <span>
             <strong>SIPENA</strong>
-            <small>{isAdmin ? "ADMIN PANEL" : "TEACHER PANEL"}</small>
+            <small>{isAdmin ? "ADMIN PANEL" : "GURU MATA PELAJARAN"}</small>
           </span>
         </a>
         <nav className="sidebar-navigation" aria-label="Navigasi utama">
@@ -131,7 +127,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
       <div className="dashboard-main">
         <header className="dashboard-topbar">
           <span>
-            {isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran & Wali Kelas"}
+            {isAdmin ? "Panel Administrasi" : "Guru Mata Pelajaran"}
           </span>
           <div className="topbar-user">
             <strong>{displayName}</strong>
