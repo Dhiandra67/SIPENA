@@ -1,4 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { getStoredAccessToken, login } from "../Login/auth";
 import "./AdminPanel.css";
 
@@ -130,7 +131,7 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
   },
   teachers: {
     title: "Data Guru",
-    description: "Kelola profil guru, akun login, dan reset kata sandi (default awal: guru12345).",
+    description: "Kelola profil dan akun login guru. Saat guru ditambahkan, sistem otomatis membuat kata sandi sementara guru12345.",
     addLabel: "Tambah guru",
     columns: [
       { key: "nip", label: "NIP" },
@@ -144,13 +145,6 @@ const sectionConfig: Record<AdminRoute, AdminSection> = {
       { key: "gender", label: "Jenis kelamin", type: "select", options: ["L", "P"] },
       { key: "email", label: "Email akun", type: "email" },
       { key: "status", label: "Status akun", type: "select", options: ["Aktif", "Tidak aktif"] },
-      {
-        key: "password",
-        label: "Kata sandi akun (opsional)",
-        type: "password",
-        required: false,
-        placeholder: "Kosongkan = default guru12345 (min. 8 karakter jika diisi)",
-      },
     ],
     searchKeys: ["nip", "name", "email"],
   },
@@ -248,7 +242,6 @@ function parseCsv(text: string): string[][] {
 }
 
 async function downloadSpreadsheet(filename: string, rows: string[][]) {
-  const XLSX = (await import("@e965/xlsx/dist/xlsx.mini.min.js")).default;
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa");
@@ -771,7 +764,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       if (file.name.toLowerCase().endsWith(".csv")) {
         parsedRows = parseCsv(await file.text());
       } else {
-        const XLSX = (await import("@e965/xlsx/dist/xlsx.mini.min.js")).default;
         const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!firstSheet) {
@@ -1171,8 +1163,8 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                   ))}
                 {currentRoute === "teachers" && (
                   <div>
-                    <dt>Info Kata Sandi Login</dt>
-                    <dd>Default awal: guru12345 (gunakan tombol Reset Sandi atau Edit untuk mengganti)</dd>
+                    <dt>Kata Sandi Sementara</dt>
+                    <dd>guru12345 (dibuat otomatis oleh sistem; guru dapat mengubahnya melalui halaman Guru)</dd>
                   </div>
                 )}
                 {currentRoute === "assignments" && (
@@ -1193,22 +1185,12 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                 <dl className="admin-detail-list">
                   <div><dt>Nama Guru</dt><dd>{selectedRecord.name} (NIP: {selectedRecord.nip})</dd></div>
                   <div><dt>Email Login</dt><dd>{selectedRecord.email}</dd></div>
+                  <div><dt>Kata Sandi Sementara</dt><dd><code>guru12345</code> (dibuat otomatis oleh sistem)</dd></div>
                 </dl>
-                <label>
-                  Kata sandi baru (minimal 8 karakter)
-                  <input
-                    defaultValue="guru12345"
-                    minLength={8}
-                    name="password"
-                    placeholder="Masukkan kata sandi baru (default: guru12345)"
-                    required
-                    type="text"
-                  />
-                </label>
                 {formError && <p className="admin-form-error" role="alert">{formError}</p>}
                 <div className="admin-dialog-actions">
                   <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>
-                  <button className="admin-primary-button" type="submit">Reset Kata Sandi</button>
+                  <button className="admin-primary-button" type="submit">Reset ke guru12345</button>
                 </div>
               </form>
             ) : dialogMode === "copy-period" && selectedRecord ? (
@@ -1300,6 +1282,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                     </label>
                   );
                 })}
+                {currentRoute === "teachers" && dialogMode === "create" && (
+                  <p className="admin-demo-notice" role="note">
+                    Akun guru ditambahkan tanpa kata sandi. Sistem akan membuat kata sandi sementara <strong>guru12345</strong> secara otomatis.
+                  </p>
+                )}
                 {formError && <p className="admin-form-error" role="alert">{formError}</p>}
                 <div className="admin-dialog-actions">
                   <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>

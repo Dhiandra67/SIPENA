@@ -97,6 +97,13 @@ class GuruPenilaianController extends Controller
             ];
         }
 
+        $componentIds = array_filter(array_column($normalized, 'id'), fn (?int $id) => $id !== null);
+        if (count($componentIds) !== count(array_unique($componentIds))) {
+            return response()->json([
+                'message' => 'ID komponen tidak boleh digunakan lebih dari satu kali.',
+            ], 422);
+        }
+
         if (! $this->gradeService->hasValidWeights($normalized)) {
             return response()->json([
                 'message' => 'Total bobot harus tepat 100% dan setiap bobot lebih dari 0%.',

@@ -10,12 +10,17 @@ use App\Models\Pengajaran;
 use App\Models\PeriodeAkademik;
 use App\Models\RentangNilai;
 use App\Models\Siswa;
+use App\Services\GradeCalculationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PengajaranController extends Controller
 {
+    public function __construct(
+        private readonly GradeCalculationService $gradeService
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -78,7 +83,12 @@ class PengajaranController extends Controller
     {
         $pengajaran = Pengajaran::findOrFail($id);
         $payload = $this->validatePengajaran($request, $pengajaran->id, $pengajaran);
-        $pengajaran->update($payload);
+
+        DB::transaction(function () use ($pengajaran, $payload): void {
+            $pengajaran->update($payload);
+            $this->gradeService->recalculateForPengajaran($pengajaran);
+        });
+
         $pengajaran->load(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
 
         return response()->json([
