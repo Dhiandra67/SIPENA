@@ -61,6 +61,60 @@ describe("alur aplikasi", () => {
     expect(screen.getByText("Panel admin teruji")).toBeInTheDocument();
   });
 
+  it("memungkinkan admin mengedit profil dan memperbarui ke backend", async () => {
+    vi.mocked(restoreSession).mockResolvedValue(admin);
+    const fetchMock = vi.fn().mockImplementation((_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            message: "Profil akun berhasil diperbarui.",
+            data: { name: "Admin Utama SIPENA", email: "admin.utama@example.com", status: "Aktif" },
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: { name: admin.name, email: admin.email, status: "Aktif" },
+        }),
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: /admin sipena/i }));
+    fireEvent.click(screen.getByRole("button", { name: /edit profil & ubah sandi/i }));
+
+    fireEvent.change(screen.getByLabelText(/nama lengkap/i), {
+      target: { value: "Admin Utama SIPENA" },
+    });
+    fireEvent.change(screen.getByLabelText(/email login/i), {
+      target: { value: "admin.utama@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan Perubahan" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/v1/profile",
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({
+            name: "Admin Utama SIPENA",
+            email: "admin.utama@example.com",
+            newPassword: "",
+            confirmation: "",
+          }),
+        }),
+      );
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Profil akun berhasil diperbarui.",
+    );
+  });
+
   it("menampilkan navigasi guru dan dapat membuka menu seluler", async () => {
     vi.mocked(restoreSession).mockResolvedValue(teacher);
     render(<App />);
