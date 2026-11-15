@@ -15,6 +15,8 @@ function AdminEntityPage({
   fileActions,
   footerNote,
   renderCell,
+  isLoading = false,
+  isBackendSynced = false,
 }: AdminEntityPageProps) {
   return (
     <div className="admin-panel">
@@ -86,7 +88,7 @@ function AdminEntityPage({
               {visibleRows.length === 0 && (
                 <tr>
                   <td className="admin-empty" colSpan={section.columns.length + 1}>
-                    Data tidak ditemukan.
+                    {isLoading ? "Memuat data dari database..." : "Data tidak ditemukan."}
                   </td>
                 </tr>
               )}
@@ -100,7 +102,11 @@ function AdminEntityPage({
       </section>
 
       <div className="admin-demo-notice" role="note">
-        Perubahan saat ini hanya tersimpan selama halaman digunakan. Integrasi endpoint backend belum tersedia.
+        {isLoading
+          ? "Menghubungkan ke database SIPENA..."
+          : isBackendSynced
+            ? "Terhubung ke database SIPENA — perubahan tersimpan langsung ke server."
+            : "Tidak terhubung ke server backend SIPENA. Pastikan server backend aktif agar data tersimpan."}
       </div>
     </div>
   );
