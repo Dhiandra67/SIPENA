@@ -4,6 +4,6 @@
   "scripts": {
     "dev": "php backend/artisan serve",
     "start": "php backend/artisan serve",
-    "test": "php backend/artisan test"
+    "test": "cd backend && php artisan test"
   }
 }

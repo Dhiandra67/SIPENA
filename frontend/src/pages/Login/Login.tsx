@@ -88,47 +88,23 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
     setMessage("");
     setIsSubmitting(true);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
-      const normalizedEmail = email.trim().toLowerCase();
-
-      if (
-        import.meta.env.DEV &&
-        normalizedEmail === "guru@example.com" &&
-        password === "guru12345"
-      ) {
-        onLoginSuccess({
-          id: "teacher-demo",
-          name: "Guru Demo",
-          email: normalizedEmail,
-          role: "teacher",
-        });
-        return;
-      }
-
-      if (
-        import.meta.env.DEV &&
-        normalizedEmail === "test@example.com" &&
-        password === "password"
-      ) {
-        onLoginSuccess({
-          id: "admin-demo",
-          name: "Admin Demo",
-          email: normalizedEmail,
-          role: "admin",
-        });
-        return;
-      }
-
       const result = await login({ email: normalizedEmail, password }, rememberMe);
       setMessage(`Berhasil masuk. Selamat datang, ${result.user.name}.`);
       setMessageType("success");
       onLoginSuccess(result.user);
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Terjadi kesalahan saat menghubungi server. Silakan coba lagi.",
-      );
+      if (error instanceof TypeError) {
+        setMessage("Tidak dapat terhubung ke server backend. Pastikan server backend sedang aktif.");
+      } else {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat menghubungi server. Silakan coba lagi.",
+        );
+      }
       setMessageType("error");
     } finally {
       setIsSubmitting(false);
@@ -160,9 +136,9 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
 
             {import.meta.env.DEV && (
               <aside className="demo-credentials" aria-label="Kredensial akun demo">
-                <strong>Akun demo — hanya untuk demonstrasi</strong>
+                <strong>Akun hasil database seeding (mode pengembangan)</strong>
                 <div className="demo-account">
-                  <span className="demo-role">Admin</span>
+                  <span className="demo-role">Admin (Database Seeding)</span>
                   <span>Email: <code>test@example.com</code></span>
                   <span>Kata sandi: <code>password</code></span>
                   <button
@@ -177,7 +153,7 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
                   </button>
                 </div>
                 <div className="demo-account">
-                  <span className="demo-role">Guru</span>
+                  <span className="demo-role">Guru (Sandi Sementara)</span>
                   <span>Email: <code>guru@example.com</code></span>
                   <span>Kata sandi: <code>guru12345</code></span>
                   <button
@@ -253,7 +229,7 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
                 className="text-button forgot-link"
                 onClick={() => {
                   setMessage(
-                    "Hubungi admin sekolah untuk mendapatkan bantuan reset kata sandi.",
+                    "Hubungi admin sekolah untuk mereset kata sandi ke sandi sementara (guru12345).",
                   );
                   setMessageType("info");
                 }}
@@ -287,7 +263,7 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
               className="text-button contact-link"
               onClick={() => {
                 setMessage(
-                  "Silakan hubungi admin sekolah untuk membuat atau memulihkan akun.",
+                  "Akun admin dibuat melalui database seeding, sedangkan akun guru ditambahkan oleh admin sekolah dengan kata sandi sementara guru12345.",
                 );
                 setMessageType("info");
               }}

@@ -27,8 +27,16 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if (! ($user->is_active ?? true)) {
+            return response()->json([
+                'message' => 'Akun Anda sedang dinonaktifkan. Silakan hubungi Admin Sekolah.',
+            ], 403);
+        }
+
         $plainTextToken = Str::random(80);
         $now = now();
+
+        $user->update(['last_login_at' => $now]);
 
         DB::table('api_tokens')->insert([
             'user_id' => $user->id,

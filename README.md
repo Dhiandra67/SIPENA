@@ -143,7 +143,23 @@ npm.cmd run dev
 
 Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` dari folder `frontend` juga menjalankan frontend. Gunakan `npm.cmd` di PowerShell agar tidak diblokir oleh execution policy yang mencegah `npm.ps1` berjalan. Frontend meneruskan request `/api` ke backend Laravel di `http://127.0.0.1:8000`.
 
+<<<<<<< HEAD
 Backend menyediakan `GET /api/health` dan autentikasi bearer token melalui `POST /api/auth/login`. Di environment local/testing, seeder membuat akun demo admin (`test@example.com` / `password`) dan guru (`guru@example.com` / `guru12345`); kredensial ini ditampilkan di frontend mode development dan tidak boleh digunakan di production. Frontend mode development juga menyediakan mode pratinjau tanpa login untuk mencoba navigasi UI; mode ini tidak memberi akses ke API. Jika backend belum tersedia, kedua kredensial demo dapat membuka panel sesuai role secara lokal tanpa token. Endpoint `GET /api/auth/me` memeriksa sesi, sementara `POST /api/auth/logout` mencabut token. Rincian integrasi frontend ada di [frontend/README.md](frontend/README.md).
+=======
+Backend menyediakan `GET /api/health` dan autentikasi bearer token melalui `POST /api/auth/login`. Akun Admin dibuat melalui database seeding (`php artisan db:seed`, default: `test@example.com` / `password` atau dapat dikonfigurasi melalui variabel `.env` `ADMIN_EMAIL`, `ADMIN_NAME`, dan `ADMIN_PASSWORD`). Akun Guru ditambahkan oleh Admin melalui menu **Data Guru** tanpa menginput kata sandi; sistem secara otomatis menetapkan kata sandi sementara `guru12345`, dan Guru tetap dapat mengubah kata sandinya sendiri di halaman Guru (menu **Profil Saya**). Endpoint `GET /api/auth/me` memeriksa sesi, sementara `POST /api/auth/logout` mencabut token. Rincian integrasi frontend ada di [frontend/README.md](frontend/README.md).
+
+### Pengujian backend
+
+Dari folder `backend`, jalankan seluruh tes fitur dan unit dengan:
+
+```powershell
+php artisan test
+```
+
+Tes kalkulasi nilai juga memeriksa jumlah query statistik pada kelas yang
+diperbesar untuk mencegah regresi pola N+1. Rincian tes frontend dan pemeriksaan
+ukuran build ada di [frontend/README.md](frontend/README.md).
+>>>>>>> 4266b6b23b6426f7dad1ba20d0fb4c6dcba9703e
 
 ## Kontribusi Terhadap SDGs Desa
 

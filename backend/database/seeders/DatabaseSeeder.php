@@ -15,15 +15,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        if (! app()->environment(['local', 'testing'])) {
-            throw new \RuntimeException('The demo account can only be seeded in local or testing environments.');
-        }
+        $adminEmail = (string) env('ADMIN_EMAIL', 'test@example.com');
+        $adminName = (string) env('ADMIN_NAME', 'Admin Demo');
+        $adminPassword = (string) env('ADMIN_PASSWORD', 'password');
 
-        User::updateOrCreate(['email' => 'test@example.com'], [
-            'name' => 'Admin Demo',
+        User::updateOrCreate(['email' => $adminEmail], [
+            'name' => $adminName,
             'role' => 'admin',
-            'email' => 'test@example.com',
-            'password' => 'password',
+            'email' => $adminEmail,
+            'password' => $adminPassword,
+            'is_active' => true,
         ]);
 
         User::updateOrCreate(['email' => 'guru@example.com'], [
@@ -31,6 +32,9 @@ class DatabaseSeeder extends Seeder
             'role' => 'teacher',
             'email' => 'guru@example.com',
             'password' => 'guru12345',
+            'is_active' => true,
         ]);
+
+        $this->call(AcademicGradingSeeder::class);
     }
 }

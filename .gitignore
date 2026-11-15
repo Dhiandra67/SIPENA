@@ -8,3 +8,14 @@ backend/storage/*.key
 backend/public/build/
 backend/public/hot
 backend/.phpunit.cache/
+# Vite
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+# VS Code personal settings
+.vscode/settings.json
+
+# Vite
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
