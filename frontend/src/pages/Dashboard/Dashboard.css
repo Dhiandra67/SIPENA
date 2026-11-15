@@ -681,56 +681,57 @@
 }
 
 .teacher-dashboard .dashboard-sidebar {
-  width: 196px;
-  padding: 16px 10px 14px;
+  width: 250px;
+  padding: 20px 14px 16px;
 }
 
 .teacher-dashboard .dashboard-main {
-  width: calc(100% - 196px);
-  margin-left: 196px;
+  width: calc(100% - 250px);
+  margin-left: 250px;
 }
 
 .teacher-dashboard .dashboard-brand {
-  min-height: 36px;
-  gap: 9px;
+  min-height: 42px;
+  gap: 11px;
 }
 
 .teacher-dashboard .dashboard-brand strong {
-  font-size: 11px;
-}
-
-.teacher-dashboard .dashboard-brand small {
-  font-size: 8px;
-}
-
-.teacher-dashboard .dashboard-brand-mark {
-  width: 30px;
-  height: 30px;
-  flex-basis: 30px;
-  border-radius: 7px;
   font-size: 13px;
 }
 
+.teacher-dashboard .dashboard-brand small {
+  font-size: 9px;
+}
+
+.teacher-dashboard .dashboard-brand-mark {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+  border-radius: 9px;
+  font-size: 16px;
+}
+
 .teacher-dashboard .sidebar-navigation {
-  gap: 5px;
+  gap: 6px;
+  margin-top: 14px;
 }
 
 .teacher-dashboard .navigation-link {
-  min-height: 34px;
-  gap: 9px;
-  padding: 6px 9px;
-  font-size: 10px;
+  min-height: 40px;
+  gap: 10px;
+  padding: 8px 11px;
+  font-size: 12px;
 }
 
 .teacher-dashboard .navigation-link .dashboard-icon {
-  width: 13px;
-  height: 13px;
-  flex-basis: 13px;
+  width: 15px;
+  height: 15px;
+  flex-basis: 15px;
 }
 
 .teacher-dashboard .sidebar-logout {
-  min-height: 32px;
-  font-size: 10px;
+  min-height: 38px;
+  font-size: 11px;
 }
 
 .teacher-dashboard .dashboard-topbar {
@@ -1926,6 +1927,10 @@
   .teacher-dashboard .dashboard-main {
     width: 100%;
     margin: 0;
+  }
+
+  .teacher-dashboard .dashboard-sidebar {
+    display: none;
   }
 
   .teacher-dashboard .mobile-dashboard-header {

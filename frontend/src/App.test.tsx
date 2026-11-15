@@ -12,7 +12,7 @@ vi.mock("./pages/Login/auth", () => ({
   restoreSession: vi.fn(),
 }));
 
-vi.mock("./pages/Dashboard/AdminPanel", () => ({
+vi.mock("./pages/Admin/AdminPanel", () => ({
   default: () => <div>Panel admin teruji</div>,
 }));
 
