@@ -52,6 +52,7 @@ class GuruPenilaianController extends Controller
             'data' => $payload['assignments'][0] ?? null,
             'components' => $payload['componentsByAssignment'][(string) $pengajaran->id] ?? [],
             'scores' => $payload['scores'],
+            'scoreEntries' => $payload['scoreEntries'],
             'statistics' => $this->gradeService->calculateStatistics($pengajaran),
         ]);
     }
@@ -186,8 +187,36 @@ class GuruPenilaianController extends Controller
                 'assignment' => $payload['assignments'][0] ?? null,
                 'components' => $payload['componentsByAssignment'][(string) $pengajaran->id] ?? [],
                 'scores' => $payload['scores'],
+                'scoreEntries' => $payload['scoreEntries'],
                 'finalGrades' => $pengajaran->nilaiAkhirMapel()->get(),
             ],
+        ]);
+    }
+
+    public function updateKkm(Request $request, int $id): JsonResponse
+    {
+        $pengajaran = $this->findAuthorizedPengajaran($request, $id);
+        if ($pengajaran->is_locked || ! ($pengajaran->periode?->is_active ?? true)) {
+            return response()->json([
+                'message' => 'KKM pengajaran ini telah dikunci atau berada pada periode arsip.',
+            ], 422);
+        }
+
+        $kkm = $request->input('kkm');
+        if (! is_numeric($kkm) || (float) $kkm < 0 || (float) $kkm > 100) {
+            return response()->json([
+                'message' => 'KKM harus berupa angka antara 0 dan 100.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($pengajaran, $kkm): void {
+            $pengajaran->update(['kkm' => round((float) $kkm, 2)]);
+            $this->gradeService->recalculateForPengajaran($pengajaran);
+        });
+
+        return response()->json([
+            'message' => 'KKM berhasil disimpan dan status ketuntasan telah diperbarui.',
+            'data' => $this->buildTeacherWorkspacePayload($this->resolveTeacherPengajaranList($request)),
         ]);
     }
 
@@ -209,6 +238,10 @@ class GuruPenilaianController extends Controller
         if (! is_array($scoresInput)) {
             return response()->json(['message' => 'Format data nilai tidak valid.'], 422);
         }
+        $scoreEntriesInput = $request->input('scoreEntries');
+        if ($scoreEntriesInput !== null && ! is_array($scoreEntriesInput)) {
+            return response()->json(['message' => 'Format entri nilai tidak valid.'], 422);
+        }
 
         $upserts = [];
         $deletes = [];
@@ -216,6 +249,13 @@ class GuruPenilaianController extends Controller
         foreach ($scoresInput as $studentKey => $componentScores) {
             if (! is_array($componentScores)) {
                 continue;
+            }
+            if (
+                is_array($scoreEntriesInput)
+                && array_key_exists($studentKey, $scoreEntriesInput)
+                && ! is_array($scoreEntriesInput[$studentKey])
+            ) {
+                return response()->json(['message' => 'Format entri nilai siswa tidak valid.'], 422);
             }
 
             /** @var AnggotaKelas|null $anggota */
@@ -231,8 +271,39 @@ class GuruPenilaianController extends Controller
                     continue;
                 }
 
-                $trimmed = is_string($rawScore) ? trim(str_replace(',', '.', $rawScore)) : $rawScore;
-                if ($trimmed === '' || $trimmed === null) {
+                $studentEntries = $scoreEntriesInput[$studentKey] ?? null;
+                $hasEntries = is_array($studentEntries) && array_key_exists($compKey, $studentEntries);
+                $rawEntries = $hasEntries ? $studentEntries[$compKey] : null;
+                if ($hasEntries && (! is_array($rawEntries) || ! array_is_list($rawEntries))) {
+                    return response()->json([
+                        'message' => "Format entri nilai untuk komponen {$komponen->nama_komponen} tidak valid.",
+                    ], 422);
+                }
+
+                $normalizedEntries = [];
+                if ($hasEntries) {
+                    foreach ($rawEntries as $entry) {
+                        $trimmedEntry = is_string($entry) ? trim(str_replace(',', '.', $entry)) : $entry;
+                        if (! is_numeric($trimmedEntry) || (float) $trimmedEntry < 0 || (float) $trimmedEntry > 100) {
+                            return response()->json([
+                                'message' => "Setiap nilai {$komponen->nama_komponen} harus berada pada rentang 0–100.",
+                            ], 422);
+                        }
+                        $normalizedEntries[] = round((float) $trimmedEntry, 2);
+                    }
+                } else {
+                    $trimmed = is_string($rawScore) ? trim(str_replace(',', '.', $rawScore)) : $rawScore;
+                    if ($trimmed !== '' && $trimmed !== null) {
+                        if (! is_numeric($trimmed) || (float) $trimmed < 0 || (float) $trimmed > 100) {
+                            return response()->json([
+                                'message' => "Nilai untuk komponen {$komponen->nama_komponen} harus berada pada rentang 0–100.",
+                            ], 422);
+                        }
+                        $normalizedEntries[] = round((float) $trimmed, 2);
+                    }
+                }
+
+                if ($normalizedEntries === []) {
                     $deletes[] = [
                         'komponen_id' => $komponen->id,
                         'anggota_kelas_id' => $anggota->id,
@@ -241,16 +312,11 @@ class GuruPenilaianController extends Controller
                     continue;
                 }
 
-                if (! is_numeric($trimmed) || (float) $trimmed < 0 || (float) $trimmed > 100) {
-                    return response()->json([
-                        'message' => "Nilai untuk komponen {$komponen->nama_komponen} harus berada pada rentang 0–100.",
-                    ], 422);
-                }
-
                 $upserts[] = [
                     'komponen_id' => $komponen->id,
                     'anggota_kelas_id' => $anggota->id,
-                    'nilai_angka' => round((float) $trimmed, 2),
+                    'nilai_angka' => round(array_sum($normalizedEntries) / count($normalizedEntries), 2),
+                    'nilai_entri' => $normalizedEntries,
                 ];
             }
         }
@@ -272,6 +338,7 @@ class GuruPenilaianController extends Controller
                     ],
                     [
                         'nilai_angka' => $item['nilai_angka'],
+                        'nilai_entri' => $item['nilai_entri'],
                         'updated_by' => $userId,
                     ]
                 );
@@ -380,6 +447,7 @@ class GuruPenilaianController extends Controller
         $assignments = [];
         $componentsByAssignment = [];
         $scores = [];
+        $scoreEntries = [];
 
         $allKomponenIds = $pengajaranList->flatMap(fn (Pengajaran $p) => $p->komponenNilai->pluck('id'))->all();
         $allAnggotaIds = $pengajaranList->flatMap(
@@ -441,6 +509,11 @@ class GuruPenilaianController extends Controller
             $compId = (string) $detail->komponen_id;
             $formattedVal = rtrim(rtrim(number_format((float) $detail->nilai_angka, 2, '.', ''), '0'), '.');
             $scores[$studentId][$compId] = $formattedVal;
+            $entries = $detail->nilai_entri ?? [(float) $detail->nilai_angka];
+            $scoreEntries[$studentId][$compId] = array_map(
+                fn ($entry) => rtrim(rtrim(number_format((float) $entry, 2, '.', ''), '0'), '.'),
+                $entries,
+            );
         }
 
         $firstPeriodeId = $selectedPeriode?->id ?? $pengajaranList->first()?->periode_id;
@@ -467,6 +540,7 @@ class GuruPenilaianController extends Controller
             'assignments' => $assignments,
             'componentsByAssignment' => $componentsByAssignment,
             'scores' => (object) $scores,
+            'scoreEntries' => (object) $scoreEntries,
             'grades' => $grades,
             'periods' => $allPeriods,
             'selectedPeriod' => $selectedPeriode?->nama_periode ?? ($pengajaranList->first()?->periode?->nama_periode ?? ''),

@@ -188,6 +188,49 @@ class AcademicApiTest extends TestCase
             ->assertJsonPath('data.nilai_lengkap', 4);
     }
 
+    public function test_teacher_can_save_multiple_score_entries_and_workspace_returns_the_average(): void
+    {
+        $this->seed();
+        $teacherToken = $this->loginAs('guru@example.com', 'guru12345');
+        $pengajaran = Pengajaran::whereHas('kelas', fn ($q) => $q->where('kode_kelas', 'VII-A'))->firstOrFail();
+        $intan = Siswa::where('nis', '2026009')->firstOrFail();
+        $uasKomponen = $pengajaran->komponenNilai()
+            ->where('nama_komponen', 'UAS')
+            ->firstOrFail();
+
+        $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/nilai", [
+                'scores' => [
+                    (string) $intan->id => [(string) $uasKomponen->id => '85'],
+                ],
+                'scoreEntries' => [
+                    (string) $intan->id => [(string) $uasKomponen->id => ['80', '90']],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.scores.'.$intan->id.'.'.$uasKomponen->id, '85')
+            ->assertJsonPath('data.scoreEntries.'.$intan->id.'.'.$uasKomponen->id, ['80', '90']);
+
+        $detail = NilaiDetail::where('komponen_id', $uasKomponen->id)
+            ->where('anggota_kelas_id', $intan->anggotaKelas()->firstOrFail()->id)
+            ->firstOrFail();
+        $this->assertSame('85.00', $detail->nilai_angka);
+        $this->assertSame([80, 90], $detail->nilai_entri);
+
+        $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/nilai", [
+                'scores' => [
+                    (string) $intan->id => [(string) $uasKomponen->id => '85'],
+                ],
+                'scoreEntries' => [
+                    (string) $intan->id => [(string) $uasKomponen->id => ['80', '101']],
+                ],
+            ])
+            ->assertUnprocessable();
+
+        $this->assertSame([80, 90], $detail->fresh()->nilai_entri);
+    }
+
     public function test_teacher_cannot_submit_duplicate_component_ids(): void
     {
         $this->seed();
@@ -258,6 +301,13 @@ class AcademicApiTest extends TestCase
         $nilaiSesudah = $nilaiSebelum->fresh();
         $this->assertSame('74.50', $nilaiSesudah->nilai_akhir);
         $this->assertTrue($nilaiSesudah->is_tuntas);
+
+        $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/kkm", ['kkm' => 75])
+            ->assertOk()
+            ->assertJsonPath('data.assignments.0.kkm', 75);
+
+        $this->assertFalse($nilaiSesudah->fresh()->is_tuntas);
     }
 
     public function test_admin_can_reset_teacher_password(): void
@@ -312,6 +362,10 @@ class AcademicApiTest extends TestCase
             ->putJson("/api/v1/pengajaran/{$pengajaran->id}/nilai", [
                 'scores' => [],
             ])
+            ->assertStatus(422);
+
+        $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/kkm", ['kkm' => 70])
             ->assertStatus(422);
 
         // Admin membuka kembali kunci nilai

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'komponen_id',
     'anggota_kelas_id',
     'nilai_angka',
+    'nilai_entri',
     'catatan',
     'updated_by',
 ])]
@@ -21,6 +22,7 @@ class NilaiDetail extends Model
     {
         return [
             'nilai_angka' => 'decimal:2',
+            'nilai_entri' => 'array',
         ];
     }
 

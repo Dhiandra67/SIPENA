@@ -66,6 +66,7 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
         Route::get('/pengajaran/{id}', [GuruPenilaianController::class, 'detailPengajaran'])->whereNumber('id');
         Route::get('/pengajaran/{id}/komponen', [GuruPenilaianController::class, 'getKomponen'])->whereNumber('id');
         Route::put('/pengajaran/{id}/komponen', [GuruPenilaianController::class, 'updateKomponen']);
+        Route::put('/pengajaran/{id}/kkm', [GuruPenilaianController::class, 'updateKkm'])->whereNumber('id');
         Route::get('/pengajaran/{id}/nilai', [GuruPenilaianController::class, 'getNilai'])->whereNumber('id');
         Route::put('/pengajaran/{id}/nilai', [GuruPenilaianController::class, 'updateNilai'])->whereNumber('id');
         Route::post('/pengajaran/{id}/nilai/import', [GuruPenilaianController::class, 'importNilai'])->whereNumber('id');

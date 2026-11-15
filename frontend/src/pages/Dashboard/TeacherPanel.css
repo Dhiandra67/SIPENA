@@ -536,6 +536,142 @@
   font-weight: 650;
 }
 
+.teacher-score-entry-dropdown {
+  width: 64px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.teacher-score-entry-trigger {
+  display: flex;
+  width: 64px;
+  min-height: 30px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 5px;
+  border: 1px solid #dfe7df;
+  border-radius: 6px;
+  background: #f8faf7;
+  color: #405d48;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.teacher-score-entry-editor {
+  box-sizing: border-box;
+  display: grid;
+  width: 64px;
+  min-width: 0;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 5px;
+  border: 1px solid #e3e8e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #53645a;
+  font-size: 9px;
+  white-space: normal;
+}
+
+.teacher-score-entry-list {
+  display: grid;
+  max-height: 120px;
+  gap: 3px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.teacher-score-entry-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 3px 0;
+  border-bottom: 1px solid #eff0eb;
+}
+
+.teacher-score-entry-list li > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.teacher-score-entry-list li > div > span {
+  color: #78847c;
+  font-size: 8px;
+}
+
+.teacher-score-entry-editor > small {
+  color: #78847c;
+  font-size: 9px;
+  overflow-wrap: anywhere;
+}
+
+.teacher-score-entry-list li > div > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.teacher-score-entry-list li > button {
+  width: 16px;
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: #a44c43;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+}
+
+.teacher-score-entry-editor form {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.teacher-score-entry-editor form label {
+  min-width: 0;
+  flex: 1;
+}
+
+.teacher-score-entry-editor form input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px;
+  border: 1px solid #dfe5dc;
+  border-radius: 5px;
+  font: inherit;
+}
+
+.teacher-score-entry-editor form .teacher-secondary-button {
+  width: 100%;
+  min-height: 28px;
+  padding: 0 2px;
+  font-size: 8px;
+  white-space: normal;
+}
+
+.teacher-score-entry-trigger:focus-visible {
+  outline: 2px solid #66836f;
+  outline-offset: 2px;
+}
+
+.teacher-score-entry-editor button:focus-visible,
+.teacher-score-entry-editor input:focus-visible {
+  outline: 2px solid #66836f;
+  outline-offset: 1px;
+}
+
 .teacher-empty {
   height: 80px !important;
   color: #7d8981 !important;
@@ -585,6 +721,34 @@
 
 .teacher-assignment-summary strong {
   color: #384B54;
+}
+
+.teacher-kkm-input {
+  width: 100px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid #dfe5dc;
+  border-radius: 6px;
+  color: #384B54;
+  font: inherit;
+}
+
+.teacher-grade-status-filter {
+  min-width: 150px;
+}
+
+.teacher-grade-status-filter select {
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid #dfe5dc;
+  border-radius: 6px;
+  background: #fff;
+  color: #384B54;
+  font: inherit;
+}
+
+.teacher-grade-save-actions {
+  padding: 0 14px 14px;
 }
 
 .teacher-component-list {

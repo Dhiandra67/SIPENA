@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { getStoredAccessToken, login } from "../Login/auth";
+import ScoreEntriesDropdown from "./ScoreEntriesDropdown";
 import "./TeacherPanel.css";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -48,6 +49,7 @@ interface GradeRange {
 }
 
 type ScoreMap = Record<string, Record<string, string>>;
+type ScoreEntriesMap = Record<string, Record<string, string[]>>;
 
 interface TeacherPanelProps {
   route: string;
@@ -169,9 +171,13 @@ function TeacherPanel({
     Record<string, GradeComponent[]>
   >({});
   const [scores, setScores] = useState<ScoreMap>({});
+  const [scoreEntries, setScoreEntries] = useState<ScoreEntriesMap>({});
+  const [kkmDrafts, setKkmDrafts] = useState<Record<string, string>>({});
   const [hasUnsavedScores, setHasUnsavedScores] = useState(false);
   const [hasUnsavedComponents, setHasUnsavedComponents] = useState(false);
+  const [hasUnsavedKkm, setHasUnsavedKkm] = useState(false);
   const [search, setSearch] = useState("");
+  const [gradeStatusFilter, setGradeStatusFilter] = useState("Semua status");
   const [notice, setNotice] = useState("");
   const [profileName, setProfileName] = useState(displayName);
   const [profileEmail, setProfileEmail] = useState(email);
@@ -182,8 +188,8 @@ function TeacherPanel({
   }, [displayName, email]);
 
   useEffect(() => {
-    onUnsavedChange?.(hasUnsavedScores || hasUnsavedComponents);
-  }, [hasUnsavedScores, hasUnsavedComponents, onUnsavedChange]);
+    onUnsavedChange?.(hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm);
+  }, [hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm, onUnsavedChange]);
 
   function getPredicate(score: number | null): string {
     if (score === null) return "—";
@@ -199,6 +205,7 @@ function TeacherPanel({
     assignments?: TeachingAssignment[];
     componentsByAssignment?: Record<string, GradeComponent[]>;
     scores?: ScoreMap;
+    scoreEntries?: ScoreEntriesMap;
     grades?: GradeRange[];
     periods?: { id: string; name: string; isActive: boolean }[];
     selectedPeriod?: string | null;
@@ -211,6 +218,12 @@ function TeacherPanel({
     }
     if (Array.isArray(data.assignments)) {
       setAssignmentList(data.assignments);
+      setKkmDrafts(
+        Object.fromEntries(data.assignments.map((assignment) => [
+          assignment.id,
+          String(assignment.kkm),
+        ])),
+      );
       if (data.assignments.length > 0) {
         const firstId = data.assignments[0].id;
         setSelectedAssignmentId((prev) =>
@@ -233,6 +246,19 @@ function TeacherPanel({
     }
     if (data.scores) {
       setScores(data.scores);
+      setScoreEntries(
+        data.scoreEntries ?? Object.fromEntries(
+          Object.entries(data.scores).map(([studentId, componentScores]) => [
+            studentId,
+            Object.fromEntries(Object.entries(componentScores).map(([componentId, score]) => [
+              componentId,
+              score === "" ? [] : [score],
+            ])),
+          ]),
+        ),
+      );
+    } else if (data.scoreEntries) {
+      setScoreEntries(data.scoreEntries);
     }
     if (data.grades && data.grades.length > 0) {
       setGradeRanges(
@@ -246,18 +272,19 @@ function TeacherPanel({
     }
     setHasUnsavedScores(false);
     setHasUnsavedComponents(false);
+    setHasUnsavedKkm(false);
     setIsBackendSynced(true);
   }
 
   useEffect(() => {
-    if (!hasUnsavedScores && !hasUnsavedComponents) return;
+    if (!hasUnsavedScores && !hasUnsavedComponents && !hasUnsavedKkm) return;
     function handleBeforeUnload(event: BeforeUnloadEvent) {
       event.preventDefault();
       event.returnValue = "";
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedScores, hasUnsavedComponents]);
+  }, [hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm]);
 
   async function ensureTeacherAccessToken(forceRefresh = false): Promise<string | null> {
     const existing = getStoredAccessToken();
@@ -315,6 +342,7 @@ function TeacherPanel({
           assignments?: TeachingAssignment[];
           componentsByAssignment?: Record<string, GradeComponent[]>;
           scores?: ScoreMap;
+          scoreEntries?: ScoreEntriesMap;
           grades?: GradeRange[];
           periods?: { id: string; name: string; isActive: boolean }[];
           selectedPeriod?: string | null;
@@ -408,15 +436,16 @@ function TeacherPanel({
 
   function navigate(nextRoute: string) {
     if (
-      (hasUnsavedScores || hasUnsavedComponents) &&
+      (hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm) &&
       !window.confirm(
-        "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah halaman tanpa menyimpan?",
+        "Ada perubahan nilai, komponen, atau KKM yang belum disimpan ke database. Yakin ingin berpindah halaman tanpa menyimpan?",
       )
     ) {
       return;
     }
     setHasUnsavedScores(false);
     setHasUnsavedComponents(false);
+    setHasUnsavedKkm(false);
     setSearch("");
     setNotice("");
     onNavigate(nextRoute);
@@ -424,33 +453,43 @@ function TeacherPanel({
 
   function openAssignment(assignmentId: string, nextRoute: string) {
     if (
-      (hasUnsavedScores || hasUnsavedComponents) &&
+      (hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm) &&
       !window.confirm(
-        "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah kelas tanpa menyimpan?",
+        "Ada perubahan nilai, komponen, atau KKM yang belum disimpan ke database. Yakin ingin berpindah kelas tanpa menyimpan?",
       )
     ) {
       return;
     }
     setHasUnsavedScores(false);
     setHasUnsavedComponents(false);
+    setHasUnsavedKkm(false);
     setSelectedAssignmentId(assignmentId);
     setSearch("");
     setNotice("");
     onNavigate(nextRoute);
   }
 
-  function updateScore(studentId: string, componentId: string, value: string) {
+  function updateScoreEntries(studentId: string, componentId: string, values: string[]) {
     if (currentAssignment.isLocked) {
       setNotice("Pengisian nilai pada kelas ini telah dikunci oleh Admin Sekolah.");
       return;
     }
-    if (value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)) {
+    if (values.some((value) =>
+      value === "" || !Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100,
+    )) {
       return;
     }
+    const average = values.length
+      ? String(Math.round((values.reduce((total, value) => total + Number(value), 0) / values.length + Number.EPSILON) * 100) / 100)
+      : "";
     setHasUnsavedScores(true);
+    setScoreEntries((current) => ({
+      ...current,
+      [studentId]: { ...current[studentId], [componentId]: values },
+    }));
     setScores((current) => ({
       ...current,
-      [studentId]: { ...current[studentId], [componentId]: value },
+      [studentId]: { ...current[studentId], [componentId]: average },
     }));
   }
 
@@ -500,6 +539,70 @@ function TeacherPanel({
     );
   }
 
+  async function saveKkm() {
+    if (selectedSettingsAssignmentId === "all") {
+      setNotice("Pilih satu pengajaran untuk mengubah KKM.");
+      return;
+    }
+    if (selectedSettingsAssignment.isLocked) {
+      setNotice("KKM tidak dapat diubah karena pengajaran ini sedang dikunci atau berada pada periode arsip.");
+      return;
+    }
+    const rawKkm = kkmDrafts[selectedSettingsAssignment.id] ?? String(selectedSettingsAssignment.kkm);
+    const kkm = Number(rawKkm);
+    if (rawKkm.trim() === "" || !Number.isFinite(kkm) || kkm < 0 || kkm > 100) {
+      setNotice("KKM harus berupa angka antara 0 dan 100.");
+      return;
+    }
+    const token = await ensureTeacherAccessToken();
+    if (!token) {
+      setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. KKM tidak disimpan.");
+      return;
+    }
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/v1/pengajaran/${selectedSettingsAssignment.id}/kkm`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ kkm }),
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        data?: {
+          assignments?: TeachingAssignment[];
+          componentsByAssignment?: Record<string, GradeComponent[]>;
+          scores?: ScoreMap;
+          scoreEntries?: ScoreEntriesMap;
+          grades?: GradeRange[];
+        };
+      } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Gagal menyimpan KKM ke server.");
+        return;
+      }
+      if (payload?.data) {
+        applyWorkspacePayload(payload.data);
+      } else {
+        setAssignmentList((current) =>
+          current.map((assignment) =>
+            assignment.id === selectedSettingsAssignment.id ? { ...assignment, kkm } : assignment,
+          ),
+        );
+        setKkmDrafts((current) => ({ ...current, [selectedSettingsAssignment.id]: String(kkm) }));
+        setHasUnsavedKkm(false);
+      }
+      setNotice(payload?.message ?? "KKM berhasil disimpan.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. KKM gagal disimpan.");
+    }
+  }
+
   async function saveComponents(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (settingsComponents.some((component) => !component.name.trim())) {
@@ -542,6 +645,7 @@ function TeacherPanel({
           assignments?: TeachingAssignment[];
           componentsByAssignment?: Record<string, GradeComponent[]>;
           scores?: ScoreMap;
+          scoreEntries?: ScoreEntriesMap;
           grades?: GradeRange[];
         };
       } | null;
@@ -558,7 +662,11 @@ function TeacherPanel({
     }
   }
 
-  async function saveScoresToBackend(scoresToSave: ScoreMap = scores, customMessage?: string) {
+  async function saveScoresToBackend(
+    scoresToSave: ScoreMap = scores,
+    customMessage?: string,
+    scoreEntriesToSave: ScoreEntriesMap = scoreEntries,
+  ) {
     const token = await ensureTeacherAccessToken();
     if (!token) {
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Nilai tidak disimpan.");
@@ -572,7 +680,7 @@ function TeacherPanel({
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ scores: scoresToSave }),
+        body: JSON.stringify({ scores: scoresToSave, scoreEntries: scoreEntriesToSave }),
       });
       const payload = (await response.json().catch(() => null)) as {
         message?: string;
@@ -580,6 +688,7 @@ function TeacherPanel({
           assignments?: TeachingAssignment[];
           componentsByAssignment?: Record<string, GradeComponent[]>;
           scores?: ScoreMap;
+          scoreEntries?: ScoreEntriesMap;
           grades?: GradeRange[];
         };
       } | null;
@@ -791,8 +900,27 @@ function TeacherPanel({
         return;
       }
       const mergedScores = { ...scores, ...nextScores };
+      const mergedEntries: ScoreEntriesMap = {
+        ...scoreEntries,
+        ...Object.fromEntries(
+          Object.entries(nextScores).map(([studentId, studentScores]) => [
+            studentId,
+            Object.fromEntries(
+              Object.entries(studentScores).map(([componentId, score]) => [
+                componentId,
+                score === "" ? [] : [score],
+              ]),
+            ),
+          ]),
+        ),
+      };
       setScores(mergedScores);
-      await saveScoresToBackend(mergedScores, `${Object.keys(nextScores).length} baris nilai berhasil diimpor.`);
+      setScoreEntries(mergedEntries);
+      await saveScoresToBackend(
+        mergedScores,
+        `${Object.keys(nextScores).length} baris nilai berhasil diimpor.`,
+        mergedEntries,
+      );
     } catch (error) {
       console.error("Failed to import grades spreadsheet.", error);
       setNotice("File tidak dapat dibaca. Periksa format Excel/CSV dan coba lagi.");
@@ -828,9 +956,9 @@ function TeacherPanel({
               value={selectedPeriod || currentAssignment.period}
               onChange={(event) => {
                 if (
-                  (hasUnsavedScores || hasUnsavedComponents) &&
+                  (hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm) &&
                   !window.confirm(
-                    "Ada perubahan nilai atau komponen yang belum disimpan. Yakin ingin mengganti periode akademik?",
+                    "Ada perubahan nilai, komponen, atau KKM yang belum disimpan. Yakin ingin mengganti periode akademik?",
                   )
                 ) {
                   return;
@@ -869,15 +997,16 @@ function TeacherPanel({
         <select
           onChange={(event) => {
             if (
-              (hasUnsavedScores || hasUnsavedComponents) &&
+              (hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm) &&
               !window.confirm(
-                "Ada perubahan nilai atau komponen yang belum disimpan ke database. Yakin ingin berpindah pengajaran tanpa menyimpan?",
+                "Ada perubahan nilai, komponen, atau KKM yang belum disimpan ke database. Yakin ingin berpindah pengajaran tanpa menyimpan?",
               )
             ) {
               return;
             }
             setHasUnsavedScores(false);
             setHasUnsavedComponents(false);
+            setHasUnsavedKkm(false);
             onSelect(event.target.value);
             setNotice("");
           }}
@@ -901,7 +1030,19 @@ function TeacherPanel({
       selectedStudentsAssignmentId === "all";
     const tableRows = showAllStudents
       ? allFilteredStudents
-      : filteredStudents.map((student) => ({ assignment: currentAssignment, student }));
+      : filteredStudents
+          .filter((student) => {
+            if (readOnly || currentRoute !== "grade-entry" || gradeStatusFilter === "Semua status") {
+              return true;
+            }
+            const finalScore = calculateFinal(student.id, components, scores);
+            if (gradeStatusFilter === "Belum lengkap") return finalScore === null;
+            if (finalScore === null) return false;
+            return gradeStatusFilter === "Tuntas"
+              ? finalScore >= currentAssignment.kkm
+              : finalScore < currentAssignment.kkm;
+          })
+          .map((student) => ({ assignment: currentAssignment, student }));
     return (
       <div className="teacher-table-scroll">
         <table className="teacher-table">
@@ -923,7 +1064,7 @@ function TeacherPanel({
                 ))
               )}
               {!readOnly && <th scope="col">Nilai Akhir</th>}
-              {!readOnly && <th scope="col">Predikat</th>}
+              {!readOnly && <th scope="col">Status KKM</th>}
             </tr>
           </thead>
           <tbody>
@@ -946,18 +1087,16 @@ function TeacherPanel({
                   ) : (
                     rowComponents.map((component) => (
                       <td key={component.id}>
-                        <input
-                          aria-label={`${component.name} ${student.name}`}
-                          className="teacher-score-input"
+                        <ScoreEntriesDropdown
+                          componentName={component.name}
                           disabled={Boolean(assignment.isLocked)}
-                          max={100}
-                          min={0}
-                          onChange={(event) =>
-                            updateScore(student.id, component.id, event.target.value)
-                          }
-                          step="0.01"
-                          type="number"
-                          value={scores[student.id]?.[component.id] ?? ""}
+                          onSave={(values) => updateScoreEntries(student.id, component.id, values)}
+                          studentName={student.name}
+                          values={scoreEntries[student.id]?.[component.id] ?? (
+                            scores[student.id]?.[component.id] !== undefined
+                              ? [scores[student.id][component.id]]
+                              : []
+                          )}
                         />
                       </td>
                     ))
@@ -965,7 +1104,7 @@ function TeacherPanel({
                   {!readOnly && (
                     <>
                       <td className="teacher-final-score">{finalScore?.toFixed(2) ?? "—"}</td>
-                      <td>{getPredicate(finalScore)}</td>
+                      <td>{completionStatus(finalScore)}</td>
                     </>
                   )}
                 </tr>
@@ -1186,6 +1325,63 @@ function TeacherPanel({
             Ada perubahan komponen penilaian yang belum disimpan ke database. Klik tombol <strong>Simpan komponen</strong> sebelum berpindah halaman.
           </p>
         )}
+        {hasUnsavedKkm && (
+          <p className="teacher-inline-warning" role="status">
+            Ada perubahan KKM yang belum disimpan ke database. Klik tombol <strong>Simpan KKM</strong> sebelum berpindah halaman.
+          </p>
+        )}
+        <section className="teacher-card teacher-kkm-card">
+          <div className="teacher-card-heading">
+            <div><h2>Pengaturan KKM</h2><p>KKM berlaku untuk semua siswa pada pengajaran yang dipilih.</p></div>
+          </div>
+          <div className="teacher-table-scroll">
+            <table className="teacher-table teacher-kkm-table">
+              <thead>
+                <tr><th scope="col">Mata Pelajaran</th><th scope="col">Kelas</th><th scope="col">Periode</th><th scope="col">KKM</th><th scope="col">Aksi</th></tr>
+              </thead>
+              <tbody>
+                {showAll ? (
+                  <tr><td className="teacher-empty" colSpan={5}>Pilih satu pengajaran untuk mengatur KKM.</td></tr>
+                ) : (
+                  <tr>
+                    <td>{selectedSettingsAssignment.subject}</td>
+                    <td>{selectedSettingsAssignment.className}</td>
+                    <td>{selectedSettingsAssignment.period}</td>
+                    <td>
+                      <input
+                        aria-label={`KKM ${selectedSettingsAssignment.subject} ${selectedSettingsAssignment.className}`}
+                        className="teacher-kkm-input"
+                        disabled={isSettingsLocked}
+                        max={100}
+                        min={0}
+                        onChange={(event) => {
+                          setKkmDrafts((current) => ({
+                            ...current,
+                            [selectedSettingsAssignment.id]: event.target.value,
+                          }));
+                          setHasUnsavedKkm(true);
+                        }}
+                        step="0.01"
+                        type="number"
+                        value={kkmDrafts[selectedSettingsAssignment.id] ?? selectedSettingsAssignment.kkm}
+                      />
+                    </td>
+                    <td>
+                      <button
+                        className="teacher-secondary-button"
+                        disabled={isSettingsLocked}
+                        onClick={() => void saveKkm()}
+                        type="button"
+                      >
+                        Simpan KKM
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
         <form className="teacher-card teacher-components-form" onSubmit={saveComponents}>
           <div className="teacher-card-heading"><div><h2>Komponen Nilai</h2><p>{showAll ? "Perubahan komponen dan bobot akan diterapkan ke seluruh pengajaran." : "Total bobot seluruh komponen harus tepat 100%."}</p></div><button className="teacher-secondary-button" disabled={isSettingsLocked} onClick={addComponent} type="button">+ Tambah komponen</button></div>
           <div className="teacher-component-list">
@@ -1213,7 +1409,7 @@ function TeacherPanel({
     const isGradeLocked = Boolean(currentAssignment.isLocked);
     return (
       <>
-        {pageHeading("Masukkan nilai siswa. Nilai akhir dan predikat diperbarui otomatis.")}
+        {pageHeading("Masukkan nilai setiap komponen; nilai akhir dihitung otomatis dari rata-ratanya.")}
         <section className="teacher-card teacher-grade-context">
           <div><span>Pengajaran aktif</span><strong>{currentAssignment.subject} · Kelas {currentAssignment.className}</strong><small>{currentAssignment.period} · KKM {currentAssignment.kkm}</small></div>
           {assignmentSelector()}
@@ -1236,12 +1432,26 @@ function TeacherPanel({
             <label className="teacher-secondary-button teacher-upload-button">Impor XLSX/CSV<input accept=".csv,.xlsx" disabled={isGradeLocked} onChange={(event) => void importGrades(event)} type="file" /></label>
             <button className="teacher-secondary-button" onClick={() => void exportGrades()} type="button">Ekspor nilai</button>
           </div>
-          <button className="teacher-primary-button" disabled={!hasValidWeights || isGradeLocked} onClick={() => void saveScoresToBackend()} type="button">Simpan nilai</button>
+          <label className="teacher-select-label teacher-grade-status-filter">
+            <select
+              aria-label="Filter status ketuntasan"
+              onChange={(event) => setGradeStatusFilter(event.target.value)}
+              value={gradeStatusFilter}
+            >
+              <option>Semua status</option>
+              <option>Tuntas</option>
+              <option>Belum tuntas</option>
+              <option>Belum lengkap</option>
+            </select>
+          </label>
         </section>
         <section className="teacher-card teacher-grade-card">
           <div className="teacher-card-heading"><div><h2>Input Nilai Siswa</h2><p>{completionCount} dari {currentAssignment.students.length} siswa memiliki nilai lengkap.</p></div><span className="teacher-total-weight">Bobot {totalWeight}%</span></div>
           {studentTable()}
           <footer className="teacher-table-footer"><span>Nilai akhir dihitung jika semua komponen terisi.</span><span>Rentang nilai 0-100</span></footer>
+          <div className="teacher-form-actions teacher-grade-save-actions">
+            <button className="teacher-primary-button" disabled={!hasValidWeights || isGradeLocked} onClick={() => void saveScoresToBackend()} type="button">Simpan nilai</button>
+          </div>
         </section>
       </>
     );
