@@ -7,7 +7,7 @@ import StudentDataPage, { studentSection } from "./StudentDataPage";
 import SubjectDataPage, { subjectSection } from "./SubjectDataPage";
 import TeacherAssignmentsPage, { assignmentSection } from "./TeacherAssignmentsPage";
 import TeacherDataPage, { teacherSection } from "./TeacherDataPage";
-import { downloadSpreadsheet, readSpreadsheetFile } from "./spreadsheet";
+import { downloadSpreadsheet, readSpreadsheetFile } from "../../lib/spreadsheet";
 import type { AdminRecord, AdminRoute, AdminSection } from "./types";
 import "./AdminPanel.css";
 
@@ -118,14 +118,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
-
-  async function ensureAdminAccessToken(forceRefresh = false): Promise<string | null> {
-    const existing = getStoredAccessToken();
-    if (existing && !forceRefresh) {
-      return existing;
-    }
-    return null;
-  }
 
   function applyOverviewData(data: OverviewPayload) {
     const nextRecords: RecordSet = {
@@ -305,21 +297,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     const token = getStoredAccessToken();
-    if (!token && (!import.meta.env.DEV || import.meta.env.MODE === "test")) {
-      const record = { ...candidate, id: editingRecord?.id ?? createId() };
-      setRecords((previous) => ({
-        ...previous,
-        [activeRouteSnapshot]: modeSnapshot === "edit"
-          ? previous[activeRouteSnapshot].map((item) => item.id === record.id ? record : item)
-          : [...previous[activeRouteSnapshot], record],
-      }));
-      setNotice(modeSnapshot === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
-      closeForm();
-      return;
-    }
-
-    const resolvedToken = token ?? (await ensureAdminAccessToken());
-    if (!resolvedToken) {
+    if (!token) {
       const record = { ...candidate, id: editingRecord?.id ?? createId() };
       setRecords((previous) => ({
         ...previous,
@@ -343,7 +321,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          Authorization: `Bearer ${resolvedToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(candidate),
       });
@@ -395,7 +373,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
     if (!window.confirm(`Hapus data "${record.name ?? record.code ?? record.nis ?? ""}"?`)) return;
 
-    const token = await ensureAdminAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setRecords((previous) => ({
         ...previous,
@@ -435,7 +413,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   async function selectPeriod(nextPeriod: string) {
     setCurrentPeriod(nextPeriod);
     const matchingRecord = academicPeriods.find((item) => item.name === nextPeriod);
-    const token = await ensureAdminAccessToken();
+    const token = getStoredAccessToken();
     if (!token || !matchingRecord?.id || matchingRecord.status === "Aktif") {
       return;
     }
@@ -471,7 +449,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       return;
     }
 
-    const token = await ensureAdminAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setPeriodOptions((previous) => [...previous, period]);
       setCurrentPeriod(period);
@@ -595,7 +573,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         return;
       }
 
-      const token = await ensureAdminAccessToken();
+      const token = getStoredAccessToken();
       if (!token) {
         setRecords((previous) => ({ ...previous, students: [...previous.students, ...imported] }));
         setNotice(`${imported.length} data siswa berhasil diimpor.`);

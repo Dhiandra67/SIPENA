@@ -8,7 +8,7 @@ type XlsxModule = typeof import("@e965/xlsx");
 
 let xlsxModulePromise: Promise<XlsxModule> | null = null;
 
-export function loadXlsx(): Promise<XlsxModule> {
+function loadXlsx(): Promise<XlsxModule> {
   xlsxModulePromise ??= import("@e965/xlsx/dist/xlsx.mini.min.js").then((module) => {
     const candidate = module as unknown as XlsxModule & { default?: XlsxModule };
     return candidate.default ?? candidate;
@@ -34,7 +34,7 @@ export async function downloadSpreadsheet(
  * Membaca lembar kerja pertama dari file .xlsx sebagai baris-baris string.
  * Mengembalikan null jika file tidak memiliki lembar kerja.
  */
-export async function readFirstSheetRows(file: File): Promise<string[][] | null> {
+async function readFirstSheetRows(file: File): Promise<string[][] | null> {
   const XLSX = await loadXlsx();
   const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -47,7 +47,7 @@ export async function readFirstSheetRows(file: File): Promise<string[][] | null>
 }
 
 /** Parser CSV sederhana (mendukung pemisah koma/titik koma dan tanda kutip). */
-export function parseCsv(text: string): string[][] {
+function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let value = "";

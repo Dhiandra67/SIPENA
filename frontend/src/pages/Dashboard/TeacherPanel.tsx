@@ -252,16 +252,8 @@ function TeacherPanel({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm]);
 
-  async function ensureTeacherAccessToken(forceRefresh = false): Promise<string | null> {
-    const existing = getStoredAccessToken();
-    if (existing && !forceRefresh) {
-      return existing;
-    }
-    return null;
-  }
-
   async function loadTeacherWorkspace(periodName?: string) {
-    let token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setIsBackendSynced(false);
       setIsLoading(false);
@@ -270,23 +262,12 @@ function TeacherPanel({
     }
     try {
       const query = periodName ? `?period=${encodeURIComponent(periodName)}` : "";
-      let res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
+      const res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
-      if (res.status === 401 && import.meta.env.DEV) {
-        token = await ensureTeacherAccessToken(true);
-        if (token) {
-          res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          });
-        }
-      }
       if (!res.ok) {
         setIsBackendSynced(false);
         setNotice("Gagal memuat data pengajaran dari server backend.");
@@ -509,7 +490,7 @@ function TeacherPanel({
       setNotice("KKM harus berupa angka antara 0 dan 100.");
       return;
     }
-    const token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. KKM tidak disimpan.");
       return;
@@ -578,7 +559,7 @@ function TeacherPanel({
       setNotice("Total bobot harus tepat 100% dan setiap bobot lebih dari 0%.");
       return;
     }
-    const token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Komponen tidak disimpan.");
       return;
@@ -622,7 +603,7 @@ function TeacherPanel({
     customMessage?: string,
     scoreEntriesToSave: ScoreEntriesMap = scoreEntries,
   ) {
-    const token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Nilai tidak disimpan.");
       return;
@@ -1498,7 +1479,7 @@ function TeacherPanel({
         setNotice("Konfirmasi kata sandi tidak cocok.");
         return;
       }
-      const token = await ensureTeacherAccessToken();
+      const token = getStoredAccessToken();
       if (!token) {
         setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Profil tidak diperbarui.");
         return;

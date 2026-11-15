@@ -377,8 +377,7 @@
 .teacher-select-label select:focus,
 .teacher-search input:focus,
 .teacher-profile-fields input:focus,
-.teacher-component-row input:focus,
-.teacher-score-input:focus {
+.teacher-component-row input:focus {
   border-color: #83998b;
   box-shadow: 0 0 0 3px rgb(52 74 64 / 9%);
 }
@@ -913,19 +912,6 @@
 
 .teacher-grade-card .teacher-table {
   min-width: 780px;
-}
-
-.teacher-score-input {
-  width: 64px;
-  min-height: 30px;
-  padding: 4px 6px;
-  border: 1px solid #e2e4de;
-  border-radius: 5px;
-  outline: 0;
-  background: #fff;
-  color: #384B54;
-  font: inherit;
-  font-size: 10px;
 }
 
 .teacher-final-score {

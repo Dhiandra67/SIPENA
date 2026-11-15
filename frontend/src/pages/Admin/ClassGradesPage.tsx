@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getStoredAccessToken } from "../Login/auth";
-import { downloadSpreadsheet } from "./spreadsheet";
+import { downloadSpreadsheet } from "../../lib/spreadsheet";
 import type { AdminRecord } from "./types";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
