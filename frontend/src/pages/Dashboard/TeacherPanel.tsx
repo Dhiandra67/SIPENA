@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { downloadSpreadsheet as writeSpreadsheet, readSpreadsheetFile, type SpreadsheetCell } from "../../lib/spreadsheet";
-import { getStoredAccessToken, login } from "../Login/auth";
+import { getStoredAccessToken } from "../Login/auth";
 import ScoreEntriesDropdown from "./ScoreEntriesDropdown";
 import "./TeacherPanel.css";
 
@@ -256,17 +256,6 @@ function TeacherPanel({
     const existing = getStoredAccessToken();
     if (existing && !forceRefresh) {
       return existing;
-    }
-    if (import.meta.env.DEV) {
-      try {
-        const result = await login(
-          { email: (email || "guru@example.com").trim().toLowerCase(), password: "guru12345" },
-          true,
-        );
-        return result.accessToken;
-      } catch {
-        return null;
-      }
     }
     return null;
   }

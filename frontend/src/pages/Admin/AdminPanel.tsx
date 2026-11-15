@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { getStoredAccessToken, login } from "../Login/auth";
+import { getStoredAccessToken } from "../Login/auth";
 import ClassDataPage, { classSection } from "./ClassDataPage";
 import ClassGradesPage from "./ClassGradesPage";
 import DashboardPage from "./DashboardPage";
@@ -123,14 +123,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     const existing = getStoredAccessToken();
     if (existing && !forceRefresh) {
       return existing;
-    }
-    if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
-      try {
-        const result = await login({ email: "test@example.com", password: "password" }, true);
-        return result.accessToken;
-      } catch {
-        return null;
-      }
     }
     return null;
   }
