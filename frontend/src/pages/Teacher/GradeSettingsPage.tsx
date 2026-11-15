@@ -56,7 +56,7 @@ function GradeSettingsPage({
         {showAll ? (
           <span className="teacher-settings-all-note">Nilai KKM diatur per pengajaran.</span>
         ) : (
-          <>
+          <div className="teacher-kkm-controls">
             <label className="teacher-kkm-input">
               <span className="visually-hidden">Nilai KKM</span>
               <input
@@ -68,7 +68,6 @@ function GradeSettingsPage({
                 type="number"
                 value={kkmValue}
               />
-              <small>0–100</small>
             </label>
             <button
               className="teacher-primary-button"
@@ -78,7 +77,7 @@ function GradeSettingsPage({
             >
               Simpan KKM
             </button>
-          </>
+          </div>
         )}
       </section>
       <form className="teacher-card teacher-components-form" onSubmit={onSubmitComponents}>

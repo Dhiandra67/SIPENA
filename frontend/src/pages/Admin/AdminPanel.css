@@ -97,6 +97,135 @@
   padding: 17px;
 }
 
+.admin-card-heading {
+  padding: 15px 15px 10px;
+}
+
+.admin-period-table {
+  min-width: 720px;
+}
+
+.admin-period-table input,
+.admin-period-table select {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #e2e4de;
+  border-radius: 7px;
+  background: #fff;
+  color: #384B54;
+  font: inherit;
+  font-size: 10px;
+}
+
+.admin-period-table input:focus,
+.admin-period-table select:focus {
+  border-color: #83998b;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(52 74 64 / 9%);
+}
+
+.admin-row-action-button {
+  padding: 6px 9px;
+  border: 1px solid #dfe3dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #40564a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-row-action-button:hover {
+  background: #f6f8f5;
+}
+
+.admin-grade-ranking-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-grade-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-report-table {
+  min-width: 900px;
+}
+
+.admin-grade-ranking-card {
+  display: grid;
+  min-height: 130px;
+  align-content: space-between;
+  gap: 12px;
+}
+
+.admin-grade-ranking-card strong {
+  color: #384B54;
+  font-size: 18px;
+}
+
+.admin-grade-ranking-card > span:last-child {
+  color: #68776e;
+  font-size: 12px;
+}
+
+.admin-grade-navigation {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-grade-dashboard-link {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #dfe5df;
+  border-radius: 7px;
+  background: #fff;
+  color: #40584a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-grade-dashboard-link:hover {
+  background: #f6f8f5;
+}
+
+.admin-grade-class-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #68776e;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.admin-grade-class-picker select {
+  min-width: 150px;
+  min-height: 36px;
+  padding: 0 28px 0 10px;
+  border: 1px solid #dfe5df;
+  border-radius: 7px;
+  background: #fff;
+  color: #384B54;
+  font: inherit;
+  font-size: 11px;
+}
+
+.admin-grade-class-picker select:focus-visible,
+.admin-grade-dashboard-link:focus-visible {
+  outline: 2px solid #83998b;
+  outline-offset: 2px;
+}
+
 .admin-section-heading h2 {
   margin: 0;
   color: #384B54;
@@ -544,6 +673,21 @@
     gap: 15px;
   }
 
+  .admin-grade-navigation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-grade-class-picker {
+    justify-content: space-between;
+  }
+
+  .admin-grade-class-picker select {
+    min-width: 0;
+    flex: 1;
+    max-width: 220px;
+  }
+
   .admin-page-heading {
     align-items: flex-start;
   }
@@ -594,6 +738,28 @@
 
   .admin-overview-card {
     padding: 14px;
+  }
+
+  .admin-card-heading {
+    padding: 13px 12px 9px;
+  }
+
+  .admin-grade-ranking-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .admin-grade-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-grade-heading .admin-primary-button {
+    width: 100%;
+  }
+
+  .admin-grade-ranking-card {
+    min-height: 105px;
   }
 
   .admin-records-toolbar {
@@ -720,6 +886,7 @@
     font-size: 11px;
   }
 }
+
 
 @media (max-width: 360px) {
   .admin-active-period {

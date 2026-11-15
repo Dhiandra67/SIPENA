@@ -453,7 +453,7 @@
 .teacher-kkm-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 14px;
 }
 
@@ -480,6 +480,13 @@
   border-radius: 7px;
   color: #758279;
   font-size: 10px;
+}
+
+.teacher-kkm-controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
 }
 
 .teacher-kkm-input input {

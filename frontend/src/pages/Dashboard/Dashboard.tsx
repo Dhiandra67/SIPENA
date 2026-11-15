@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AuthUser } from "../Login/auth";
-import AdminPanel from "./AdminPanel";
+import AdminPanel from "../Admin/AdminPanel";
 import TeacherPanel from "../Teacher/TeacherPanel";
 import "./Dashboard.css";
 
@@ -65,8 +65,6 @@ const adminNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Data Kelas", icon: "classes", href: "#classes" },
   { label: "Mata Pelajaran", icon: "subjects", href: "#subjects" },
   { label: "Pembagian Tugas Guru", icon: "tasks", href: "#assignments" },
-  { label: "Tahun Ajaran", icon: "calendar", href: "#academic" },
-  { label: "Rentang Nilai", icon: "settings", href: "#grades" },
 ];
 
 const teacherNavigation: { label: string; icon: IconName; href: string }[] = [
