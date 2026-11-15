@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-import { useEffect, useState } from "react";
-import type { AuthUser } from "../Login/auth";
-import AdminPanel from "../Admin/AdminPanel";
-import TeacherPanel from "../Teacher/TeacherPanel";
-=======
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { getStoredAccessToken, type AuthUser } from "../Login/auth";
-import AdminPanel from "./AdminPanel";
-import TeacherPanel from "./TeacherPanel";
->>>>>>> 4266b6b23b6426f7dad1ba20d0fb4c6dcba9703e
+import AdminPanel from "../Admin/AdminPanel";
+import TeacherPanel from "../Teacher/TeacherPanel";
 import "./Dashboard.css";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");

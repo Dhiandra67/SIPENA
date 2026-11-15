@@ -23,6 +23,7 @@ interface TeacherPanelProps {
   email: string;
   onNavigate: (route: string) => void;
   onProfileChange: (name: string) => void;
+  onUnsavedChange?: (hasUnsavedChanges: boolean) => void;
 }
 
 const period = "Semester Ganjil 2026/2027";
@@ -106,6 +107,7 @@ function TeacherPanel({
   email,
   onNavigate,
   onProfileChange,
+  onUnsavedChange,
 }: TeacherPanelProps) {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(assignments[0].id);
   const [selectedSettingsAssignmentId, setSelectedSettingsAssignmentId] = useState(assignments[0].id);
@@ -189,6 +191,7 @@ function TeacherPanel({
     if (value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)) {
       return;
     }
+    onUnsavedChange?.(true);
     setScores((current) => ({
       ...current,
       [studentId]: { ...current[studentId], [componentId]: value },
@@ -196,6 +199,7 @@ function TeacherPanel({
   }
 
   function applySettingsComponents(nextComponents: GradeComponent[]) {
+    onUnsavedChange?.(true);
     const targetIds =
       selectedSettingsAssignmentId === "all"
         ? assignments.map((assignment) => assignment.id)
@@ -212,6 +216,7 @@ function TeacherPanel({
   }
 
   function applySettingsKkm(value: string) {
+    onUnsavedChange?.(true);
     const targetIds =
       selectedSettingsAssignmentId === "all"
         ? assignments.map((assignment) => assignment.id)
@@ -276,7 +281,13 @@ function TeacherPanel({
         ),
       );
     }
+    onUnsavedChange?.(false);
     setNotice("Komponen penilaian berhasil disimpan pada sesi demo ini.");
+  }
+
+  function saveKkm() {
+    onUnsavedChange?.(false);
+    setNotice("KKM disimpan pada sesi demo ini.");
   }
 
   const titleByRoute: Record<TeacherRoute, string> = {
@@ -499,7 +510,7 @@ function TeacherPanel({
           onComponentChange={updateComponent}
           onKkmChange={applySettingsKkm}
           onRemoveComponent={removeComponent}
-          onSaveKkm={() => setNotice("KKM disimpan pada sesi demo ini.")}
+          onSaveKkm={saveKkm}
           onSubmitComponents={saveComponents}
           selectedAssignment={selectedSettingsAssignment}
           settingsComponents={settingsComponents}
@@ -520,7 +531,10 @@ function TeacherPanel({
           gradeStatusFilter={gradeStatusFilter}
           hasValidWeights={hasValidWeights}
           heading={pageHeading("Kelola kelas, komponen penilaian, dan nilai siswa.")}
-          onSaveGrades={() => setNotice("Nilai berhasil disimpan pada sesi demo ini.")}
+          onSaveGrades={() => {
+            onUnsavedChange?.(false);
+            setNotice("Nilai berhasil disimpan pada sesi demo ini.");
+          }}
           onSearchChange={setSearch}
           onStatusFilterChange={setGradeStatusFilter}
           search={search}
