@@ -60,6 +60,26 @@ class AuthTest extends TestCase
             ->assertJsonPath('message', 'Email atau kata sandi tidak valid. Silakan coba lagi.');
     }
 
+    public function test_login_validates_credentials_before_issuing_an_api_token(): void
+    {
+        $this->seed();
+
+        $this->postJson('/api/auth/login', [
+            'password' => 'password',
+        ])->assertUnprocessable();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'bukan-email',
+            'password' => 'password',
+        ])->assertUnprocessable();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'test@example.com',
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseCount('api_tokens', 0);
+    }
+
     public function test_api_token_can_restore_and_revoke_the_session(): void
     {
         $this->seed();

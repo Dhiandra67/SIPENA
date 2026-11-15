@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
-import { logout, restoreSession } from "./pages/Login/auth";
+import { clearAccessToken, logout, restoreSession } from "./pages/Login/auth";
 import type { AuthUser } from "./pages/Login/auth";
 
 vi.mock("./pages/Login/auth", () => ({
@@ -38,6 +38,10 @@ describe("alur aplikasi", () => {
   beforeEach(() => {
     vi.mocked(restoreSession).mockResolvedValue(null);
     vi.mocked(logout).mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("menampilkan login setelah tidak menemukan sesi", async () => {
@@ -80,5 +84,40 @@ describe("alur aplikasi", () => {
         .toBeInTheDocument();
     });
     expect(logout).toHaveBeenCalledWith("token-demo");
+  });
+
+  it("tetap membuka login dan mencatat kesalahan saat pemulihan sesi gagal", async () => {
+    const error = new Error("Server tidak tersedia.");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(restoreSession).mockRejectedValue(error);
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: /selamat datang/i }))
+      .toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith(
+      "Failed to restore SIPENA session.",
+      error,
+    );
+  });
+
+  it("membersihkan token lokal jika pencabutan sesi gagal", async () => {
+    const error = new Error("Server tidak tersedia.");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.mocked(restoreSession).mockResolvedValue(admin);
+    vi.mocked(logout).mockRejectedValue(error);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: /logout/i }));
+
+    await waitFor(() => {
+      expect(clearAccessToken).toHaveBeenCalled();
+      expect(consoleError).toHaveBeenCalledWith(
+        "Failed to revoke SIPENA session.",
+        error,
+      );
+    });
+    expect(await screen.findByRole("heading", { name: /selamat datang/i }))
+      .toBeInTheDocument();
   });
 });
