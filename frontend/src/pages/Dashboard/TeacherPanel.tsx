@@ -401,6 +401,11 @@ function TeacherPanel({
   const lowest = finalScores.length ? Math.min(...finalScores) : null;
   const passingCount = finalScores.filter((score) => score >= currentAssignment.kkm).length;
 
+  function completionStatus(score: number | null) {
+    if (score === null) return "Belum lengkap";
+    return score >= currentAssignment.kkm ? "Tuntas" : "Belum tuntas";
+  }
+
   function navigate(nextRoute: string) {
     if (
       (hasUnsavedScores || hasUnsavedComponents) &&
@@ -614,15 +619,25 @@ function TeacherPanel({
   }
 
   async function exportGrades() {
-    const headers = ["NIS", "Nama Siswa", ...components.map((component) => component.name), "Nilai Akhir", "Predikat"];
-    const rows = currentAssignment.students.map((student) => {
+    const headers = [
+      "No",
+      "NIS",
+      "Nama Siswa",
+      ...components.map((component) => component.name),
+      "Nilai Akhir",
+      "Predikat",
+      "Status Kesesuaian",
+    ];
+    const rows = currentAssignment.students.map((student, index) => {
       const finalScore = calculateFinal(student.id, components, scores);
       return [
+        index + 1,
         student.nis,
         student.name,
         ...components.map((component) => scores[student.id]?.[component.id] ?? ""),
         finalScore ?? "",
         getPredicate(finalScore),
+        completionStatus(finalScore),
       ];
     });
     try {
@@ -988,7 +1003,7 @@ function TeacherPanel({
 
         <section className="teacher-card">
           <div className="teacher-card-heading">
-            <div><h2>Pengajaran Saya</h2><p>Pilih kelas untuk membuka detail, input nilai, atau statistik.</p></div>
+            <div><h2>Pengajaran Saya</h2><p>Pilih kelas untuk membuka detail dan mengelola penilaian.</p></div>
             <button className="teacher-link-button" onClick={() => navigate("assignments")} type="button">Lihat semua</button>
           </div>
           <div className="teacher-assignment-grid">
@@ -1018,7 +1033,6 @@ function TeacherPanel({
           <div className="teacher-action-grid">
             <button onClick={() => navigate("grade-settings")} type="button"><strong>01</strong><span>Atur komponen &amp; bobot</span><small>Pastikan jumlah bobot 100%</small></button>
             <button onClick={() => navigate("grade-entry")} type="button"><strong>02</strong><span>Input dan kelola nilai</span><small>Nilai akhir dihitung otomatis</small></button>
-            <button onClick={() => navigate("statistics")} type="button"><strong>03</strong><span>Lihat statistik kelas</span><small>Pantau capaian dan ketuntasan</small></button>
           </div>
         </section>
       </>
@@ -1060,7 +1074,7 @@ function TeacherPanel({
   function classDetailPage() {
     return (
       <>
-        {pageHeading("Ringkasan kelas, daftar siswa, dan akses penilaian.")}
+        {pageHeading("Ringkasan kelas, rekapitulasi nilai, dan akses penilaian.")}
         <section className="teacher-card teacher-class-summary">
           <div className="teacher-card-heading">
             <div><span className="teacher-eyebrow">DETAIL PENGAJARAN</span><h2>{currentAssignment.subject} · Kelas {currentAssignment.className}</h2><p>{currentAssignment.period}</p></div>
@@ -1075,14 +1089,73 @@ function TeacherPanel({
           <div className="teacher-button-row">
             <button className="teacher-primary-button" onClick={() => navigate("grade-entry")} type="button">Input nilai</button>
             <button className="teacher-secondary-button" onClick={() => navigate("grade-settings")} type="button">Atur komponen</button>
-            <button className="teacher-secondary-button" onClick={() => navigate("statistics")} type="button">Lihat statistik</button>
           </div>
         </section>
-        <section className="teacher-card">
-          <div className="teacher-card-heading"><div><h2>Daftar Siswa</h2><p>Data siswa pada kelas yang ditugaskan kepada Anda.</p></div><label className="teacher-search"><span className="visually-hidden">Cari siswa</span><input onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau NIS..." type="search" value={search} /></label></div>
-          {studentTable(true)}
-        </section>
+        {gradeRecapSection()}
       </>
+    );
+  }
+
+  function gradeRecapSection() {
+    return (
+      <section className="teacher-card teacher-report-card">
+        <div className="teacher-card-heading">
+          <div>
+            <h2>Rekapitulasi Nilai</h2>
+            <p>Nilai komponen, nilai akhir, dan kesesuaian dengan KKM.</p>
+          </div>
+          <div className="teacher-button-row">
+            <button className="teacher-secondary-button" onClick={() => window.print()} type="button">Cetak</button>
+            <button className="teacher-primary-button" onClick={() => void exportGrades()} type="button">Unduh XLSX</button>
+          </div>
+        </div>
+        <div className="teacher-table-scroll">
+          <table className="teacher-table teacher-report-table">
+            <thead>
+              <tr>
+                <th scope="col">No</th>
+                <th scope="col">NIS</th>
+                <th scope="col">Nama Siswa</th>
+                {components.map((component) => <th key={component.id} scope="col">{component.name}</th>)}
+                <th scope="col">Nilai Akhir</th>
+                <th scope="col">Predikat</th>
+                <th scope="col">Status Kesesuaian</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentAssignment.students.map((student, index) => {
+                const score = calculateFinal(student.id, components, scores);
+                return (
+                  <tr key={student.id}>
+                    <td>{index + 1}</td>
+                    <td>{student.nis}</td>
+                    <td className="teacher-student-name">{student.name}</td>
+                    {components.map((component) => (
+                      <td key={component.id}>{scores[student.id]?.[component.id] || "—"}</td>
+                    ))}
+                    <td className="teacher-final-score">{score?.toFixed(2) ?? "—"}</td>
+                    <td>{getPredicate(score)}</td>
+                    <td>
+                      <span className={`teacher-pass-chip${score !== null && score >= currentAssignment.kkm ? " pass" : ""}`}>
+                        {completionStatus(score)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {currentAssignment.students.length === 0 && (
+                <tr>
+                  <td className="teacher-empty" colSpan={components.length + 6}>Belum ada siswa pada kelas ini.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <footer className="teacher-table-footer">
+          <span>Rata-rata {average?.toFixed(2) ?? "—"}</span>
+          <span>Nilai tertinggi {highest?.toFixed(2) ?? "—"} · Terendah {lowest?.toFixed(2) ?? "—"}</span>
+        </footer>
+      </section>
     );
   }
 
@@ -1252,19 +1325,7 @@ function TeacherPanel({
           <article><span>Rata-rata kelas</span><strong>{average?.toFixed(2) ?? "—"}</strong></article>
           <article><span>KKM</span><strong>{currentAssignment.kkm}</strong></article>
         </section>
-        <section className="teacher-card teacher-report-card">
-          <div className="teacher-card-heading"><div><h2>Rekapitulasi Nilai</h2><p>Nilai akhir menggunakan komponen dan bobot pengajaran.</p></div><div className="teacher-button-row"><button className="teacher-secondary-button" onClick={() => window.print()} type="button">Cetak</button><button className="teacher-primary-button" onClick={() => void exportGrades()} type="button">Unduh XLSX</button></div></div>
-          <div className="teacher-table-scroll">
-            <table className="teacher-table teacher-report-table">
-              <thead><tr><th scope="col">No</th><th scope="col">NIS</th><th scope="col">Nama Siswa</th>{components.map((component) => <th key={component.id} scope="col">{component.name}</th>)}<th scope="col">Nilai Akhir</th><th scope="col">Predikat</th><th scope="col">Ketuntasan</th></tr></thead>
-              <tbody>{currentAssignment.students.map((student, index) => {
-                const score = calculateFinal(student.id, components, scores);
-                return <tr key={student.id}><td>{index + 1}</td><td>{student.nis}</td><td className="teacher-student-name">{student.name}</td>{components.map((component) => <td key={component.id}>{scores[student.id]?.[component.id] || "—"}</td>)}<td className="teacher-final-score">{score?.toFixed(2) ?? "—"}</td><td>{getPredicate(score)}</td><td><span className={`teacher-pass-chip${score !== null && score >= currentAssignment.kkm ? " pass" : ""}`}>{score === null ? "Belum lengkap" : score >= currentAssignment.kkm ? "Tuntas" : "Belum tuntas"}</span></td></tr>;
-              })}</tbody>
-            </table>
-          </div>
-          <footer className="teacher-table-footer"><span>Rata-rata {average?.toFixed(2) ?? "—"}</span><span>Nilai tertinggi {highest?.toFixed(2) ?? "—"} · Terendah {lowest?.toFixed(2) ?? "—"}</span></footer>
-        </section>
+        {gradeRecapSection()}
       </>
     );
   }
