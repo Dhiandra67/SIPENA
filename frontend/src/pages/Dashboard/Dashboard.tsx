@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { getStoredAccessToken, type AuthUser } from "../Login/auth";
-import AdminPanel from "./AdminPanel";
+import AdminPanel from "../Admin/AdminPanel";
 import TeacherPanel from "./TeacherPanel";
 import "./Dashboard.css";
 
@@ -67,18 +67,12 @@ const adminNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Data Kelas", icon: "classes", href: "#classes" },
   { label: "Mata Pelajaran", icon: "subjects", href: "#subjects" },
   { label: "Pembagian Tugas Guru", icon: "tasks", href: "#assignments" },
-  { label: "Tahun Ajaran", icon: "calendar", href: "#academic" },
-  { label: "Rentang Nilai", icon: "settings", href: "#grades" },
 ];
 
 const teacherNavigation: { label: string; icon: IconName; href: string }[] = [
   { label: "Dashboard", icon: "dashboard", href: "#dashboard" },
-  { label: "Pengajaran Saya", icon: "subjects", href: "#assignments" },
   { label: "Pengaturan Komponen Nilai", icon: "settings", href: "#grade-settings" },
   { label: "Input dan Kelola Nilai", icon: "grades", href: "#grade-entry" },
-  { label: "Data Siswa", icon: "students", href: "#students" },
-  { label: "Statistik", icon: "tasks", href: "#statistics" },
-  { label: "Laporan Nilai Mapel", icon: "classes", href: "#reports" },
   { label: "Profil Saya", icon: "teacher", href: "#profile" },
 ];
 
@@ -259,7 +253,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
           <Icon name="brand" />
           <span>
             <strong>SIPENA</strong>
-            <small>{isAdmin ? "ADMIN PANEL" : "TEACHER PANEL"}</small>
+            <small>{isAdmin ? "ADMIN PANEL" : "GURU MATA PELAJARAN"}</small>
           </span>
         </a>
         <nav className="sidebar-navigation" aria-label="Navigasi utama">
