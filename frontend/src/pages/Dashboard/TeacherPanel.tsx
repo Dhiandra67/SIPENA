@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { downloadSpreadsheet as writeSpreadsheet, readSpreadsheetFile, type SpreadsheetCell } from "../../lib/spreadsheet";
 import { getStoredAccessToken, login } from "../Login/auth";
 import ScoreEntriesDropdown from "./ScoreEntriesDropdown";
 import "./TeacherPanel.css";
@@ -88,40 +88,6 @@ const defaultGrades = [
 
 function createComponentId() {
   return `component-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let value = "";
-  let quoted = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    if (character === '"') {
-      if (quoted && text[index + 1] === '"') {
-        value += '"';
-        index += 1;
-      } else {
-        quoted = !quoted;
-      }
-    } else if (!quoted && (character === "," || character === ";")) {
-      row.push(value.trim());
-      value = "";
-    } else if (!quoted && (character === "\n" || character === "\r")) {
-      if (character === "\r" && text[index + 1] === "\n") index += 1;
-      row.push(value.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      value = "";
-    } else {
-      value += character;
-    }
-  }
-
-  row.push(value.trim());
-  if (row.some(Boolean)) rows.push(row);
-  return rows;
 }
 
 function calculateFinal(
@@ -705,11 +671,8 @@ function TeacherPanel({
     }
   }
 
-  async function downloadSpreadsheet(filename: string, rows: (string | number)[][]) {
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Nilai");
-    XLSX.writeFile(workbook, filename);
+  async function downloadSpreadsheet(filename: string, rows: SpreadsheetCell[][]) {
+    await writeSpreadsheet(filename, rows, "Nilai");
   }
 
   async function downloadGradeTemplate() {
@@ -830,21 +793,10 @@ function TeacherPanel({
     }
 
     try {
-      let rows: string[][];
-      if (file.name.toLocaleLowerCase("id").endsWith(".csv")) {
-        rows = parseCsv(await file.text());
-      } else {
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!firstSheet) {
-          setNotice("File Excel tidak memiliki lembar kerja.");
-          return;
-        }
-        rows = XLSX.utils.sheet_to_json<string[]>(firstSheet, {
-          header: 1,
-          defval: "",
-          raw: false,
-        });
+      const rows = await readSpreadsheetFile(file);
+      if (!rows) {
+        setNotice("File Excel tidak memiliki lembar kerja.");
+        return;
       }
 
       if (rows.length < 2) {

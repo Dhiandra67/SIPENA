@@ -93,6 +93,7 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
             Route::post('/kelas', [KelasController::class, 'store']);
             Route::put('/kelas/{id}', [KelasController::class, 'update'])->whereNumber('id');
             Route::delete('/kelas/{id}', [KelasController::class, 'destroy'])->whereNumber('id');
+            Route::get('/kelas/{id}/rekap', [KelasController::class, 'rekap'])->whereNumber('id');
 
             Route::get('/guru', [GuruController::class, 'index']);
             Route::get('/guru/{id}', [GuruController::class, 'show'])->whereNumber('id');

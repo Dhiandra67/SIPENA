@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { downloadSpreadsheet, readSpreadsheetFile } from "../../lib/spreadsheet";
 import { getStoredAccessToken, login } from "../Login/auth";
 import "./AdminPanel.css";
 
@@ -205,47 +205,6 @@ const emptyRecords: RecordSet = {
 
 function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let value = "";
-  let quoted = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    if (character === '"') {
-      if (quoted && text[index + 1] === '"') {
-        value += '"';
-        index += 1;
-      } else {
-        quoted = !quoted;
-      }
-    } else if (!quoted && (character === "," || character === ";")) {
-      row.push(value.trim());
-      value = "";
-    } else if (!quoted && (character === "\n" || character === "\r")) {
-      if (character === "\r" && text[index + 1] === "\n") index += 1;
-      row.push(value.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      value = "";
-    } else {
-      value += character;
-    }
-  }
-
-  row.push(value.trim());
-  if (row.some(Boolean)) rows.push(row);
-  return rows;
-}
-
-async function downloadSpreadsheet(filename: string, rows: string[][]) {
-  const worksheet = XLSX.utils.aoa_to_sheet(rows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa");
-  XLSX.writeFile(workbook, filename);
 }
 
 interface AdminPanelProps {
@@ -726,7 +685,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       record.className,
     ]);
     try {
-      await downloadSpreadsheet("data-siswa-sipena.xlsx", [headers, ...dataRows]);
+      await downloadSpreadsheet("data-siswa-sipena.xlsx", [headers, ...dataRows], "Data Siswa");
       setNotice("File Excel data siswa berhasil diunduh.");
     } catch (error) {
       console.error("Failed to export students.", error);
@@ -738,7 +697,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     try {
       await downloadSpreadsheet("template-impor-siswa.xlsx", [[
         "No", "NIS*", "NISN*", "Nama Lengkap*", "Jenis Kelamin (L/P)*", "Kode Kelas*",
-      ]]);
+      ]], "Data Siswa");
       setNotice("Template impor siswa berhasil diunduh.");
     } catch (error) {
       console.error("Failed to export student template.", error);
@@ -760,21 +719,10 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     try {
-      let parsedRows: string[][];
-      if (file.name.toLowerCase().endsWith(".csv")) {
-        parsedRows = parseCsv(await file.text());
-      } else {
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!firstSheet) {
-          setNotice("File Excel tidak memiliki lembar kerja.");
-          return;
-        }
-        parsedRows = XLSX.utils.sheet_to_json<string[]>(firstSheet, {
-          header: 1,
-          defval: "",
-          raw: false,
-        });
+      const parsedRows = await readSpreadsheetFile(file);
+      if (!parsedRows) {
+        setNotice("File Excel tidak memiliki lembar kerja.");
+        return;
       }
       if (parsedRows.length < 2) {
         setNotice("File tidak berisi data siswa.");
