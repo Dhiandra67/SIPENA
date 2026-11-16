@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import "./TeacherPanel.css";
 import DashboardPage from "./DashboardPage";
@@ -126,10 +126,24 @@ function TeacherPanel({
   );
   const [scores, setScores] = useState(initialScores);
   const [search, setSearch] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<{ message: string; route: string } | null>(null);
   const [gradeStatusFilter, setGradeStatusFilter] = useState("Semua status");
   const [profileName, setProfileName] = useState(displayName);
   const [profileEmail, setProfileEmail] = useState(email);
+
+  useEffect(() => {
+    setNotice(null);
+  }, [route]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = window.setTimeout(() => setNotice(null), 10_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
+
+  function showNotice(message: string) {
+    setNotice({ message, route });
+  }
 
   const currentAssignment =
     assignments.find((assignment) => assignment.id === selectedAssignmentId) ?? assignments[0];
@@ -176,14 +190,14 @@ function TeacherPanel({
     : null;
   function navigate(nextRoute: string) {
     setSearch("");
-    setNotice("");
+    setNotice(null);
     onNavigate(nextRoute);
   }
 
   function openAssignment(assignmentId: string, nextRoute: string) {
     setSelectedAssignmentId(assignmentId);
     setSearch("");
-    setNotice("");
+    setNotice(null);
     onNavigate(nextRoute);
   }
 
@@ -243,7 +257,7 @@ function TeacherPanel({
 
   function removeComponent(componentId: string) {
     if (settingsComponents.length === 1) {
-      setNotice("Pengajaran harus memiliki minimal satu komponen penilaian.");
+      showNotice("Pengajaran harus memiliki minimal satu komponen penilaian.");
       return;
     }
     applySettingsComponents(
@@ -254,7 +268,7 @@ function TeacherPanel({
   function saveComponents(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (settingsComponents.some((component) => !component.name.trim())) {
-      setNotice("Nama setiap komponen harus diisi.");
+      showNotice("Nama setiap komponen harus diisi.");
       return;
     }
     const settingsWeight = settingsComponents.reduce(
@@ -268,7 +282,7 @@ function TeacherPanel({
       ) &&
       Math.abs(settingsWeight - 100) < 0.0001;
     if (!validSettingsWeights) {
-      setNotice("Total bobot harus tepat 100% dan setiap bobot lebih dari 0%.");
+      showNotice("Total bobot harus tepat 100% dan setiap bobot lebih dari 0%.");
       return;
     }
     if (selectedSettingsAssignmentId === "all") {
@@ -282,12 +296,12 @@ function TeacherPanel({
       );
     }
     onUnsavedChange?.(false);
-    setNotice("Komponen penilaian berhasil disimpan pada sesi demo ini.");
+    showNotice("Komponen penilaian berhasil disimpan pada sesi demo ini.");
   }
 
   function saveKkm() {
     onUnsavedChange?.(false);
-    setNotice("KKM disimpan pada sesi demo ini.");
+    showNotice("KKM disimpan pada sesi demo ini.");
   }
 
   const titleByRoute: Record<TeacherRoute, string> = {
@@ -333,7 +347,7 @@ function TeacherPanel({
         <select
           onChange={(event) => {
             onSelect(event.target.value);
-            setNotice("");
+            setNotice(null);
           }}
           value={selectedId}
         >
@@ -469,17 +483,17 @@ function TeacherPanel({
     const newPassword = String(formData.get("newPassword") ?? "");
     const confirmation = String(formData.get("confirmation") ?? "");
     if (newPassword && newPassword.length < 8) {
-      setNotice("Kata sandi baru minimal 8 karakter.");
+      showNotice("Kata sandi baru minimal 8 karakter.");
       return;
     }
     if (newPassword !== confirmation) {
-      setNotice("Konfirmasi kata sandi tidak cocok.");
+      showNotice("Konfirmasi kata sandi tidak cocok.");
       return;
     }
     setProfileName(name);
     setProfileEmail(nextEmail);
     onProfileChange(name);
-    setNotice("Profil diperbarui pada sesi demo ini.");
+    showNotice("Profil diperbarui pada sesi demo ini.");
   }
 
   let content: ReactNode;
@@ -533,7 +547,7 @@ function TeacherPanel({
           heading={pageHeading("Kelola kelas, komponen penilaian, dan nilai siswa.")}
           onSaveGrades={() => {
             onUnsavedChange?.(false);
-            setNotice("Nilai berhasil disimpan pada sesi demo ini.");
+            showNotice("Nilai berhasil disimpan pada sesi demo ini.");
           }}
           onSearchChange={setSearch}
           onStatusFilterChange={setGradeStatusFilter}
@@ -571,7 +585,7 @@ function TeacherPanel({
 
   return (
     <div className="teacher-panel">
-      {notice && <p className="teacher-notice" role="status">{notice}</p>}
+      {notice?.route === route && <p className="teacher-notice" role="status">{notice.message}</p>}
       {content}
       <p className="teacher-demo-note" role="note">Data penilaian ini adalah data contoh pada browser dan belum tersinkron ke backend.</p>
     </div>

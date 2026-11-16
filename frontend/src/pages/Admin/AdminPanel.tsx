@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import ClassDataPage, { classSection } from "./ClassDataPage";
 import ClassGradesPage from "./ClassGradesPage";
 import DashboardPage from "./DashboardPage";
@@ -112,7 +112,21 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<{ message: string; route: string } | null>(null);
+
+  useEffect(() => {
+    setNotice(null);
+  }, [route]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = window.setTimeout(() => setNotice(null), 10_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
+
+  function showNotice(message: string) {
+    setNotice({ message, route });
+  }
 
   const currentRoute: AdminRoute | null = Object.prototype.hasOwnProperty.call(sectionConfig, route)
     ? (route as AdminRoute)
@@ -131,25 +145,25 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   function navigate(nextRoute: string) {
     setSearch("");
     setSelectedClass("Semua Kelas");
-    setNotice("");
+    setNotice(null);
     onNavigate(nextRoute);
   }
 
   function choosePeriod(period: string) {
     setCurrentPeriod(period);
-    setNotice("");
+    setNotice(null);
   }
 
   function createPeriod(year: string, semester: string) {
     if (!/^\d{4}\/\d{4}$/.test(year)) {
-      setNotice("Masukkan tahun ajaran dengan format YYYY/YYYY, misalnya 2026/2027.");
+      showNotice("Masukkan tahun ajaran dengan format YYYY/YYYY, misalnya 2026/2027.");
       return;
     }
 
     const period = `${year} · ${semester}`;
     setPeriodOptions((current) => current.includes(period) ? current : [...current, period]);
     setCurrentPeriod(period);
-    setNotice(`Periode ${period} sekarang menjadi periode aktif.`);
+    showNotice(`Periode ${period} sekarang menjadi periode aktif.`);
   }
 
   function openForm(mode: "create" | "edit" | "details", record: AdminRecord | null = null) {
@@ -269,7 +283,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       }
       return nextRecords;
     });
-    setNotice(dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
+    showNotice(dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
     closeForm();
   }
 
@@ -284,7 +298,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           records.assignments.some((item) => item.teacher === record.name))) ||
       (currentRoute === "subjects" && records.assignments.some((item) => item.subject === record.name));
     if (hasReferences) {
-      setNotice("Data masih digunakan oleh data akademik lain. Hapus atau pindahkan relasinya terlebih dahulu.");
+      showNotice("Data masih digunakan oleh data akademik lain. Hapus atau pindahkan relasinya terlebih dahulu.");
       return;
     }
     if (!window.confirm(`Hapus data "${record.name ?? record.grade ?? record.code ?? record.nis ?? record.teacher ?? ""}"?`)) {
@@ -294,7 +308,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       ...current,
       [currentRoute]: current[currentRoute].filter((item) => item.id !== record.id),
     }));
-    setNotice("Data berhasil dihapus.");
+    showNotice("Data berhasil dihapus.");
   }
 
   async function exportStudents() {
@@ -305,10 +319,10 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     ]);
     try {
       await downloadSpreadsheet("data-siswa-sipena.xlsx", [headers, ...dataRows], "Data Siswa");
-      setNotice("File Excel data siswa berhasil diunduh.");
+      showNotice("File Excel data siswa berhasil diunduh.");
     } catch (error) {
       console.error("Failed to export students.", error);
-      setNotice("Data siswa tidak dapat diekspor. Silakan coba lagi.");
+      showNotice("Data siswa tidak dapat diekspor. Silakan coba lagi.");
     }
   }
 
@@ -317,10 +331,10 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       await downloadSpreadsheet("template-impor-siswa.xlsx", [[
         "No", "NIS*", "NISN*", "Nama Lengkap*", "Jenis Kelamin (L/P)*", "Kode Kelas*",
       ]], "Data Siswa");
-      setNotice("Template impor siswa berhasil diunduh.");
+      showNotice("Template impor siswa berhasil diunduh.");
     } catch (error) {
       console.error("Failed to export student template.", error);
-      setNotice("Template tidak dapat diunduh. Silakan coba lagi.");
+      showNotice("Template tidak dapat diunduh. Silakan coba lagi.");
     }
   }
 
@@ -329,11 +343,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     event.target.value = "";
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      setNotice("Ukuran file melebihi batas 5 MB.");
+      showNotice("Ukuran file melebihi batas 5 MB.");
       return;
     }
     if (!/\.(csv|xlsx)$/i.test(file.name)) {
-      setNotice("Format file tidak didukung. Pilih file .xlsx atau .csv.");
+      showNotice("Format file tidak didukung. Pilih file .xlsx atau .csv.");
       return;
     }
 
@@ -346,7 +360,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!firstSheet) {
-          setNotice("File Excel tidak memiliki lembar kerja.");
+          showNotice("File Excel tidak memiliki lembar kerja.");
           return;
         }
         parsedRows = XLSX.utils.sheet_to_json<string[]>(firstSheet, {
@@ -356,7 +370,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         });
       }
       if (parsedRows.length < 2) {
-        setNotice("File tidak berisi data siswa.");
+        showNotice("File tidak berisi data siswa.");
         return;
       }
       const headers = parsedRows[0].map((header) =>
@@ -371,7 +385,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         className: findColumn("kode kelas", "kelas"),
       };
       if ([columns.nis, columns.nisn, columns.name, columns.gender, columns.className].some((column) => column < 0)) {
-        setNotice("Header CSV tidak sesuai template impor siswa.");
+        showNotice("Header CSV tidak sesuai template impor siswa.");
         return;
       }
 
@@ -409,18 +423,18 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       }
 
       if (errors.length) {
-        setNotice(`Impor dibatalkan; tidak ada data disimpan. ${errors.slice(0, 3).join(" ")}`);
+        showNotice(`Impor dibatalkan; tidak ada data disimpan. ${errors.slice(0, 3).join(" ")}`);
         return;
       }
       if (!imported.length) {
-        setNotice("Tidak ada baris siswa yang dapat diimpor.");
+        showNotice("Tidak ada baris siswa yang dapat diimpor.");
         return;
       }
       setRecords((current) => ({ ...current, students: [...current.students, ...imported] }));
-      setNotice(`${imported.length} data siswa berhasil diimpor.`);
+      showNotice(`${imported.length} data siswa berhasil diimpor.`);
     } catch (error) {
       console.error("Failed to import student spreadsheet.", error);
-      setNotice("File tidak dapat dibaca. Periksa format Excel/CSV dan coba lagi.");
+      showNotice("File tidak dapat dibaca. Periksa format Excel/CSV dan coba lagi.");
     }
   }
 
@@ -461,7 +475,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           navigate("grades");
         }}
         periodOptions={periodOptions}
-        notice={notice}
+        notice={notice?.route === route ? notice.message : ""}
         totalClasses={records.classes.length}
         totalStudents={records.students.length}
         totalTeachers={records.teachers.length}
@@ -517,7 +531,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
 
   return (
     <>
-      {notice && <p className="admin-notice" role="status">{notice}</p>}
+      {notice?.route === route && <p className="admin-notice" role="status">{notice.message}</p>}
       {page}
 
       {dialogMode && (

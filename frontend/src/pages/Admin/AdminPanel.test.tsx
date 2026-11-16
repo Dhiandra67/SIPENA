@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AdminPanel from "./AdminPanel";
 
@@ -25,5 +25,39 @@ describe("panel admin modular", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Lihat Nilai" })[0]);
 
     expect(onNavigate).toHaveBeenCalledWith("grades");
+  });
+
+  it("membatasi notifikasi ke halaman tempat notifikasi dibuat", () => {
+    const { rerender } = render(<AdminPanel onNavigate={() => undefined} route="dashboard" />);
+    fireEvent.change(screen.getByLabelText("Tahun ajaran baru"), {
+      target: { value: "2027/2028" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tambah & Aktifkan" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(/2027\/2028/);
+
+    rerender(<AdminPanel onNavigate={() => undefined} route="students" />);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    rerender(<AdminPanel onNavigate={() => undefined} route="dashboard" />);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("menghilangkan notifikasi setelah 10 detik", () => {
+    vi.useFakeTimers();
+
+    try {
+      render(<AdminPanel onNavigate={() => undefined} route="dashboard" />);
+      fireEvent.change(screen.getByLabelText("Tahun ajaran baru"), {
+        target: { value: "2027/2028" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Tambah & Aktifkan" }));
+
+      expect(screen.getByRole("status")).toBeInTheDocument();
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
