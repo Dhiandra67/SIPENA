@@ -1,4 +1,5 @@
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { getStoredAccessToken } from "../Login/auth";
 import ClassDataPage, { classSection } from "./ClassDataPage";
 import ClassGradesPage from "./ClassGradesPage";
 import DashboardPage from "./DashboardPage";
@@ -6,11 +7,26 @@ import StudentDataPage, { studentSection } from "./StudentDataPage";
 import SubjectDataPage, { subjectSection } from "./SubjectDataPage";
 import TeacherAssignmentsPage, { assignmentSection } from "./TeacherAssignmentsPage";
 import TeacherDataPage, { teacherSection } from "./TeacherDataPage";
-import { downloadSpreadsheet } from "./spreadsheet";
+import { downloadSpreadsheet, readSpreadsheetFile } from "../../lib/spreadsheet";
 import type { AdminRecord, AdminRoute, AdminSection } from "./types";
 import "./AdminPanel.css";
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+
+const endpointByRoute: Record<AdminRoute, string> = {
+  students: "/v1/siswa",
+  teachers: "/v1/guru",
+  classes: "/v1/kelas",
+  subjects: "/v1/mapel",
+  assignments: "/v1/pengajaran",
+};
+
 type RecordSet = Record<AdminRoute, AdminRecord[]>;
+
+interface OverviewPayload extends RecordSet {
+  academic?: AdminRecord[];
+  grades?: AdminRecord[];
+}
 
 const activePeriod = "2026/2027 · Ganjil";
 const sections: Record<AdminRoute, AdminSection> = {
@@ -70,10 +86,31 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function derivePeriodDates(year: string, semester: string): { startDate: string; endDate: string } {
+  const [startYearRaw, endYearRaw] = year.split("/");
+  const startYear = Number(startYearRaw) || new Date().getFullYear();
+  const endYear = Number(endYearRaw) || startYear + 1;
+  if (semester.toLowerCase() === "genap") {
+    return {
+      startDate: `${endYear}-01-02`,
+      endDate: `${endYear}-06-30`,
+    };
+  }
+  return {
+    startDate: `${startYear}-07-01`,
+    endDate: `${startYear}-12-31`,
+  };
+}
+
 function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [records, setRecords] = useState<RecordSet>(initialRecords);
+  const [academicPeriods, setAcademicPeriods] = useState<AdminRecord[]>([
+    { id: "p1", name: activePeriod, status: "Aktif" },
+  ]);
   const [currentPeriod, setCurrentPeriod] = useState(activePeriod);
   const [periodOptions, setPeriodOptions] = useState([activePeriod]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
   const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(initialRecords.classes[0]);
@@ -81,6 +118,79 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
+
+  function applyOverviewData(data: OverviewPayload) {
+    const nextRecords: RecordSet = {
+      students: data.students ?? [],
+      teachers: data.teachers ?? [],
+      classes: data.classes ?? [],
+      subjects: data.subjects ?? [],
+      assignments: data.assignments ?? [],
+    };
+    setRecords(nextRecords);
+
+    if (Array.isArray(data.academic) && data.academic.length > 0) {
+      setAcademicPeriods(data.academic);
+      const names = data.academic.map((period) => period.name);
+      setPeriodOptions(names);
+      const active =
+        data.academic.find((period) => period.status === "Aktif")?.name ?? names[0] ?? activePeriod;
+      setCurrentPeriod(active);
+      setSelectedGradeClass((previous) => {
+        if (previous) {
+          const updated = nextRecords.classes.find(
+            (item) => item.id === previous.id || (item.code === previous.code && item.period === active),
+          );
+          if (updated) return updated;
+        }
+        return nextRecords.classes.find((item) => item.period === active) ?? nextRecords.classes[0] ?? null;
+      });
+    } else if (nextRecords.classes.length > 0) {
+      setSelectedGradeClass((previous) => {
+        if (previous) {
+          const updated = nextRecords.classes.find((item) => item.id === previous.id);
+          if (updated) return updated;
+        }
+        return nextRecords.classes[0] ?? null;
+      });
+    }
+    setIsBackendSynced(true);
+  }
+
+  async function refreshOverview(): Promise<boolean> {
+    const token = getStoredAccessToken();
+    if (!token) {
+      return false;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        setIsBackendSynced(false);
+        return false;
+      }
+      const payload = (await response.json().catch(() => null)) as { data?: OverviewPayload } | null;
+      if (payload?.data) {
+        applyOverviewData(payload.data);
+        return true;
+      }
+      return false;
+    } catch {
+      setIsBackendSynced(false);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshOverview();
+  }, []);
 
   const currentRoute = isAdminRoute(route) ? route : null;
   const section = currentRoute ? sections[currentRoute] : null;
@@ -122,7 +232,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
     if (fieldKey === "subject") return records.subjects.map((subject) => subject.name);
     if (fieldKey === "className" || fieldKey === "code") {
-      return records.classes.map((classRecord) => classRecord.code);
+      const activeClasses = records.classes.filter((classRecord) => classRecord.period === currentPeriod);
+      const source = activeClasses.length > 0 ? activeClasses : records.classes;
+      return Array.from(new Set(source.map((classRecord) => classRecord.code)));
     }
     if (fieldKey === "period") return periodOptions;
     return [];
@@ -135,12 +247,22 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       ? ["nis", "nisn"]
       : currentRoute === "teachers"
         ? ["nip", "email"]
-        : currentRoute === "classes" || currentRoute === "subjects"
+        : currentRoute === "subjects"
           ? ["code"]
           : [];
     for (const key of uniqueFields) {
       if (candidate[key] && existing.some((record) => record[key]?.toLocaleLowerCase("id") === candidate[key].toLocaleLowerCase("id"))) {
         return `${section.fields.find((field) => field.key === key)?.label ?? key} sudah digunakan.`;
+      }
+    }
+    if (currentRoute === "classes") {
+      const duplicateClass = existing.some(
+        (record) =>
+          record.code?.toLocaleLowerCase("id") === candidate.code?.toLocaleLowerCase("id") &&
+          (!record.period || !candidate.period || record.period === candidate.period),
+      );
+      if (duplicateClass) {
+        return "Kode kelas sudah digunakan.";
       }
     }
     if (currentRoute === "students" && !records.classes.some((classRecord) => classRecord.code === candidate.className)) {
@@ -158,9 +280,12 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     return "";
   }
 
-  function saveRecord(event: FormEvent<HTMLFormElement>) {
+  async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!currentRoute || !section) return;
+    const activeRouteSnapshot = currentRoute;
+    const modeSnapshot = dialogMode;
+    const editingRecord = selectedRecord;
     const formData = new FormData(event.currentTarget);
     const candidate: AdminRecord = Object.fromEntries(
       section.fields.map((field) => [field.key, String(formData.get(field.key) ?? "").trim()]),
@@ -171,40 +296,149 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       return;
     }
 
-    const record = { ...candidate, id: selectedRecord?.id ?? createId() };
-    setRecords((previous) => ({
-      ...previous,
-      [currentRoute]: dialogMode === "edit"
-        ? previous[currentRoute].map((item) => item.id === record.id ? record : item)
-        : [...previous[currentRoute], record],
-    }));
-    setNotice(dialogMode === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
-    closeForm();
+    const token = getStoredAccessToken();
+    if (!token) {
+      const record = { ...candidate, id: editingRecord?.id ?? createId() };
+      setRecords((previous) => ({
+        ...previous,
+        [activeRouteSnapshot]: modeSnapshot === "edit"
+          ? previous[activeRouteSnapshot].map((item) => item.id === record.id ? record : item)
+          : [...previous[activeRouteSnapshot], record],
+      }));
+      setNotice(modeSnapshot === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
+      closeForm();
+      return;
+    }
+
+    try {
+      const endpoint = endpointByRoute[activeRouteSnapshot];
+      const url =
+        modeSnapshot === "edit" && editingRecord
+          ? `${apiBaseUrl}${endpoint}/${editingRecord.id}`
+          : `${apiBaseUrl}${endpoint}`;
+      const response = await fetch(url, {
+        method: modeSnapshot === "edit" ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(candidate),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        data?: AdminRecord;
+      } | null;
+      if (!response.ok) {
+        setFormError(payload?.message ?? "Gagal menyimpan data ke server backend.");
+        return;
+      }
+      const refreshed = await refreshOverview();
+      if (!refreshed) {
+        const savedRecord: AdminRecord = payload?.data ?? {
+          ...candidate,
+          id: editingRecord?.id ?? createId(),
+        };
+        setRecords((previous) => ({
+          ...previous,
+          [activeRouteSnapshot]: modeSnapshot === "edit"
+            ? previous[activeRouteSnapshot].map((item) => item.id === savedRecord.id ? savedRecord : item)
+            : [...previous[activeRouteSnapshot], savedRecord],
+        }));
+      }
+      setNotice(
+        payload?.message ??
+          (modeSnapshot === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan."),
+      );
+      closeForm();
+    } catch {
+      setFormError("Tidak dapat terhubung ke server backend. Data tidak disimpan.");
+    }
   }
 
-  function deleteRecord(record: AdminRecord) {
+  async function deleteRecord(record: AdminRecord) {
     if (!currentRoute) return;
+    const activeRouteSnapshot = currentRoute;
     const inUse =
-      (currentRoute === "classes" &&
+      (activeRouteSnapshot === "classes" &&
         (records.students.some((student) => student.className === record.code) ||
           records.assignments.some((assignment) => assignment.className === record.code))) ||
-      (currentRoute === "teachers" &&
+      (activeRouteSnapshot === "teachers" &&
         (records.classes.some((classRecord) => classRecord.homeroom === record.name) ||
           records.assignments.some((assignment) => assignment.teacher === record.name))) ||
-      (currentRoute === "subjects" && records.assignments.some((assignment) => assignment.subject === record.name));
+      (activeRouteSnapshot === "subjects" && records.assignments.some((assignment) => assignment.subject === record.name));
     if (inUse) {
       setNotice("Data masih digunakan. Hapus atau pindahkan relasinya terlebih dahulu.");
       return;
     }
     if (!window.confirm(`Hapus data "${record.name ?? record.code ?? record.nis ?? ""}"?`)) return;
-    setRecords((previous) => ({
-      ...previous,
-      [currentRoute]: previous[currentRoute].filter((item) => item.id !== record.id),
-    }));
-    setNotice("Data berhasil dihapus.");
+
+    const token = getStoredAccessToken();
+    if (!token) {
+      setRecords((previous) => ({
+        ...previous,
+        [activeRouteSnapshot]: previous[activeRouteSnapshot].filter((item) => item.id !== record.id),
+      }));
+      setNotice("Data berhasil dihapus.");
+      return;
+    }
+
+    try {
+      const endpoint = endpointByRoute[activeRouteSnapshot];
+      const response = await fetch(`${apiBaseUrl}${endpoint}/${record.id}`, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Data tidak dapat dihapus dari server.");
+        return;
+      }
+      const refreshed = await refreshOverview();
+      if (!refreshed) {
+        setRecords((previous) => ({
+          ...previous,
+          [activeRouteSnapshot]: previous[activeRouteSnapshot].filter((item) => item.id !== record.id),
+        }));
+      }
+      setNotice(payload?.message ?? "Data berhasil dihapus.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. Data tidak dihapus.");
+    }
   }
 
-  function addPeriod(year: string, semester: string) {
+  async function selectPeriod(nextPeriod: string) {
+    setCurrentPeriod(nextPeriod);
+    const matchingRecord = academicPeriods.find((item) => item.name === nextPeriod);
+    const token = getStoredAccessToken();
+    if (!token || !matchingRecord?.id || matchingRecord.status === "Aktif") {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/periode/${matchingRecord.id}/activate`, {
+        method: "PATCH",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Gagal mengaktifkan periode akademik di server.");
+        return;
+      }
+      await refreshOverview();
+      setNotice(payload?.message ?? "Periode akademik berhasil diaktifkan.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. Periode tidak dapat diaktifkan.");
+    }
+  }
+
+  async function addPeriod(year: string, semester: string) {
     if (!/^\d{4}\/\d{4}$/.test(year)) {
       setNotice("Gunakan format tahun ajaran YYYY/YYYY.");
       return;
@@ -214,14 +448,81 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       setNotice("Periode tersebut sudah terdaftar.");
       return;
     }
-    setPeriodOptions((previous) => [...previous, period]);
-    setCurrentPeriod(period);
-    setNotice("Periode akademik berhasil ditambahkan dan diaktifkan.");
+
+    const token = getStoredAccessToken();
+    if (!token) {
+      setPeriodOptions((previous) => [...previous, period]);
+      setCurrentPeriod(period);
+      setNotice("Periode akademik berhasil ditambahkan dan diaktifkan.");
+      return;
+    }
+
+    const { startDate, endDate } = derivePeriodDates(year, semester);
+    try {
+      const response = await fetch(`${apiBaseUrl}/v1/periode`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: period,
+          tahun_ajaran: year,
+          semester: semester.toUpperCase(),
+          startDate,
+          endDate,
+          status: "Aktif",
+          is_active: true,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        data?: AdminRecord;
+      } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Gagal menambahkan periode akademik di server.");
+        return;
+      }
+      const refreshed = await refreshOverview();
+      if (!refreshed) {
+        setPeriodOptions((previous) => [...previous, period]);
+        setCurrentPeriod(period);
+        if (payload?.data) {
+          setAcademicPeriods((previous) => [...previous, payload.data!]);
+        }
+      }
+      setNotice(payload?.message ?? "Periode akademik berhasil ditambahkan dan diaktifkan.");
+    } catch {
+      setNotice("Tidak dapat terhubung ke server backend. Periode tidak disimpan.");
+    }
   }
 
   async function exportStudents() {
     const headers = ["NIS", "NISN", "Nama Lengkap", "Jenis Kelamin (L/P)", "Kode Kelas", "Status"];
-    const dataRows = records.students.map((student) => [
+    let sourceStudents = records.students;
+
+    const token = getStoredAccessToken();
+    if (token) {
+      try {
+        const response = await fetch(`${apiBaseUrl}/v1/siswa/export`, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const payload = (await response.json().catch(() => null)) as { data?: AdminRecord[] } | null;
+          if (Array.isArray(payload?.data)) {
+            sourceStudents = payload.data;
+          }
+        }
+      } catch {
+        // Fallback to current state when export endpoint is unreachable
+      }
+    }
+
+    const dataRows = sourceStudents.map((student) => [
       student.nis, student.nisn, student.name, student.gender, student.className, student.status,
     ]);
     try {
@@ -242,16 +543,12 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       return;
     }
     try {
-      const XLSX = await import("@e965/xlsx/dist/xlsx.mini.min.js").then((module) => module.default);
-      const workbook = file.name.toLowerCase().endsWith(".csv")
-        ? XLSX.read(await file.text(), { type: "string" })
-        : XLSX.read(await file.arrayBuffer(), { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      if (!sheet) {
+      const rawRows = await readSpreadsheetFile(file);
+      if (!rawRows) {
         setNotice("File tidak memiliki lembar kerja.");
         return;
       }
-      const imported = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: "", raw: false })
+      const imported = rawRows
         .slice(1)
         .filter((row) => row.some((value) => String(value).trim()))
         .map((row) => ({
@@ -263,12 +560,45 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           className: String(row[4] ?? "").trim(),
           status: String(row[5] ?? "Aktif").trim() || "Aktif",
         }));
-      if (imported.some((student) => !student.nis || !student.name || !records.classes.some((item) => item.code === student.className))) {
+      if (
+        imported.length === 0 ||
+        imported.some(
+          (student) =>
+            !student.nis ||
+            !student.name ||
+            !records.classes.some((item) => item.code === student.className),
+        )
+      ) {
         setNotice("Impor dibatalkan: setiap baris harus berisi NIS, nama, dan kode kelas yang terdaftar.");
         return;
       }
-      setRecords((previous) => ({ ...previous, students: [...previous.students, ...imported] }));
-      setNotice(`${imported.length} data siswa berhasil diimpor.`);
+
+      const token = getStoredAccessToken();
+      if (!token) {
+        setRecords((previous) => ({ ...previous, students: [...previous.students, ...imported] }));
+        setNotice(`${imported.length} data siswa berhasil diimpor.`);
+        return;
+      }
+
+      const response = await fetch(`${apiBaseUrl}/v1/siswa/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ students: imported }),
+      });
+      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) {
+        setNotice(payload?.message ?? "Impor siswa ditolak oleh server.");
+        return;
+      }
+      const refreshed = await refreshOverview();
+      if (!refreshed) {
+        setRecords((previous) => ({ ...previous, students: [...previous.students, ...imported] }));
+      }
+      setNotice(payload?.message ?? `${imported.length} data siswa berhasil diimpor.`);
     } catch (error) {
       console.error("Failed to import students.", error);
       setNotice("File siswa tidak dapat dibaca. Periksa format dan coba lagi.");
@@ -282,9 +612,14 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         <DashboardPage
           classes={classes}
           currentPeriod={currentPeriod}
+          isBackendSynced={isBackendSynced}
           notice={notice}
-          onCreatePeriod={addPeriod}
-          onPeriodChange={setCurrentPeriod}
+          onCreatePeriod={(year, semester) => {
+            void addPeriod(year, semester);
+          }}
+          onPeriodChange={(nextPeriod) => {
+            void selectPeriod(nextPeriod);
+          }}
           onViewGrades={(classRecord) => {
             setSelectedGradeClass(classRecord);
             navigate("grades");
@@ -330,7 +665,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     onAdd: () => openForm("create"),
     onDetails: (record: AdminRecord) => openForm("details", record),
     onEdit: (record: AdminRecord) => openForm("edit", record),
-    onDelete: deleteRecord,
+    onDelete: (record: AdminRecord) => {
+      void deleteRecord(record);
+    },
+    isLoading,
+    isBackendSynced,
   };
   const fileActions = currentRoute === "students" ? (
     <div className="admin-file-actions">
@@ -379,7 +718,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
                 ))}
               </dl>
             ) : (
-              <form className="admin-form" onSubmit={saveRecord}>
+              <form className="admin-form" onSubmit={(event) => void saveRecord(event)}>
                 {section.fields.map((field) => (
                   <label key={field.key}>
                     {field.label}

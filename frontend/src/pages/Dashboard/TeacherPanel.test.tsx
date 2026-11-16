@@ -9,13 +9,15 @@ const xlsxMocks = vi.hoisted(() => ({
   writeFile: vi.fn(),
 }));
 
-vi.mock("xlsx", () => ({
-  utils: {
-    aoa_to_sheet: xlsxMocks.aoaToSheet,
-    book_new: xlsxMocks.bookNew,
-    book_append_sheet: xlsxMocks.bookAppendSheet,
+vi.mock("@e965/xlsx/dist/xlsx.mini.min.js", () => ({
+  default: {
+    utils: {
+      aoa_to_sheet: xlsxMocks.aoaToSheet,
+      book_new: xlsxMocks.bookNew,
+      book_append_sheet: xlsxMocks.bookAppendSheet,
+    },
+    writeFile: xlsxMocks.writeFile,
   },
-  writeFile: xlsxMocks.writeFile,
 }));
 
 const period = "2026/2027 · Ganjil";

@@ -134,42 +134,6 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
           <form className="login-card" onSubmit={handleSubmit}>
             <h2>Masuk ke akun Anda</h2>
 
-            {import.meta.env.DEV && (
-              <aside className="demo-credentials" aria-label="Kredensial akun demo">
-                <strong>Akun hasil database seeding (mode pengembangan)</strong>
-                <div className="demo-account">
-                  <span className="demo-role">Admin (Database Seeding)</span>
-                  <span>Email: <code>test@example.com</code></span>
-                  <span>Kata sandi: <code>password</code></span>
-                  <button
-                    className="text-button demo-fill-button"
-                    onClick={() => {
-                      setEmail("test@example.com");
-                      setPassword("password");
-                    }}
-                    type="button"
-                  >
-                    Gunakan akun admin
-                  </button>
-                </div>
-                <div className="demo-account">
-                  <span className="demo-role">Guru (Sandi Sementara)</span>
-                  <span>Email: <code>guru@example.com</code></span>
-                  <span>Kata sandi: <code>guru12345</code></span>
-                  <button
-                    className="text-button demo-fill-button"
-                    onClick={() => {
-                      setEmail("guru@example.com");
-                      setPassword("guru12345");
-                    }}
-                    type="button"
-                  >
-                    Gunakan akun guru
-                  </button>
-                </div>
-              </aside>
-            )}
-
             <div className="field">
               <label htmlFor="email">Email</label>
               <div className="input-wrap">
@@ -229,7 +193,7 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
                 className="text-button forgot-link"
                 onClick={() => {
                   setMessage(
-                    "Hubungi admin sekolah untuk mereset kata sandi ke sandi sementara (guru12345).",
+                    "Silakan hubungi admin sekolah untuk bantuan reset kata sandi akun Anda.",
                   );
                   setMessageType("info");
                 }}
@@ -263,7 +227,7 @@ function LoginPage({ onLoginSuccess }: LoginProps) {
               className="text-button contact-link"
               onClick={() => {
                 setMessage(
-                  "Akun admin dibuat melalui database seeding, sedangkan akun guru ditambahkan oleh admin sekolah dengan kata sandi sementara guru12345.",
+                  "Silakan hubungi admin sekolah jika Anda mengalami kesulitan masuk atau perlu bantuan akun.",
                 );
                 setMessageType("info");
               }}

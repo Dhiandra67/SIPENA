@@ -34,6 +34,60 @@ class KelasController extends Controller
         return response()->json(['data' => $items]);
     }
 
+    /**
+     * Rekap nilai akhir per mata pelajaran untuk seluruh siswa dalam satu kelas (khusus admin).
+     */
+    public function rekap(int $id): JsonResponse
+    {
+        $kelas = Kelas::with([
+            'periode',
+            'anggotaKelas.siswa',
+            'pengajaran' => fn ($query) => $query->with(['mataPelajaran', 'nilaiAkhirMapel'])->orderBy('id'),
+        ])->findOrFail($id);
+
+        $subjects = $kelas->pengajaran
+            ->sortBy(fn ($pengajaran) => $pengajaran->mataPelajaran?->kode_mapel ?? '')
+            ->values();
+
+        $scoresByPengajaran = [];
+        foreach ($subjects as $pengajaran) {
+            foreach ($pengajaran->nilaiAkhirMapel as $nilai) {
+                $scoresByPengajaran[$pengajaran->id][$nilai->anggota_kelas_id] = (float) $nilai->nilai_akhir;
+            }
+        }
+
+        $students = $kelas->anggotaKelas
+            ->filter(fn ($anggota) => $anggota->siswa !== null)
+            ->sortBy(fn ($anggota) => $anggota->siswa->nama_lengkap)
+            ->values()
+            ->map(function ($anggota) use ($subjects, $scoresByPengajaran) {
+                $scores = [];
+                foreach ($subjects as $pengajaran) {
+                    $scores[(string) $pengajaran->id] = $scoresByPengajaran[$pengajaran->id][$anggota->id] ?? null;
+                }
+
+                return [
+                    'id' => (string) $anggota->siswa->id,
+                    'nis' => $anggota->siswa->nis,
+                    'nisn' => $anggota->siswa->nisn ?? '',
+                    'name' => $anggota->siswa->nama_lengkap,
+                    'scores' => $scores,
+                ];
+            });
+
+        return response()->json([
+            'data' => [
+                'class' => $this->formatKelas($kelas->loadCount('anggotaKelas')),
+                'subjects' => $subjects->map(fn ($pengajaran) => [
+                    'id' => (string) $pengajaran->id,
+                    'code' => $pengajaran->mataPelajaran?->kode_mapel ?? '',
+                    'name' => $pengajaran->mataPelajaran?->nama_mapel ?? '',
+                ])->values(),
+                'students' => $students,
+            ],
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $payload = $this->validateKelas($request);

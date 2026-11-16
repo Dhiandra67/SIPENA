@@ -1,6 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
-import { getStoredAccessToken, login } from "../Login/auth";
+import { downloadSpreadsheet as writeSpreadsheet, readSpreadsheetFile, type SpreadsheetCell } from "../../lib/spreadsheet";
+import { getStoredAccessToken } from "../Login/auth";
 import ScoreEntriesDropdown from "./ScoreEntriesDropdown";
 import "./TeacherPanel.css";
 
@@ -88,40 +88,6 @@ const defaultGrades = [
 
 function createComponentId() {
   return `component-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let value = "";
-  let quoted = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    if (character === '"') {
-      if (quoted && text[index + 1] === '"') {
-        value += '"';
-        index += 1;
-      } else {
-        quoted = !quoted;
-      }
-    } else if (!quoted && (character === "," || character === ";")) {
-      row.push(value.trim());
-      value = "";
-    } else if (!quoted && (character === "\n" || character === "\r")) {
-      if (character === "\r" && text[index + 1] === "\n") index += 1;
-      row.push(value.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      value = "";
-    } else {
-      value += character;
-    }
-  }
-
-  row.push(value.trim());
-  if (row.some(Boolean)) rows.push(row);
-  return rows;
 }
 
 function calculateFinal(
@@ -286,27 +252,8 @@ function TeacherPanel({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm]);
 
-  async function ensureTeacherAccessToken(forceRefresh = false): Promise<string | null> {
-    const existing = getStoredAccessToken();
-    if (existing && !forceRefresh) {
-      return existing;
-    }
-    if (import.meta.env.DEV) {
-      try {
-        const result = await login(
-          { email: (email || "guru@example.com").trim().toLowerCase(), password: "guru12345" },
-          true,
-        );
-        return result.accessToken;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
-
   async function loadTeacherWorkspace(periodName?: string) {
-    let token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setIsBackendSynced(false);
       setIsLoading(false);
@@ -315,23 +262,12 @@ function TeacherPanel({
     }
     try {
       const query = periodName ? `?period=${encodeURIComponent(periodName)}` : "";
-      let res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
+      const res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
-      if (res.status === 401 && import.meta.env.DEV) {
-        token = await ensureTeacherAccessToken(true);
-        if (token) {
-          res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          });
-        }
-      }
       if (!res.ok) {
         setIsBackendSynced(false);
         setNotice("Gagal memuat data pengajaran dari server backend.");
@@ -554,7 +490,7 @@ function TeacherPanel({
       setNotice("KKM harus berupa angka antara 0 dan 100.");
       return;
     }
-    const token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. KKM tidak disimpan.");
       return;
@@ -623,7 +559,7 @@ function TeacherPanel({
       setNotice("Total bobot harus tepat 100% dan setiap bobot lebih dari 0%.");
       return;
     }
-    const token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Komponen tidak disimpan.");
       return;
@@ -667,7 +603,7 @@ function TeacherPanel({
     customMessage?: string,
     scoreEntriesToSave: ScoreEntriesMap = scoreEntries,
   ) {
-    const token = await ensureTeacherAccessToken();
+    const token = getStoredAccessToken();
     if (!token) {
       setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Nilai tidak disimpan.");
       return;
@@ -705,11 +641,8 @@ function TeacherPanel({
     }
   }
 
-  async function downloadSpreadsheet(filename: string, rows: (string | number)[][]) {
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Nilai");
-    XLSX.writeFile(workbook, filename);
+  async function downloadSpreadsheet(filename: string, rows: SpreadsheetCell[][]) {
+    await writeSpreadsheet(filename, rows, "Nilai");
   }
 
   async function downloadGradeTemplate() {
@@ -830,21 +763,10 @@ function TeacherPanel({
     }
 
     try {
-      let rows: string[][];
-      if (file.name.toLocaleLowerCase("id").endsWith(".csv")) {
-        rows = parseCsv(await file.text());
-      } else {
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        if (!firstSheet) {
-          setNotice("File Excel tidak memiliki lembar kerja.");
-          return;
-        }
-        rows = XLSX.utils.sheet_to_json<string[]>(firstSheet, {
-          header: 1,
-          defval: "",
-          raw: false,
-        });
+      const rows = await readSpreadsheetFile(file);
+      if (!rows) {
+        setNotice("File Excel tidak memiliki lembar kerja.");
+        return;
       }
 
       if (rows.length < 2) {
@@ -1557,7 +1479,7 @@ function TeacherPanel({
         setNotice("Konfirmasi kata sandi tidak cocok.");
         return;
       }
-      const token = await ensureTeacherAccessToken();
+      const token = getStoredAccessToken();
       if (!token) {
         setNotice("Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Profil tidak diperbarui.");
         return;

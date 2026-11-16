@@ -1,6 +1,9 @@
-import { useState } from "react";
-import { downloadSpreadsheet } from "./spreadsheet";
+import { useEffect, useState } from "react";
+import { getStoredAccessToken } from "../Login/auth";
+import { downloadSpreadsheet } from "../../lib/spreadsheet";
 import type { AdminRecord } from "./types";
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
 interface ClassGradesPageProps {
   classRecord: AdminRecord;
@@ -16,6 +19,22 @@ interface ReportRow {
   student: AdminRecord;
   subjectScores: (number | undefined)[];
   semesterScore: number | null;
+}
+
+interface RecapStudentPayload {
+  id: string;
+  nis: string;
+  nisn: string;
+  name: string;
+  scores: Record<string, number | null>;
+}
+
+interface RecapResponsePayload {
+  data?: {
+    class?: AdminRecord;
+    subjects?: AdminRecord[];
+    students?: RecapStudentPayload[];
+  };
 }
 
 const demoSubjectScores: Record<string, Record<string, number>> = {
@@ -40,19 +59,83 @@ function ClassGradesPage({
 }: ClassGradesPageProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [exportNotice, setExportNotice] = useState("");
+  const [recapSubjects, setRecapSubjects] = useState<AdminRecord[] | null>(null);
+  const [recapStudents, setRecapStudents] = useState<RecapStudentPayload[] | null>(null);
+  const [isBackendSynced, setIsBackendSynced] = useState(false);
 
-  const reportRows: ReportRow[] = students.map((student) => {
-    const subjectScores = subjects.map((subject) => demoSubjectScores[student.id]?.[subject.code]);
-    const hasCompleteScores =
-      subjectScores.length > 0 && subjectScores.every((score) => score !== undefined);
-    const semesterScore = hasCompleteScores
-      ? Math.round(
-        (subjectScores.reduce((total, score) => total + (score ?? 0), 0) / subjectScores.length) * 100,
-      ) / 100
-      : null;
+  useEffect(() => {
+    setRecapSubjects(null);
+    setRecapStudents(null);
+    setIsBackendSynced(false);
 
-    return { student, subjectScores, semesterScore };
-  });
+    const token = getStoredAccessToken();
+    if (!token || !classRecord.id) return;
+
+    let cancelled = false;
+    void fetch(`${apiBaseUrl}/v1/kelas/${classRecord.id}/rekap`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<RecapResponsePayload>) : null))
+      .then((payload) => {
+        if (cancelled || !payload?.data) return;
+        if (Array.isArray(payload.data.subjects) && Array.isArray(payload.data.students)) {
+          setRecapSubjects(payload.data.subjects);
+          setRecapStudents(payload.data.students);
+          setIsBackendSynced(true);
+        }
+      })
+      .catch(() => {
+        // Fallback to local records if backend recap endpoint is unavailable
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [classRecord.id]);
+
+  const effectiveSubjects = recapSubjects ?? subjects;
+  const reportRows: ReportRow[] = recapStudents
+    ? recapStudents.map((student) => {
+        const subjectScores = effectiveSubjects.map((subject) => {
+          const rawScore = student.scores?.[subject.id] ?? student.scores?.[subject.code];
+          return typeof rawScore === "number" ? rawScore : undefined;
+        });
+        const hasCompleteScores =
+          subjectScores.length > 0 && subjectScores.every((score) => score !== undefined);
+        const semesterScore = hasCompleteScores
+          ? Math.round(
+              (subjectScores.reduce((total, score) => total + (score ?? 0), 0) / subjectScores.length) * 100,
+            ) / 100
+          : null;
+
+        return {
+          student: {
+            id: student.id,
+            nis: student.nis,
+            nisn: student.nisn,
+            name: student.name,
+          },
+          subjectScores,
+          semesterScore,
+        };
+      })
+    : students.map((student) => {
+        const subjectScores = effectiveSubjects.map(
+          (subject) => demoSubjectScores[student.id]?.[subject.code],
+        );
+        const hasCompleteScores =
+          subjectScores.length > 0 && subjectScores.every((score) => score !== undefined);
+        const semesterScore = hasCompleteScores
+          ? Math.round(
+              (subjectScores.reduce((total, score) => total + (score ?? 0), 0) / subjectScores.length) * 100,
+            ) / 100
+          : null;
+
+        return { student, subjectScores, semesterScore };
+      });
 
   const orderedRows = [...reportRows].sort((first, second) => {
     if (first.semesterScore === null) return second.semesterScore === null ? 0 : 1;
@@ -75,7 +158,7 @@ function ClassGradesPage({
     const headers = [
       "NISN",
       "Nama Siswa",
-      ...subjects.map((subject) => subject.name),
+      ...effectiveSubjects.map((subject) => subject.name),
       "Nilai Akhir Semester",
       "Peringkat Kelas",
     ];
@@ -175,7 +258,7 @@ function ClassGradesPage({
               <tr>
                 <th scope="col">NISN</th>
                 <th scope="col">Nama Siswa</th>
-                {subjects.map((subject) => <th key={subject.id} scope="col">{subject.name}</th>)}
+                {effectiveSubjects.map((subject) => <th key={subject.id} scope="col">{subject.name}</th>)}
                 <th scope="col">Nilai Akhir Semester</th>
                 <th scope="col">Peringkat Kelas</th>
               </tr>
@@ -186,15 +269,15 @@ function ClassGradesPage({
                   <td>{row.student.nisn}</td>
                   <td>{row.student.name}</td>
                   {row.subjectScores.map((score, index) => (
-                    <td key={subjects[index]?.id ?? index}>{score?.toFixed(2) ?? "—"}</td>
+                    <td key={effectiveSubjects[index]?.id ?? index}>{score?.toFixed(2) ?? "—"}</td>
                   ))}
                   <td>{row.semesterScore?.toFixed(2) ?? "—"}</td>
                   <td>{rankByStudentId.get(row.student.id) ?? "—"}</td>
                 </tr>
               ))}
-              {students.length === 0 && (
+              {orderedRows.length === 0 && (
                 <tr>
-                  <td className="admin-empty" colSpan={subjects.length + 4}>
+                  <td className="admin-empty" colSpan={effectiveSubjects.length + 4}>
                     Belum ada siswa pada kelas ini.
                   </td>
                 </tr>
@@ -203,7 +286,9 @@ function ClassGradesPage({
           </table>
         </div>
         <div className="admin-demo-notice" role="note">
-          Nilai yang ditampilkan merupakan data demo dan belum tersinkron ke backend.
+          {isBackendSynced
+            ? "Nilai rapor dimuat langsung dari database SIPENA berdasarkan perhitungan nilai akhir guru."
+            : "Nilai yang ditampilkan merupakan data pratinjau lokal."}
         </div>
       </section>
     </div>

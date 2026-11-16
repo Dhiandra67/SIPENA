@@ -102,49 +102,6 @@
   letter-spacing: -0.25px;
 }
 
-.demo-credentials {
-  display: grid;
-  gap: 10px;
-  margin: -8px 0 22px;
-  padding: 12px;
-  border: 1px solid #e4e9e3;
-  border-radius: 7px;
-  background: #f5f7f3;
-  color: #52665a;
-  font-size: 11px;
-}
-
-.demo-credentials strong {
-  color: #384B54;
-  font-size: 12px;
-}
-
-.demo-credentials code {
-  color: #384B54;
-  font-family: inherit;
-  font-weight: 650;
-}
-
-.demo-account {
-  display: grid;
-  gap: 4px;
-  padding-top: 8px;
-  border-top: 1px solid #e4e9e3;
-}
-
-.demo-role {
-  color: #384B54;
-  font-weight: 650;
-}
-
-.demo-fill-button {
-  justify-self: start;
-  margin-top: 1px;
-  color: #384B54;
-  font-size: 11px;
-  font-weight: 650;
-}
-
 .field + .field {
   margin-top: 20px;
 }

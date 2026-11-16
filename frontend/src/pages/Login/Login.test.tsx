@@ -74,12 +74,13 @@ describe("formulir login", () => {
     expect(password).toHaveAttribute("type", "password");
   });
 
-  it("mengisi kredensial demo admin melalui tombol bantuan", () => {
+  it("tidak menampilkan kredensial demo di halaman login", () => {
     render(<LoginPage onLoginSuccess={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Gunakan akun admin" }));
-
-    expect(screen.getByLabelText("Email")).toHaveValue("test@example.com");
-    expect(screen.getByLabelText("Kata sandi")).toHaveValue("password");
+    expect(
+      screen.queryByRole("button", { name: /gunakan akun admin|gunakan akun guru/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toHaveValue("");
+    expect(screen.getByLabelText("Kata sandi")).toHaveValue("");
   });
 });

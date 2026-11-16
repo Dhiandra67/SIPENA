@@ -348,20 +348,18 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                 </dl>
 
                 <div className="profile-popover-actions">
-                  {!isAdmin && (
-                    <button
-                      className="profile-popover-action primary"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        setProfileError("");
-                        setProfileNotice("");
-                        setProfileModalOpen(true);
-                      }}
-                      type="button"
-                    >
-                      Edit Profil &amp; Ubah Sandi
-                    </button>
-                  )}
+                  <button
+                    className="profile-popover-action primary"
+                    onClick={() => {
+                      setProfileMenuOpen(false);
+                      setProfileError("");
+                      setProfileNotice("");
+                      setProfileModalOpen(true);
+                    }}
+                    type="button"
+                  >
+                    Edit Profil &amp; Ubah Sandi
+                  </button>
                   <button
                     className="profile-popover-action danger"
                     onClick={() => {

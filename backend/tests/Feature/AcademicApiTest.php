@@ -257,6 +257,49 @@ class AcademicApiTest extends TestCase
         ]);
     }
 
+    public function test_teacher_can_add_new_component_when_existing_components_include_formatted_backend_fields(): void
+    {
+        $this->seed();
+        $teacherToken = $this->loginAs('guru@example.com', 'guru12345');
+        $pengajaran = Pengajaran::whereHas('kelas', fn ($q) => $q->where('kode_kelas', 'VII-A'))->firstOrFail();
+
+        $dashboardPayload = $this->withToken($teacherToken)
+            ->getJson('/api/v1/guru/dashboard')
+            ->assertOk()
+            ->json('data.componentsByAssignment.'.$pengajaran->id);
+
+        $this->assertCount(4, $dashboardPayload);
+
+        // Simulasikan perilaku TeacherPanel: ubah weight komponen terakhir dari 30 ke 20 (bobot_persen lama tetap 30 di objek)
+        // dan tambahkan komponen ke-5 baru dengan id string sementara.
+        $dashboardPayload[3]['weight'] = '20';
+        $dashboardPayload[] = [
+            'id' => 'component-1763210000000-abcde',
+            'name' => 'Praktikum',
+            'weight' => '10',
+        ];
+
+        $response = $this->withToken($teacherToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}/komponen", [
+                'components' => $dashboardPayload,
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Komponen penilaian berhasil disimpan.');
+
+        $savedComponents = $response->json('data.componentsByAssignment.'.$pengajaran->id);
+        $this->assertCount(5, $savedComponents);
+        $this->assertSame('20', $savedComponents[3]['weight']);
+        $this->assertSame('Praktikum', $savedComponents[4]['name']);
+        $this->assertSame('10', $savedComponents[4]['weight']);
+
+        $this->assertDatabaseHas('komponen_nilai', [
+            'pengajaran_id' => $pengajaran->id,
+            'nama_komponen' => 'Praktikum',
+            'bobot_persen' => 10.00,
+            'urutan' => 5,
+        ]);
+    }
+
     public function test_updating_assignment_kkm_recalculates_student_passing_status(): void
     {
         $this->seed();

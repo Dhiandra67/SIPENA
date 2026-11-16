@@ -80,8 +80,15 @@ class GuruPenilaianController extends Controller
 
         $normalized = [];
         foreach ($rawComponents as $index => $comp) {
-            $name = trim((string) ($comp['nama_komponen'] ?? $comp['name'] ?? ''));
-            $weightRaw = $comp['bobot_persen'] ?? $comp['weight'] ?? null;
+            if (! is_array($comp)) {
+                return response()->json(['message' => 'Format komponen penilaian tidak valid.'], 422);
+            }
+
+            $name = trim((string) ($comp['name'] ?? $comp['nama_komponen'] ?? ''));
+            $weightRaw = $comp['weight'] ?? $comp['bobot_persen'] ?? null;
+            if (is_string($weightRaw)) {
+                $weightRaw = trim(str_replace(',', '.', $weightRaw));
+            }
 
             if ($name === '') {
                 return response()->json(['message' => 'Nama setiap komponen harus diisi.'], 422);
@@ -90,15 +97,23 @@ class GuruPenilaianController extends Controller
                 return response()->json(['message' => 'Bobot komponen harus berupa angka.'], 422);
             }
 
+            $rawId = $comp['id'] ?? null;
+            $parsedId = (is_int($rawId) || (is_string($rawId) && ctype_digit(trim($rawId))))
+                ? (int) $rawId
+                : null;
+
             $normalized[] = [
-                'id' => isset($comp['id']) && is_numeric($comp['id']) ? (int) $comp['id'] : null,
+                'id' => $parsedId,
                 'nama_komponen' => $name,
                 'bobot_persen' => round((float) $weightRaw, 2),
                 'urutan' => $index + 1,
             ];
         }
 
-        $componentIds = array_filter(array_column($normalized, 'id'), fn (?int $id) => $id !== null);
+        $componentIds = array_values(array_filter(
+            array_column($normalized, 'id'),
+            fn (?int $compId) => $compId !== null
+        ));
         if (count($componentIds) !== count(array_unique($componentIds))) {
             return response()->json([
                 'message' => 'ID komponen tidak boleh digunakan lebih dari satu kali.',
@@ -109,6 +124,10 @@ class GuruPenilaianController extends Controller
             return response()->json([
                 'message' => 'Total bobot harus tepat 100% dan setiap bobot lebih dari 0%.',
             ], 422);
+        }
+
+        if ($id !== 'all' && ! ctype_digit($id)) {
+            return response()->json(['message' => 'Pengajaran tidak ditemukan.'], 404);
         }
 
         $targets = $id === 'all'
@@ -127,19 +146,24 @@ class GuruPenilaianController extends Controller
             }
         }
 
-        DB::transaction(function () use ($targets, $normalized): void {
+        DB::transaction(function () use ($targets, $normalized, $componentIds): void {
             foreach ($targets as $pengajaran) {
                 $existing = $pengajaran->komponenNilai()->get();
+                $reservedIds = $existing->pluck('id')->intersect($componentIds)->all();
                 $keptIds = [];
 
                 foreach ($normalized as $item) {
                     $matched = null;
                     if ($item['id'] !== null) {
-                        $matched = $existing->firstWhere('id', $item['id']);
+                        $matched = $existing->first(
+                            fn (KomponenNilai $k) => $k->id === $item['id']
+                                && ! in_array($k->id, $keptIds, true)
+                        );
                     }
                     $matched ??= $existing->first(
                         fn (KomponenNilai $k) => strtolower($k->nama_komponen) === strtolower($item['nama_komponen'])
                             && ! in_array($k->id, $keptIds, true)
+                            && ! in_array($k->id, $reservedIds, true)
                     );
 
                     if ($matched) {
