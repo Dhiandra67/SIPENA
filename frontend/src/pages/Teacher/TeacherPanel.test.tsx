@@ -173,6 +173,8 @@ describe("rekap nilai pada detail kelas", () => {
       target: { value: "100" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Tambah" }));
+    expect(document.activeElement).toBe(scoreInput);
+    expect(scoreInput).toHaveValue(null);
     expect(within(entryList).getByText("Nilai 2")).toBeInTheDocument();
     expect(within(entryList).getByText("100,00")).toBeInTheDocument();
     expect(
