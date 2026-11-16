@@ -1,105 +1,35 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { downloadSpreadsheet, readSpreadsheetFile } from "../../lib/spreadsheet";
 import { getStoredAccessToken } from "../Login/auth";
-import ClassDataPage, { classSection } from "./ClassDataPage";
+import {
+  activePeriod,
+  createId,
+  derivePeriodDates,
+  endpointByRoute,
+  getFieldOptions,
+  initialRecords,
+  isAdminRoute,
+  sections,
+  validateAdminRecord,
+  type OverviewPayload,
+  type RecordSet,
+} from "./adminConfig";
+import AdminFormDialog from "./AdminFormDialog";
+import ClassDataPage from "./ClassDataPage";
 import ClassGradesPage from "./ClassGradesPage";
 import DashboardPage from "./DashboardPage";
-import StudentDataPage, { studentSection } from "./StudentDataPage";
-import SubjectDataPage, { subjectSection } from "./SubjectDataPage";
-import TeacherAssignmentsPage, { assignmentSection } from "./TeacherAssignmentsPage";
-import TeacherDataPage, { teacherSection } from "./TeacherDataPage";
-import { downloadSpreadsheet, readSpreadsheetFile } from "../../lib/spreadsheet";
-import type { AdminRecord, AdminRoute, AdminSection } from "./types";
+import StudentDataPage from "./StudentDataPage";
+import SubjectDataPage from "./SubjectDataPage";
+import TeacherAssignmentsPage from "./TeacherAssignmentsPage";
+import TeacherDataPage from "./TeacherDataPage";
+import type { AdminRecord } from "./types";
 import "./AdminPanel.css";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
-const endpointByRoute: Record<AdminRoute, string> = {
-  students: "/v1/siswa",
-  teachers: "/v1/guru",
-  classes: "/v1/kelas",
-  subjects: "/v1/mapel",
-  assignments: "/v1/pengajaran",
-};
-
-type RecordSet = Record<AdminRoute, AdminRecord[]>;
-
-interface OverviewPayload extends RecordSet {
-  academic?: AdminRecord[];
-  grades?: AdminRecord[];
-}
-
-const activePeriod = "2026/2027 · Ganjil";
-const sections: Record<AdminRoute, AdminSection> = {
-  students: studentSection,
-  teachers: teacherSection,
-  classes: classSection,
-  subjects: subjectSection,
-  assignments: assignmentSection,
-};
-
-const initialRecords: RecordSet = {
-  students: [
-    { id: "s1", nis: "2026001", nisn: "0123456701", name: "Andi Pratama", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s2", nis: "2026002", nisn: "0123456702", name: "Budi Santoso", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s3", nis: "2026003", nisn: "0123456703", name: "Citra Lestari", gender: "P", className: "VII-B", status: "Aktif" },
-    { id: "s4", nis: "2026004", nisn: "0123456704", name: "Dina Putri", gender: "P", className: "VIII-A", status: "Aktif" },
-    { id: "s5", nis: "2026005", nisn: "0123456705", name: "Eka Saputra", gender: "L", className: "VII-B", status: "Aktif" },
-    { id: "s6", nis: "2026006", nisn: "0123456706", name: "Fitri Handayani", gender: "P", className: "VIII-A", status: "Aktif" },
-    { id: "s7", nis: "2026007", nisn: "0123456707", name: "Galih Ramadhan", gender: "L", className: "VII-A", status: "Aktif" },
-    { id: "s8", nis: "2026008", nisn: "0123456708", name: "Hana Permata", gender: "P", className: "VIII-B", status: "Aktif" },
-  ],
-  teachers: [
-    { id: "t1", nip: "198501012010011001", name: "Sari Wulandari, S.Pd.", gender: "P", email: "sari@sekolah.sch.id", status: "Aktif" },
-    { id: "t2", nip: "198702152012021002", name: "Dedi Saputra, S.Pd.", gender: "L", email: "dedi@sekolah.sch.id", status: "Aktif" },
-    { id: "t3", nip: "199003102015031003", name: "Ratna Dewi, S.Pd.", gender: "P", email: "ratna@sekolah.sch.id", status: "Aktif" },
-  ],
-  classes: [
-    { id: "k1", code: "VII-A", name: "VII-A", level: "VII", homeroom: "Sari Wulandari, S.Pd.", period: activePeriod, students: "3" },
-    { id: "k2", code: "VII-B", name: "VII-B", level: "VII", homeroom: "Dedi Saputra, S.Pd.", period: activePeriod, students: "2" },
-    { id: "k3", code: "VIII-A", name: "VIII-A", level: "VIII", homeroom: "Ratna Dewi, S.Pd.", period: activePeriod, students: "2" },
-    { id: "k4", code: "VIII-B", name: "VIII-B", level: "VIII", homeroom: "Sari Wulandari, S.Pd.", period: activePeriod, students: "1" },
-  ],
-  subjects: [
-    { id: "m1", code: "MAT", name: "Matematika", group: "Umum", status: "Aktif" },
-    { id: "m2", code: "BIN", name: "Bahasa Indonesia", group: "Umum", status: "Aktif" },
-    { id: "m3", code: "IPA", name: "Ilmu Pengetahuan Alam", group: "Umum", status: "Aktif" },
-    { id: "m4", code: "IPS", name: "Ilmu Pengetahuan Sosial", group: "Umum", status: "Aktif" },
-    { id: "m5", code: "SBD", name: "Seni Budaya", group: "Muatan Lokal", status: "Aktif" },
-  ],
-  assignments: [
-    { id: "a1", teacher: "Sari Wulandari, S.Pd.", subject: "Matematika", className: "VII-A", period: activePeriod },
-    { id: "a2", teacher: "Dedi Saputra, S.Pd.", subject: "Bahasa Indonesia", className: "VII-B", period: activePeriod },
-    { id: "a3", teacher: "Ratna Dewi, S.Pd.", subject: "Ilmu Pengetahuan Alam", className: "VIII-A", period: activePeriod },
-  ],
-};
-
 interface AdminPanelProps {
   route: string;
   onNavigate: (route: string) => void;
-}
-
-function isAdminRoute(route: string): route is AdminRoute {
-  return Object.prototype.hasOwnProperty.call(sections, route);
-}
-
-function createId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function derivePeriodDates(year: string, semester: string): { startDate: string; endDate: string } {
-  const [startYearRaw, endYearRaw] = year.split("/");
-  const startYear = Number(startYearRaw) || new Date().getFullYear();
-  const endYear = Number(endYearRaw) || startYear + 1;
-  if (semester.toLowerCase() === "genap") {
-    return {
-      startDate: `${endYear}-01-02`,
-      endDate: `${endYear}-06-30`,
-    };
-  }
-  return {
-    startDate: `${startYear}-07-01`,
-    endDate: `${startYear}-12-31`,
-  };
 }
 
 function AdminPanel({ route, onNavigate }: AdminPanelProps) {
@@ -113,7 +43,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
-  const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(initialRecords.classes[0]);
+  const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(
+    initialRecords.classes[0],
+  );
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
@@ -139,11 +71,16 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       setSelectedGradeClass((previous) => {
         if (previous) {
           const updated = nextRecords.classes.find(
-            (item) => item.id === previous.id || (item.code === previous.code && item.period === active),
+            (item) =>
+              item.id === previous.id || (item.code === previous.code && item.period === active),
           );
           if (updated) return updated;
         }
-        return nextRecords.classes.find((item) => item.period === active) ?? nextRecords.classes[0] ?? null;
+        return (
+          nextRecords.classes.find((item) => item.period === active) ??
+          nextRecords.classes[0] ??
+          null
+        );
       });
     } else if (nextRecords.classes.length > 0) {
       setSelectedGradeClass((previous) => {
@@ -199,11 +136,15 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     if (!section || !currentRoute) return [];
     const query = search.trim().toLocaleLowerCase("id");
     return rows.filter((record) => {
-      const matchesSearch = !query || section.searchKeys.some((key) =>
-        record[key]?.toLocaleLowerCase("id").includes(query),
+      const matchesSearch =
+        !query ||
+        section.searchKeys.some((key) => record[key]?.toLocaleLowerCase("id").includes(query));
+      return (
+        matchesSearch &&
+        (currentRoute !== "students" ||
+          selectedClass === "Semua Kelas" ||
+          record.className === selectedClass)
       );
-      return matchesSearch &&
-        (currentRoute !== "students" || selectedClass === "Semua Kelas" || record.className === selectedClass);
     });
   }, [currentRoute, rows, search, section, selectedClass]);
 
@@ -226,60 +167,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     setFormError("");
   }
 
-  function getOptions(fieldKey: string): string[] {
-    if (fieldKey === "homeroom" || fieldKey === "teacher") {
-      return records.teachers.map((teacher) => teacher.name);
-    }
-    if (fieldKey === "subject") return records.subjects.map((subject) => subject.name);
-    if (fieldKey === "className" || fieldKey === "code") {
-      const activeClasses = records.classes.filter((classRecord) => classRecord.period === currentPeriod);
-      const source = activeClasses.length > 0 ? activeClasses : records.classes;
-      return Array.from(new Set(source.map((classRecord) => classRecord.code)));
-    }
-    if (fieldKey === "period") return periodOptions;
-    return [];
-  }
-
-  function validate(candidate: AdminRecord): string {
-    if (!currentRoute || !section) return "Halaman tidak ditemukan.";
-    const existing = records[currentRoute].filter((record) => record.id !== selectedRecord?.id);
-    const uniqueFields = currentRoute === "students"
-      ? ["nis", "nisn"]
-      : currentRoute === "teachers"
-        ? ["nip", "email"]
-        : currentRoute === "subjects"
-          ? ["code"]
-          : [];
-    for (const key of uniqueFields) {
-      if (candidate[key] && existing.some((record) => record[key]?.toLocaleLowerCase("id") === candidate[key].toLocaleLowerCase("id"))) {
-        return `${section.fields.find((field) => field.key === key)?.label ?? key} sudah digunakan.`;
-      }
-    }
-    if (currentRoute === "classes") {
-      const duplicateClass = existing.some(
-        (record) =>
-          record.code?.toLocaleLowerCase("id") === candidate.code?.toLocaleLowerCase("id") &&
-          (!record.period || !candidate.period || record.period === candidate.period),
-      );
-      if (duplicateClass) {
-        return "Kode kelas sudah digunakan.";
-      }
-    }
-    if (currentRoute === "students" && !records.classes.some((classRecord) => classRecord.code === candidate.className)) {
-      return "Pilih kelas yang terdaftar.";
-    }
-    if (currentRoute === "assignments") {
-      const duplicate = existing.some((record) =>
-        record.teacher === candidate.teacher &&
-        record.subject === candidate.subject &&
-        record.className === candidate.className &&
-        record.period === candidate.period,
-      );
-      if (duplicate) return "Penugasan guru, mata pelajaran, kelas, dan periode tersebut sudah ada.";
-    }
-    return "";
-  }
-
   async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!currentRoute || !section) return;
@@ -290,7 +177,13 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     const candidate: AdminRecord = Object.fromEntries(
       section.fields.map((field) => [field.key, String(formData.get(field.key) ?? "").trim()]),
     );
-    const validationMessage = validate(candidate);
+    const validationMessage = validateAdminRecord(
+      candidate,
+      currentRoute,
+      section,
+      records,
+      selectedRecord,
+    );
     if (validationMessage) {
       setFormError(validationMessage);
       return;
@@ -301,11 +194,14 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       const record = { ...candidate, id: editingRecord?.id ?? createId() };
       setRecords((previous) => ({
         ...previous,
-        [activeRouteSnapshot]: modeSnapshot === "edit"
-          ? previous[activeRouteSnapshot].map((item) => item.id === record.id ? record : item)
-          : [...previous[activeRouteSnapshot], record],
+        [activeRouteSnapshot]:
+          modeSnapshot === "edit"
+            ? previous[activeRouteSnapshot].map((item) => (item.id === record.id ? record : item))
+            : [...previous[activeRouteSnapshot], record],
       }));
-      setNotice(modeSnapshot === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.");
+      setNotice(
+        modeSnapshot === "edit" ? "Perubahan berhasil disimpan." : "Data berhasil ditambahkan.",
+      );
       closeForm();
       return;
     }
@@ -341,9 +237,12 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         };
         setRecords((previous) => ({
           ...previous,
-          [activeRouteSnapshot]: modeSnapshot === "edit"
-            ? previous[activeRouteSnapshot].map((item) => item.id === savedRecord.id ? savedRecord : item)
-            : [...previous[activeRouteSnapshot], savedRecord],
+          [activeRouteSnapshot]:
+            modeSnapshot === "edit"
+              ? previous[activeRouteSnapshot].map((item) =>
+                  item.id === savedRecord.id ? savedRecord : item,
+                )
+              : [...previous[activeRouteSnapshot], savedRecord],
         }));
       }
       setNotice(
@@ -366,7 +265,8 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       (activeRouteSnapshot === "teachers" &&
         (records.classes.some((classRecord) => classRecord.homeroom === record.name) ||
           records.assignments.some((assignment) => assignment.teacher === record.name))) ||
-      (activeRouteSnapshot === "subjects" && records.assignments.some((assignment) => assignment.subject === record.name));
+      (activeRouteSnapshot === "subjects" &&
+        records.assignments.some((assignment) => assignment.subject === record.name));
     if (inUse) {
       setNotice("Data masih digunakan. Hapus atau pindahkan relasinya terlebih dahulu.");
       return;
@@ -377,7 +277,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     if (!token) {
       setRecords((previous) => ({
         ...previous,
-        [activeRouteSnapshot]: previous[activeRouteSnapshot].filter((item) => item.id !== record.id),
+        [activeRouteSnapshot]: previous[activeRouteSnapshot].filter(
+          (item) => item.id !== record.id,
+        ),
       }));
       setNotice("Data berhasil dihapus.");
       return;
@@ -401,7 +303,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       if (!refreshed) {
         setRecords((previous) => ({
           ...previous,
-          [activeRouteSnapshot]: previous[activeRouteSnapshot].filter((item) => item.id !== record.id),
+          [activeRouteSnapshot]: previous[activeRouteSnapshot].filter(
+            (item) => item.id !== record.id,
+          ),
         }));
       }
       setNotice(payload?.message ?? "Data berhasil dihapus.");
@@ -512,7 +416,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           },
         });
         if (response.ok) {
-          const payload = (await response.json().catch(() => null)) as { data?: AdminRecord[] } | null;
+          const payload = (await response.json().catch(() => null)) as {
+            data?: AdminRecord[];
+          } | null;
           if (Array.isArray(payload?.data)) {
             sourceStudents = payload.data;
           }
@@ -523,7 +429,12 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
 
     const dataRows = sourceStudents.map((student) => [
-      student.nis, student.nisn, student.name, student.gender, student.className, student.status,
+      student.nis,
+      student.nisn,
+      student.name,
+      student.gender,
+      student.className,
+      student.status,
     ]);
     try {
       await downloadSpreadsheet("data-siswa-sipena.xlsx", [headers, ...dataRows], "Data Siswa");
@@ -569,7 +480,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
             !records.classes.some((item) => item.code === student.className),
         )
       ) {
-        setNotice("Impor dibatalkan: setiap baris harus berisi NIS, nama, dan kode kelas yang terdaftar.");
+        setNotice(
+          "Impor dibatalkan: setiap baris harus berisi NIS, nama, dan kode kelas yang terdaftar.",
+        );
         return;
       }
 
@@ -608,51 +521,59 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   if (route === "dashboard") {
     const classes = records.classes.filter((classRecord) => classRecord.period === currentPeriod);
     return (
-      <>
-        <DashboardPage
-          classes={classes}
-          currentPeriod={currentPeriod}
-          isBackendSynced={isBackendSynced}
-          notice={notice}
-          onCreatePeriod={(year, semester) => {
-            void addPeriod(year, semester);
-          }}
-          onPeriodChange={(nextPeriod) => {
-            void selectPeriod(nextPeriod);
-          }}
-          onViewGrades={(classRecord) => {
-            setSelectedGradeClass(classRecord);
-            navigate("grades");
-          }}
-          periodOptions={periodOptions}
-          totalClasses={classes.length}
-          totalStudents={records.students.length}
-          totalSubjects={records.subjects.length}
-          totalTeachers={records.teachers.length}
-        />
-      </>
+      <DashboardPage
+        classes={classes}
+        currentPeriod={currentPeriod}
+        isBackendSynced={isBackendSynced}
+        notice={notice}
+        onCreatePeriod={(year, semester) => {
+          void addPeriod(year, semester);
+        }}
+        onPeriodChange={(nextPeriod) => {
+          void selectPeriod(nextPeriod);
+        }}
+        onViewGrades={(classRecord) => {
+          setSelectedGradeClass(classRecord);
+          navigate("grades");
+        }}
+        periodOptions={periodOptions}
+        totalClasses={classes.length}
+        totalStudents={records.students.length}
+        totalSubjects={records.subjects.length}
+        totalTeachers={records.teachers.length}
+      />
     );
   }
 
   if (route === "grades" && selectedGradeClass) {
-    const gradeClasses = records.classes.filter((classRecord) => classRecord.period === currentPeriod);
+    const gradeClasses = records.classes.filter(
+      (classRecord) => classRecord.period === currentPeriod,
+    );
     return (
       <ClassGradesPage
         classRecord={selectedGradeClass}
         classes={gradeClasses}
         onClassChange={(classId) => {
-          setSelectedGradeClass(gradeClasses.find((classRecord) => classRecord.id === classId) ?? null);
+          setSelectedGradeClass(
+            gradeClasses.find((classRecord) => classRecord.id === classId) ?? null,
+          );
         }}
         onNavigate={navigate}
         period={currentPeriod}
-        students={records.students.filter((student) => student.className === selectedGradeClass.code)}
+        students={records.students.filter(
+          (student) => student.className === selectedGradeClass.code,
+        )}
         subjects={records.subjects}
       />
     );
   }
 
   if (!currentRoute || !section) {
-    return <p className="admin-notice" role="status">Halaman admin tidak ditemukan.</p>;
+    return (
+      <p className="admin-notice" role="status">
+        Halaman admin tidak ditemukan.
+      </p>
+    );
   }
 
   const classOptions = [...new Set(records.classes.map((classRecord) => classRecord.code))];
@@ -671,81 +592,66 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     isLoading,
     isBackendSynced,
   };
-  const fileActions = currentRoute === "students" ? (
-    <div className="admin-file-actions">
-      <label className="admin-secondary-button admin-file-button">
-        Impor
-        <input accept=".csv,.xlsx" aria-label="Impor data siswa" onChange={(event) => void importStudents(event)} type="file" />
-      </label>
-      <button className="admin-secondary-button" onClick={() => void exportStudents()} type="button">Ekspor</button>
-    </div>
-  ) : undefined;
-  const page = currentRoute === "students"
-    ? <StudentDataPage {...commonProps} classOptions={classOptions} fileActions={fileActions} onClassChange={setSelectedClass} selectedClass={selectedClass} />
-    : currentRoute === "teachers"
-      ? <TeacherDataPage {...commonProps} />
-      : currentRoute === "classes"
-        ? <ClassDataPage {...commonProps} />
-        : currentRoute === "subjects"
-          ? <SubjectDataPage {...commonProps} />
-          : <TeacherAssignmentsPage {...commonProps} />;
+  const fileActions =
+    currentRoute === "students" ? (
+      <div className="admin-file-actions">
+        <label className="admin-secondary-button admin-file-button">
+          Impor
+          <input
+            accept=".csv,.xlsx"
+            aria-label="Impor data siswa"
+            onChange={(event) => void importStudents(event)}
+            type="file"
+          />
+        </label>
+        <button
+          className="admin-secondary-button"
+          onClick={() => void exportStudents()}
+          type="button"
+        >
+          Ekspor
+        </button>
+      </div>
+    ) : undefined;
+  const page =
+    currentRoute === "students" ? (
+      <StudentDataPage
+        {...commonProps}
+        classOptions={classOptions}
+        fileActions={fileActions}
+        onClassChange={setSelectedClass}
+        selectedClass={selectedClass}
+      />
+    ) : currentRoute === "teachers" ? (
+      <TeacherDataPage {...commonProps} />
+    ) : currentRoute === "classes" ? (
+      <ClassDataPage {...commonProps} />
+    ) : currentRoute === "subjects" ? (
+      <SubjectDataPage {...commonProps} />
+    ) : (
+      <TeacherAssignmentsPage {...commonProps} />
+    );
 
   return (
     <>
-      {notice && <p className="admin-notice" role="status">{notice}</p>}
+      {notice && (
+        <p className="admin-notice" role="status">
+          {notice}
+        </p>
+      )}
       {page}
       {dialogMode && (
-        <div className="admin-dialog-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) closeForm();
-        }}>
-          <section aria-labelledby="admin-dialog-title" aria-modal="true" className="admin-dialog" role="dialog">
-            <header className="admin-dialog-heading">
-              <div>
-                <span className="admin-eyebrow">{section.title}</span>
-                <h2 id="admin-dialog-title">
-                  {dialogMode === "details" ? "Detail data" : dialogMode === "edit" ? "Edit data" : section.addLabel}
-                </h2>
-              </div>
-              <button aria-label="Tutup dialog" onClick={closeForm} type="button">×</button>
-            </header>
-            {dialogMode === "details" ? (
-              <dl className="admin-detail-list">
-                {section.fields.map((field) => (
-                  <div key={field.key}>
-                    <dt>{field.label}</dt>
-                    <dd>{selectedRecord?.[field.key] || "—"}</dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <form className="admin-form" onSubmit={(event) => void saveRecord(event)}>
-                {section.fields.map((field) => (
-                  <label key={field.key}>
-                    {field.label}
-                    {field.type === "select" ? (
-                      <select defaultValue={selectedRecord?.[field.key] ?? ""} name={field.key} required>
-                        <option disabled value="">Pilih {field.label.toLocaleLowerCase("id")}</option>
-                        {(field.options ?? getOptions(field.key)).map((option) => <option key={option}>{option}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        defaultValue={selectedRecord?.[field.key] ?? ""}
-                        name={field.key}
-                        required
-                        type={field.type ?? "text"}
-                      />
-                    )}
-                  </label>
-                ))}
-                {formError && <p className="admin-form-error" role="alert">{formError}</p>}
-                <div className="admin-dialog-actions">
-                  <button className="admin-secondary-button" onClick={closeForm} type="button">Batal</button>
-                  <button className="admin-primary-button" type="submit">Simpan</button>
-                </div>
-              </form>
-            )}
-          </section>
-        </div>
+        <AdminFormDialog
+          dialogMode={dialogMode}
+          formError={formError}
+          getOptions={(fieldKey) =>
+            getFieldOptions(fieldKey, records, currentPeriod, periodOptions)
+          }
+          onClose={closeForm}
+          onSave={(event) => void saveRecord(event)}
+          section={section}
+          selectedRecord={selectedRecord}
+        />
       )}
     </>
   );
