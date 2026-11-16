@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 interface ScoreEntriesDropdownProps {
   componentName: string;
@@ -23,6 +23,7 @@ function ScoreEntriesDropdown({
 }: ScoreEntriesDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const scoreInputRef = useRef<HTMLInputElement>(null);
   const parsedDraft = Number(draft);
   const canAdd =
     draft !== "" && Number.isFinite(parsedDraft) && parsedDraft >= 0 && parsedDraft <= 100;
@@ -32,6 +33,7 @@ function ScoreEntriesDropdown({
     if (!canAdd) return;
     onSave([...values, String(parsedDraft)]);
     setDraft("");
+    scoreInputRef.current?.focus();
   }
 
   function removeEntry(indexToRemove: number) {
@@ -95,6 +97,7 @@ function ScoreEntriesDropdown({
                 max={100}
                 min={0}
                 onChange={(event) => setDraft(event.target.value)}
+                ref={scoreInputRef}
                 step="0.01"
                 type="number"
                 value={draft}

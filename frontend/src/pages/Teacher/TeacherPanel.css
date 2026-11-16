@@ -636,6 +636,17 @@
   font: inherit;
 }
 
+.teacher-score-entry-editor form input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.teacher-score-entry-editor form input[type="number"]::-webkit-inner-spin-button,
+.teacher-score-entry-editor form input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 .teacher-score-entry-editor form .teacher-secondary-button {
   width: 100%;
   min-height: 28px;
