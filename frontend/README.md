@@ -32,6 +32,23 @@ Modul **Admin** menyediakan dashboard ringkasan, pengelolaan periode akademik, r
 
 Untuk production, jalankan `npm.cmd run build`; output siap deployment dibuat di `dist/`.
 
+## Deployment ke Vercel
+
+Import repository ke Vercel dengan **Root Directory** `frontend`, **Build Command**
+`npm run build`, dan **Output Directory** `dist`. File `vercel.json` mengarahkan
+route aplikasi kembali ke `index.html`, sehingga halaman dapat dibuka atau di-refresh
+langsung pada route seperti `/login`.
+
+Tambahkan environment variable `VITE_API_BASE_URL` di pengaturan project Vercel
+dengan URL API backend yang berakhiran `/api`, misalnya
+`https://<backend-host>/api`. Ubah `<backend-host>` ke hostname backend sebenarnya.
+Vite memasukkan variabel ini saat build, jadi perubahan nilainya memerlukan deployment
+ulang.
+
+Di backend Laravel, set `FRONTEND_URL` ke URL production Vercel yang sebenarnya,
+tanpa garis miring di akhir. CORS backend hanya mengizinkan origin tersebut. Jika
+menggunakan domain production kustom, gunakan domain itu sebagai nilai `FRONTEND_URL`.
+
 ## Pengujian
 
 Jalankan pengujian autentikasi dan alur utama frontend dengan:
