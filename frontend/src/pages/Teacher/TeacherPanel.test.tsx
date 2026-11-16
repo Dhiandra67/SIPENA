@@ -23,17 +23,19 @@ vi.mock("@e965/xlsx/dist/xlsx.mini.min.js", () => ({
 const period = "2026/2027 · Ganjil";
 const workspace = {
   data: {
-    assignments: [{
-      id: "math-vii-a",
-      subject: "Matematika",
-      className: "VII-A",
-      period,
-      kkm: 75,
-      students: [
-        { id: "s1", nis: "2026001", name: "Andi Pratama", gender: "L" },
-        { id: "s2", nis: "2026002", name: "Budi Santoso", gender: "L" },
-      ],
-    }],
+    assignments: [
+      {
+        id: "math-vii-a",
+        subject: "Matematika",
+        className: "VII-A",
+        period,
+        kkm: 75,
+        students: [
+          { id: "s1", nis: "2026001", name: "Andi Pratama", gender: "L" },
+          { id: "s2", nis: "2026002", name: "Budi Santoso", gender: "L" },
+        ],
+      },
+    ],
     componentsByAssignment: {
       "math-vii-a": [
         { id: "daily", name: "Tugas Harian", weight: "50" },
@@ -62,11 +64,14 @@ const workspace = {
 describe("rekap nilai pada detail kelas", () => {
   beforeEach(() => {
     window.localStorage.setItem("sipena.accessToken", "test-token");
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => workspace,
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => workspace,
+      }),
+    );
   });
 
   it("menampilkan nilai per komponen dan status, tanpa pilihan statistik", async () => {
@@ -103,7 +108,16 @@ describe("rekap nilai pada detail kelas", () => {
 
     await waitFor(() => {
       expect(xlsxMocks.aoaToSheet).toHaveBeenCalledWith([
-        ["No", "NIS", "Nama Siswa", "Tugas Harian", "Ulangan Harian", "Nilai Akhir", "Predikat", "Status Kesesuaian"],
+        [
+          "No",
+          "NIS",
+          "Nama Siswa",
+          "Tugas Harian",
+          "Ulangan Harian",
+          "Nilai Akhir",
+          "Predikat",
+          "Status Kesesuaian",
+        ],
         [1, "2026001", "Andi Pratama", "80", "90", 85, "A", "Tuntas"],
         [2, "2026002", "Budi Santoso", "75", "", "", "—", "Belum lengkap"],
       ]);
@@ -145,9 +159,7 @@ describe("rekap nilai pada detail kelas", () => {
       />,
     );
 
-    const trigger = await screen.findByLabelText(
-      "Tugas Harian Andi Pratama: rata-rata 80,00",
-    );
+    const trigger = await screen.findByLabelText("Tugas Harian Andi Pratama: rata-rata 80,00");
     fireEvent.click(trigger);
     const scoreInput = screen.getByLabelText("Nilai baru Tugas Harian untuk Andi Pratama");
     const tableCell = trigger.closest("td");
@@ -163,9 +175,9 @@ describe("rekap nilai pada detail kelas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tambah" }));
     expect(within(entryList).getByText("Nilai 2")).toBeInTheDocument();
     expect(within(entryList).getByText("100,00")).toBeInTheDocument();
-    expect(screen.getByLabelText(
-      "Tugas Harian Andi Pratama: rata-rata 90,00",
-    )).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Tugas Harian Andi Pratama: rata-rata 90,00"),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Simpan nilai" }));
     await waitFor(() => {

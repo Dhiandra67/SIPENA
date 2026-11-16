@@ -16,7 +16,7 @@ vi.mock("./pages/Admin/AdminPanel", () => ({
   default: () => <div>Panel admin teruji</div>,
 }));
 
-vi.mock("./pages/Dashboard/TeacherPanel", () => ({
+vi.mock("./pages/Teacher/TeacherPanel", () => ({
   default: () => <div>Panel guru teruji</div>,
 }));
 

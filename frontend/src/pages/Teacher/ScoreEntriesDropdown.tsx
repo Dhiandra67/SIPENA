@@ -24,7 +24,8 @@ function ScoreEntriesDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const parsedDraft = Number(draft);
-  const canAdd = draft !== "" && Number.isFinite(parsedDraft) && parsedDraft >= 0 && parsedDraft <= 100;
+  const canAdd =
+    draft !== "" && Number.isFinite(parsedDraft) && parsedDraft >= 0 && parsedDraft <= 100;
 
   function addEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,7 +63,12 @@ function ScoreEntriesDropdown({
                 <li key={`${index}-${value}`}>
                   <div>
                     <span>Nilai {index + 1}</span>
-                    <strong>{Number(value).toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    <strong>
+                      {Number(value).toLocaleString("id-ID", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </strong>
                   </div>
                   <button
                     aria-label={`Hapus nilai ${index + 1} ${componentName} ${studentName}`}
@@ -80,7 +86,9 @@ function ScoreEntriesDropdown({
           )}
           <form onSubmit={addEntry}>
             <label>
-              <span className="visually-hidden">Nilai baru {componentName} untuk {studentName}</span>
+              <span className="visually-hidden">
+                Nilai baru {componentName} untuk {studentName}
+              </span>
               <input
                 aria-label={`Nilai baru ${componentName} untuk ${studentName}`}
                 disabled={disabled}
@@ -92,7 +100,11 @@ function ScoreEntriesDropdown({
                 value={draft}
               />
             </label>
-            <button className="teacher-secondary-button" disabled={disabled || !canAdd} type="submit">
+            <button
+              className="teacher-secondary-button"
+              disabled={disabled || !canAdd}
+              type="submit"
+            >
               Tambah
             </button>
           </form>

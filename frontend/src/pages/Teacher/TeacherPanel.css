@@ -90,10 +90,6 @@
   font-size: 10px;
 }
 
-.teacher-stat-grid-small article {
-  min-height: 98px;
-}
-
 .teacher-academic-banner {
   display: flex;
   min-height: 75px;
@@ -104,25 +100,19 @@
 }
 
 .teacher-academic-banner > div,
-.teacher-grade-context > div,
-.teacher-report-context > div,
-.teacher-statistics-context > div {
+.teacher-grade-context > div {
   display: grid;
   gap: 5px;
 }
 
 .teacher-academic-banner > div > span,
-.teacher-grade-context > div > span,
-.teacher-report-context > div > span,
-.teacher-statistics-context > div > span {
+.teacher-grade-context > div > span {
   color: #758279;
   font-size: 10px;
 }
 
 .teacher-academic-banner strong,
-.teacher-grade-context strong,
-.teacher-report-context strong,
-.teacher-statistics-context strong {
+.teacher-grade-context strong {
   color: #384B54;
   font-size: 13px;
 }
@@ -481,12 +471,6 @@
 
 .teacher-search input::placeholder {
   color: #8a948d;
-}
-
-.teacher-card-controls {
-  display: flex;
-  align-items: flex-end;
-  gap: 9px;
 }
 
 .teacher-table-scroll {
@@ -848,17 +832,14 @@
   margin-top: 14px;
 }
 
-.teacher-grade-context,
-.teacher-report-context,
-.teacher-statistics-context {
+.teacher-grade-context {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
 }
 
-.teacher-grade-context small,
-.teacher-report-context small {
+.teacher-grade-context small {
   color: #77847b;
   font-size: 9px;
 }
@@ -927,73 +908,6 @@
   border-top: 1px solid #eff0eb;
   color: #7c877f;
   font-size: 9px;
-}
-
-.teacher-stat-charts {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(240px, 0.7fr);
-  gap: 12px;
-}
-
-.teacher-grade-distribution {
-  display: grid;
-  gap: 14px;
-  padding: 6px 0;
-}
-
-.teacher-distribution-row {
-  display: grid;
-  grid-template-columns: 25px minmax(60px, 1fr) 60px;
-  align-items: center;
-  gap: 9px;
-}
-
-.teacher-distribution-row > strong {
-  color: #40564a;
-  font-size: 11px;
-}
-
-.teacher-distribution-row > div {
-  height: 9px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #edf0eb;
-}
-
-.teacher-distribution-row > div > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: #66836f;
-}
-
-.teacher-distribution-row > small {
-  color: #78847c;
-  font-size: 9px;
-  text-align: right;
-}
-
-.teacher-completion-card > strong {
-  display: block;
-  margin: 20px 0 11px;
-  color: #384B54;
-  font-size: 34px;
-}
-
-.teacher-completion-card > strong > small {
-  color: #879188;
-  font-size: 17px;
-}
-
-.teacher-completion-card > p {
-  margin: 9px 0 0;
-  color: #78847c;
-  font-size: 9px;
-  line-height: 1.5;
-}
-
-.teacher-report-stats article {
-  min-height: 82px;
 }
 
 .teacher-report-card {
@@ -1232,12 +1146,6 @@
     flex: 1;
   }
 
-  .teacher-card-controls {
-    width: 100%;
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .teacher-search {
     width: 100%;
     min-width: 0;
@@ -1284,9 +1192,7 @@
     font-size: 8px;
   }
 
-  .teacher-grade-context,
-  .teacher-report-context,
-  .teacher-statistics-context {
+  .teacher-grade-context {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1320,10 +1226,6 @@
   .teacher-table-footer {
     flex-wrap: wrap;
     font-size: 8px;
-  }
-
-  .teacher-stat-charts {
-    grid-template-columns: 1fr;
   }
 
   .teacher-report-card > .teacher-card-heading {
