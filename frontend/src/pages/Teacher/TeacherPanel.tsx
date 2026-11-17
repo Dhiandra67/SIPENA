@@ -729,6 +729,7 @@ function TeacherPanel({
       <TeacherPageHeading
         description={description}
         fallbackPeriod={currentAssignment.period}
+        isDashboard={currentRoute === "dashboard"}
         onPeriodChange={handlePeriodChange}
         periodList={periodList}
         selectedPeriod={selectedPeriod}

@@ -6,6 +6,7 @@ interface TeacherPageHeadingProps {
   periodList: PeriodOption[];
   selectedPeriod: string;
   fallbackPeriod: string;
+  isDashboard?: boolean;
   onPeriodChange: (nextPeriod: string) => void;
 }
 
@@ -15,12 +16,13 @@ export function TeacherPageHeading({
   periodList,
   selectedPeriod,
   fallbackPeriod,
+  isDashboard = false,
   onPeriodChange,
 }: TeacherPageHeadingProps) {
   return (
-    <header className="teacher-page-heading">
+    <header className={`teacher-page-heading${isDashboard ? " teacher-dashboard-heading" : ""}`}>
       <div>
-        <span className="teacher-eyebrow">RAPORKU · GURU</span>
+        <span className="teacher-eyebrow">SIPENA · GURU</span>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>

@@ -851,3 +851,165 @@
     transition-delay: 0s !important;
   }
 }
+
+@media (min-width: 701px) {
+  .dashboard-app {
+    background-color: #f9f6fa;
+    background-image:
+      linear-gradient(rgb(249 246 250 / 91%), rgb(249 246 250 / 91%)),
+      url("../../assets/desktop-page-pattern.png");
+    background-size: auto, 360px 360px;
+    color: #102b53;
+  }
+
+  .dashboard-sidebar {
+    padding-top: 56px;
+    background: #102b53 url("../../assets/desktop-sidebar-pattern.png") center / cover no-repeat;
+  }
+
+  .dashboard-brand {
+    min-height: 124px;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 18px;
+    text-align: center;
+  }
+
+  .dashboard-brand > span:last-child {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dashboard-brand-mark {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+    border-radius: 10px;
+    background: #ceb5d4;
+    color: #102b53;
+    font-size: 18px;
+  }
+
+  .dashboard-brand strong {
+    font-size: 17px;
+    letter-spacing: 0.02em;
+  }
+
+  .dashboard-brand small {
+    color: #ceb5d4;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+  }
+
+  .sidebar-navigation {
+    gap: 8px;
+    margin-top: 0;
+    padding-top: 16px;
+    border-color: rgb(255 255 255 / 17%);
+  }
+
+  .navigation-link,
+  .sidebar-logout {
+    min-height: 46px;
+    gap: 12px;
+    padding-right: 14px;
+    padding-left: 14px;
+    border-radius: 9px;
+    color: #e7edf7;
+    font-size: 13px;
+  }
+
+  .navigation-link:hover:not(.active),
+  .sidebar-logout:hover {
+    background: rgb(255 255 255 / 11%);
+    color: #fff;
+  }
+
+  .navigation-link.active,
+  .navigation-link.active:hover {
+    background: #ded5f2;
+    color: #102b53;
+  }
+
+  .teacher-dashboard .navigation-link.active,
+  .teacher-dashboard .navigation-link.active:hover {
+    background: #ceb5d4;
+    color: #102b53;
+  }
+
+  .dashboard-icon {
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
+  }
+
+  .sidebar-logout {
+    min-height: 52px;
+    padding-top: 10px;
+    border-color: rgb(255 255 255 / 17%);
+  }
+
+  .dashboard-main {
+    background-color: #f9f6fa;
+    background-image:
+      linear-gradient(rgb(249 246 250 / 91%), rgb(249 246 250 / 91%)),
+      url("../../assets/desktop-page-pattern.png");
+    background-size: auto, 360px 360px;
+  }
+
+  .dashboard-topbar {
+    height: 68px;
+    padding-right: 32px;
+    padding-left: 32px;
+    border-bottom-color: #ebe6f2;
+    background: rgb(255 255 255 / 94%);
+    color: #102b53;
+    font-size: 12px;
+  }
+
+  .admin-dashboard .dashboard-topbar,
+  .teacher-dashboard .dashboard-topbar {
+    height: 68px;
+    padding-right: 32px;
+    padding-left: 32px;
+    font-size: 12px;
+  }
+
+  .topbar-user-button {
+    color: #102b53;
+  }
+
+  .topbar-user-button:hover,
+  .topbar-user-button[aria-expanded="true"] {
+    border-color: #e5def1;
+    background: #f6f2fb;
+  }
+
+  .user-avatar {
+    background: #e4dcf4;
+    color: #102b53;
+  }
+
+  .admin-dashboard .dashboard-content,
+  .teacher-dashboard .dashboard-content {
+    padding: 30px 32px 42px;
+  }
+
+  .profile-popover-avatar {
+    background: #102b53;
+  }
+
+  .profile-popover-action.primary,
+  .profile-modal-btn.primary {
+    border-color: #102b53;
+    background: #102b53;
+  }
+
+  .profile-popover-action.primary:hover {
+    background: #193d70;
+  }
+
+  .profile-modal-backdrop {
+    background: rgb(13 31 57 / 54%);
+  }
+}

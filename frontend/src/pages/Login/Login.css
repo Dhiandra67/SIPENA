@@ -271,20 +271,6 @@
   height: 17px;
 }
 
-.contact-copy {
-  margin: 20px 0 0;
-  color: #596960;
-  font-size: 12px;
-  line-height: 1.9;
-  text-align: center;
-}
-
-.contact-link {
-  color: #384B54;
-  font-size: inherit;
-  font-weight: 650;
-}
-
 .site-footer {
   display: flex;
   min-height: 64px;
@@ -411,11 +397,6 @@
     font-size: 13px;
   }
 
-  .contact-copy {
-    margin-top: 25px;
-    font-size: 12px;
-  }
-
   .site-footer {
     min-height: 58px;
     padding: 10px 20px 18px;
@@ -431,5 +412,111 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (min-width: 701px) {
+  .page-shell {
+    background-color: #f9f6fa;
+    background-image:
+      linear-gradient(
+        112deg,
+        rgb(16 43 83 / 88%) 0%,
+        rgb(38 54 95 / 76%) 42%,
+        rgb(95 76 132 / 53%) 72%,
+        rgb(249 246 250 / 18%) 100%
+      ),
+      url("../../assets/classroom-banner.jpg");
+    background-position: center, center 47%;
+    background-repeat: no-repeat;
+    background-size: auto, cover;
+    font-family: "Poppins", "Segoe UI", Arial, sans-serif;
+    color: #102b53;
+  }
+
+  .site-header {
+    height: 68px;
+    flex-basis: 68px;
+    border-bottom-color: #ebe6f2;
+  }
+
+  .brand {
+    color: #102b53;
+    font-size: 15px;
+  }
+
+  .brand-mark {
+    background: #102b53;
+  }
+
+  .welcome-rule {
+    background: #dcd3ef;
+  }
+
+  .welcome-copy h1 {
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .welcome-copy p {
+    color: #eef2f8;
+  }
+
+  .login-card {
+    border-color: #e8e2f0;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgb(16 43 83 / 8%);
+  }
+
+  .login-card h2 {
+    color: #102b53;
+  }
+
+  .field > label {
+    color: #344967;
+  }
+
+  .input-wrap input {
+    border-color: #ded8e9;
+    color: #102b53;
+  }
+
+  .input-wrap input:focus {
+    border-color: #9583bf;
+    box-shadow: 0 0 0 3px rgb(143 125 185 / 14%);
+  }
+
+  .field-icon,
+  .password-toggle {
+    color: #586789;
+  }
+
+  .password-toggle:hover {
+    background: #f6f2fb;
+  }
+
+  .remember-option {
+    color: #65728a;
+  }
+
+  .remember-option input {
+    accent-color: #102b53;
+  }
+
+  .forgot-link {
+    color: #4b3d6c;
+  }
+
+  .submit-button {
+    background: #102b53;
+  }
+
+  .submit-button:hover:not(:disabled) {
+    background: #193d70;
+  }
+
+  .site-footer {
+    color: #fff;
+    text-shadow: 0 1px 3px rgb(16 43 83 / 70%);
   }
 }

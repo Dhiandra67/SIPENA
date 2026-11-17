@@ -39,7 +39,7 @@ function DashboardPage({
 
   return (
     <div className="admin-panel">
-      <section className="admin-page-heading">
+      <section className="admin-page-heading admin-dashboard-heading">
         <div>
           <span className="admin-eyebrow">SIPENA · ADMIN</span>
           <h1>Dashboard Admin</h1>
