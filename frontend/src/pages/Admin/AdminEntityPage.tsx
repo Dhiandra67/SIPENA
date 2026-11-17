@@ -46,8 +46,8 @@ function AdminEntityPage({
           </button>
         </div>
 
-        <div className="admin-table-scroll admin-entity-scroll">
-          <table className="admin-table admin-entity-table">
+        <div className="admin-table-scroll admin-entity-scroll admin-master-data-scroll">
+          <table className="admin-table admin-entity-table admin-master-data-table">
             <thead>
               <tr>
                 {section.columns.map((column) => (

@@ -1324,8 +1324,14 @@
     overflow: visible;
   }
 
-  .admin-entity-scroll {
+  .admin-master-data-scroll {
     overflow: hidden;
+  }
+
+  .admin-report-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
   }
 
   .admin-class-scroll {
@@ -1342,17 +1348,20 @@
     border-spacing: 0;
   }
 
-  .admin-entity-table {
+  .admin-master-data-table {
     min-width: 0;
     width: 100%;
     table-layout: fixed;
   }
 
   .admin-dashboard-class-table {
-    min-width: 640px;
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
   }
 
   .admin-report-table {
+    width: max-content;
     min-width: 900px;
   }
 
@@ -1409,49 +1418,54 @@
     content: none;
   }
 
-  .admin-entity-table th:nth-child(n + 4):not(:last-child),
-  .admin-entity-table td:nth-child(n + 4):not(:last-child) {
+  .admin-master-data-table th:nth-child(n + 4):not(:last-child),
+  .admin-master-data-table td:nth-child(n + 4):not(:last-child) {
     display: none;
   }
 
   .admin-dashboard-class-table th:first-child,
-  .admin-dashboard-class-table td:first-child {
-    position: sticky;
-    z-index: 2;
-    left: 0;
-    min-width: 96px;
-    background: #fff;
+  .admin-dashboard-class-table td:first-child,
+  .admin-dashboard-class-table th:nth-child(2),
+  .admin-dashboard-class-table td:nth-child(2),
+  .admin-dashboard-class-table th:last-child,
+  .admin-dashboard-class-table td:last-child {
+    position: static;
+    left: auto;
+    right: auto;
+    z-index: auto;
+    box-shadow: none;
   }
 
-  .admin-dashboard-class-table th:first-child {
-    background: #f7f8f5;
+  .admin-dashboard-class-table th,
+  .admin-dashboard-class-table tbody td {
+    min-width: 0;
+  }
+
+  .admin-dashboard-class-table th,
+  .admin-dashboard-class-table tbody td:not(:last-child) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-dashboard-class-table th:first-child,
+  .admin-dashboard-class-table td:first-child {
+    width: 15%;
   }
 
   .admin-dashboard-class-table th:nth-child(2),
   .admin-dashboard-class-table td:nth-child(2) {
-    position: sticky;
-    z-index: 2;
-    left: 96px;
-    min-width: 150px;
-    background: #fff;
-    box-shadow: 3px 0 5px rgb(41 63 53 / 5%);
+    width: 25%;
   }
 
-  .admin-dashboard-class-table th:nth-child(2) {
-    background: #f7f8f5;
+  .admin-dashboard-class-table th:nth-child(3),
+  .admin-dashboard-class-table td:nth-child(3) {
+    width: 35%;
   }
 
   .admin-dashboard-class-table th:last-child,
   .admin-dashboard-class-table td:last-child {
-    position: sticky;
-    z-index: 3;
-    right: 0;
-    background: #fff;
-    box-shadow: -3px 0 5px rgb(41 63 53 / 6%);
-  }
-
-  .admin-dashboard-class-table th:last-child {
-    background: #f7f8f5;
+    width: 25%;
   }
 
   .admin-dashboard-class-table tbody td:last-child,
@@ -1466,62 +1480,66 @@
     white-space: nowrap;
   }
 
-  .admin-entity-table th,
-  .admin-entity-table tbody td {
+  .admin-master-data-table th,
+  .admin-master-data-table tbody td {
     min-width: 0;
   }
 
-  .admin-entity-table th,
-  .admin-entity-table tbody td:not(.admin-row-actions) {
+  .admin-master-data-table th,
+  .admin-master-data-table tbody td:not(.admin-row-actions) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .admin-entity-table th:first-child,
-  .admin-entity-table td:first-child,
-  .admin-entity-table th:nth-child(2),
-  .admin-entity-table td:nth-child(2) {
+  .admin-master-data-table th:first-child,
+  .admin-master-data-table td:first-child,
+  .admin-master-data-table th:nth-child(2),
+  .admin-master-data-table td:nth-child(2) {
     position: static;
     left: auto;
     z-index: auto;
     box-shadow: none;
   }
 
-  .admin-entity-table th:first-child,
-  .admin-entity-table td:first-child {
+  .admin-master-data-table th:first-child,
+  .admin-master-data-table td:first-child {
     width: 20%;
   }
 
-  .admin-entity-table th:nth-child(2),
-  .admin-entity-table td:nth-child(2) {
+  .admin-master-data-table th:nth-child(2),
+  .admin-master-data-table td:nth-child(2) {
     width: 30%;
   }
 
-  .admin-entity-table th:nth-child(3),
-  .admin-entity-table td:nth-child(3) {
+  .admin-master-data-table th:nth-child(3),
+  .admin-master-data-table td:nth-child(3) {
     width: 20%;
   }
 
-  .admin-entity-table th:last-child,
-  .admin-entity-table td:last-child {
+  .admin-master-data-table th:last-child,
+  .admin-master-data-table td:last-child {
     width: 30%;
   }
 
-  .admin-entity-table tbody td.admin-row-actions {
+  .admin-master-data-table tbody td.admin-row-actions {
     white-space: normal;
   }
 
   .admin-dashboard-class-table .admin-row-action-button {
-    width: auto;
+    width: 100%;
+    min-width: 0;
+    padding: 4px;
+    font-size: 8px;
+    white-space: normal;
   }
 
-  .admin-entity-table tbody td.admin-row-actions::before {
+  .admin-master-data-table tbody td.admin-row-actions::before {
     display: none;
     grid-column: auto;
   }
 
-  .admin-entity-table tbody td.admin-row-actions button {
+  .admin-master-data-table tbody td.admin-row-actions button {
     min-height: 30px;
     padding: 4px 7px;
     font-size: 9px;

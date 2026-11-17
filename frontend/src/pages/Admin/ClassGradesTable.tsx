@@ -34,7 +34,7 @@ function ClassGradesTable({
           {isExporting ? "Mengekspor..." : "Ekspor Excel"}
         </button>
       </div>
-      <div className="admin-table-scroll admin-entity-scroll">
+      <div className="admin-table-scroll admin-report-scroll">
         <table className="admin-table admin-report-table admin-entity-table">
           <thead>
             <tr>
