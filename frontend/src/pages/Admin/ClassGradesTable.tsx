@@ -41,7 +41,7 @@ function ClassGradesTable({
               <th scope="col">NISN</th>
               <th scope="col">Nama Siswa</th>
               {effectiveSubjects.map((subject) => (
-                <th key={subject.id} scope="col">
+                <th key={subject.id} scope="col" title={subject.name}>
                   {subject.name}
                 </th>
               ))}
@@ -53,7 +53,7 @@ function ClassGradesTable({
             {orderedRows.map((row) => (
               <tr key={row.student.id}>
                 <td data-label="NISN">{row.student.nisn}</td>
-                <td data-label="Nama Siswa">{row.student.name}</td>
+                <td data-label="Nama Siswa" title={row.student.name}>{row.student.name}</td>
                 {row.subjectScores.map((score, index) => (
                   <td
                     data-label={effectiveSubjects[index]?.name ?? "Mata Pelajaran"}

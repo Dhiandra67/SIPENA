@@ -150,9 +150,11 @@ function DashboardPage({
               {classes.map((classRecord) => (
                 <tr key={classRecord.id}>
                   <td data-label="Kode Kelas" data-mobile-hidden>{classRecord.code}</td>
-                  <td data-label="Nama Kelas">{classRecord.name}</td>
+                  <td data-label="Nama Kelas" title={classRecord.name}>{classRecord.name}</td>
                   <td data-label="Tingkat" data-mobile-hidden>{classRecord.level}</td>
-                  <td data-label="Wali Kelas">{classRecord.homeroom || "—"}</td>
+                  <td data-label="Wali Kelas" title={classRecord.homeroom || undefined}>
+                    {classRecord.homeroom || "—"}
+                  </td>
                   <td data-label="Jumlah Siswa" data-mobile-hidden>{classRecord.students}</td>
                   <td data-label="Aksi">
                     <button

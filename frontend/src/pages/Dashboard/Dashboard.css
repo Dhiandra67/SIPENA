@@ -526,6 +526,40 @@
   cursor: not-allowed;
 }
 
+.dashboard-app :where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--sipena-focus-ring);
+  outline-offset: 2px;
+}
+
+.dashboard-app .admin-panel :where(button, a, input, select, textarea, summary):focus-visible,
+.dashboard-app .teacher-panel :where(button, a, input, select, textarea, summary):focus-visible,
+.dashboard-app .profile-modal :where(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--sipena-focus-ring);
+  outline-offset: 2px;
+}
+
+.dashboard-app .admin-panel button:disabled,
+.dashboard-app .teacher-panel button:disabled,
+.dashboard-app .profile-popover-action:disabled,
+.dashboard-app .profile-modal-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  box-shadow: none;
+  transform: none;
+}
+
+.dashboard-app .admin-panel input:disabled:not([type="file"]),
+.dashboard-app .admin-panel select:disabled,
+.dashboard-app .teacher-panel input:disabled:not([type="file"]),
+.dashboard-app .teacher-panel select:disabled,
+.dashboard-app .profile-modal-form input:disabled {
+  border-color: #d8d5df;
+  background: #f3f2f6;
+  color: #626c7a;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .mobile-dashboard-header {
   display: none;
 }
@@ -890,6 +924,7 @@
 
 @media (min-width: 701px) {
   .dashboard-app {
+    --sipena-font-body: 14px;
     background-color: #f9f6fa;
     background-image:
       linear-gradient(rgb(249 246 250 / 91%), rgb(249 246 250 / 91%)),
@@ -1309,5 +1344,83 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  .dashboard-app,
+  .dashboard-main {
+    display: block;
+    width: 100% !important;
+    min-height: 0;
+    margin: 0 !important;
+    background: #fff !important;
+    background-image: none !important;
+    color: #000 !important;
+  }
+
+  .dashboard-sidebar,
+  .dashboard-topbar,
+  .mobile-dashboard-header,
+  .admin-bottom-nav,
+  .teacher-bottom-nav,
+  .mobile-menu,
+  .profile-popover,
+  .profile-modal-backdrop {
+    display: none !important;
+  }
+
+  .dashboard-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 !important;
+  }
+
+  .admin-dashboard-heading,
+  .teacher-dashboard-heading {
+    border: 1px solid #777;
+    background: #fff !important;
+    box-shadow: none !important;
+    color: #000 !important;
+  }
+
+  .admin-page-heading *,
+  .teacher-page-heading * {
+    color: #000 !important;
+  }
+
+  .admin-table-scroll,
+  .teacher-table-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .admin-table,
+  .teacher-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    color: #000 !important;
+  }
+
+  .admin-table thead,
+  .teacher-table thead {
+    display: table-header-group !important;
+  }
+
+  .admin-table tr,
+  .teacher-table tr,
+  .admin-stat-card,
+  .admin-overview-card,
+  .admin-records-card,
+  .teacher-card,
+  .teacher-assignment-card,
+  .teacher-academic-banner {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
