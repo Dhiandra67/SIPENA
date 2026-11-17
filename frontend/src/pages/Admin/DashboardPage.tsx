@@ -138,22 +138,22 @@ function DashboardPage({
           <table className="admin-table admin-dashboard-class-table">
             <thead>
               <tr>
-                <th scope="col">Kode Kelas</th>
+                <th data-mobile-hidden scope="col">Kode Kelas</th>
                 <th scope="col">Nama Kelas</th>
-                <th scope="col">Tingkat</th>
+                <th data-mobile-hidden scope="col">Tingkat</th>
                 <th scope="col">Wali Kelas</th>
-                <th scope="col">Jumlah Siswa</th>
+                <th data-mobile-hidden scope="col">Jumlah Siswa</th>
                 <th scope="col">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {classes.map((classRecord) => (
                 <tr key={classRecord.id}>
-                  <td data-label="Kode Kelas">{classRecord.code}</td>
+                  <td data-label="Kode Kelas" data-mobile-hidden>{classRecord.code}</td>
                   <td data-label="Nama Kelas">{classRecord.name}</td>
-                  <td data-label="Tingkat">{classRecord.level}</td>
+                  <td data-label="Tingkat" data-mobile-hidden>{classRecord.level}</td>
                   <td data-label="Wali Kelas">{classRecord.homeroom || "—"}</td>
-                  <td data-label="Jumlah Siswa">{classRecord.students}</td>
+                  <td data-label="Jumlah Siswa" data-mobile-hidden>{classRecord.students}</td>
                   <td data-label="Aksi">
                     <button
                       className="admin-row-action-button"

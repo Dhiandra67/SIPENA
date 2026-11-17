@@ -20,6 +20,7 @@ export interface AdminSection {
   description: string;
   addLabel: string;
   columns: { key: string; label: string }[];
+  mobileVisibleColumns?: string[];
   fields: AdminField[];
   searchKeys: string[];
 }
