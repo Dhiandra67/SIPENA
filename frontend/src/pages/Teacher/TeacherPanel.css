@@ -1803,6 +1803,10 @@
     white-space: nowrap;
   }
 
+  .teacher-grade-entry-table tbody td.teacher-score-entry-cell {
+    min-width: 132px;
+  }
+
   .teacher-grade-entry-table tbody td::before,
   .teacher-report-table tbody td::before,
   .teacher-kkm-table tbody td::before {
