@@ -110,10 +110,10 @@ function GradeSettingsPage({
                 </tr>
               ) : (
                 <tr>
-                  <td>{selectedSettingsAssignment.subject}</td>
-                  <td>{selectedSettingsAssignment.className}</td>
-                  <td>{selectedSettingsAssignment.period}</td>
-                  <td>
+                  <td data-label="Mata Pelajaran">{selectedSettingsAssignment.subject}</td>
+                  <td data-label="Kelas">{selectedSettingsAssignment.className}</td>
+                  <td data-label="Periode">{selectedSettingsAssignment.period}</td>
+                  <td data-label="KKM">
                     <input
                       aria-label={`KKM ${selectedSettingsAssignment.subject} ${selectedSettingsAssignment.className}`}
                       className="teacher-kkm-input"
@@ -126,7 +126,7 @@ function GradeSettingsPage({
                       value={kkmValue}
                     />
                   </td>
-                  <td>
+                  <td data-label="Aksi">
                     <button
                       className="teacher-secondary-button"
                       disabled={isSettingsLocked}

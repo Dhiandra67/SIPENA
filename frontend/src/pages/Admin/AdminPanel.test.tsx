@@ -134,6 +134,41 @@ describe("panel admin modular", () => {
     expect(await screen.findByText("Mawar Putri")).toBeInTheDocument();
   });
 
+  it("menyediakan template, impor, dan ekspor untuk entitas admin lainnya", async () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    const headers = ["NIP", "Nama lengkap", "Jenis kelamin", "Email akun", "Status akun"];
+    spreadsheetMocks.downloadSpreadsheet.mockResolvedValue(undefined);
+    spreadsheetMocks.readSpreadsheetFile.mockResolvedValue([
+      headers,
+      ["198601012015011009", "Dewi Anggraini", "P", "dewi@sekolah.sch.id", "Aktif"],
+    ]);
+
+    render(<AdminPanel onNavigate={() => undefined} route="teachers" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Template XLSX" }));
+    await waitFor(() => {
+      expect(spreadsheetMocks.downloadSpreadsheet).toHaveBeenCalledWith(
+        "template-data-guru-sipena.xlsx",
+        [headers],
+        "Data Guru",
+      );
+    });
+
+    fireEvent.change(screen.getByLabelText("Impor data guru"), {
+      target: { files: [new File(["xlsx"], "data-guru.xlsx")] },
+    });
+    expect(await screen.findByText("Dewi Anggraini")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ekspor" }));
+    await waitFor(() => {
+      expect(spreadsheetMocks.downloadSpreadsheet).toHaveBeenLastCalledWith(
+        "data-guru-sipena.xlsx",
+        expect.arrayContaining([headers, expect.arrayContaining(["198601012015011009", "Dewi Anggraini"])]),
+        "Data Guru",
+      );
+    });
+  });
+
   it("memuat overview backend dan menyimpan siswa baru ke endpoint CRUD", async () => {
     window.localStorage.setItem("sipena.accessToken", "token-admin");
     const createdStudent = {

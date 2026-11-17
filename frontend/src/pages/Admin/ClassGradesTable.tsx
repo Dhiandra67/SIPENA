@@ -34,8 +34,8 @@ function ClassGradesTable({
           {isExporting ? "Mengekspor..." : "Ekspor Excel"}
         </button>
       </div>
-      <div className="admin-table-scroll">
-        <table className="admin-table admin-report-table">
+      <div className="admin-table-scroll admin-entity-scroll">
+        <table className="admin-table admin-report-table admin-entity-table">
           <thead>
             <tr>
               <th scope="col">NISN</th>
@@ -52,13 +52,18 @@ function ClassGradesTable({
           <tbody>
             {orderedRows.map((row) => (
               <tr key={row.student.id}>
-                <td>{row.student.nisn}</td>
-                <td>{row.student.name}</td>
+                <td data-label="NISN">{row.student.nisn}</td>
+                <td data-label="Nama Siswa">{row.student.name}</td>
                 {row.subjectScores.map((score, index) => (
-                  <td key={effectiveSubjects[index]?.id ?? index}>{score?.toFixed(2) ?? "—"}</td>
+                  <td
+                    data-label={effectiveSubjects[index]?.name ?? "Mata Pelajaran"}
+                    key={effectiveSubjects[index]?.id ?? index}
+                  >
+                    {score?.toFixed(2) ?? "—"}
+                  </td>
                 ))}
-                <td>{row.semesterScore?.toFixed(2) ?? "—"}</td>
-                <td>{rankByStudentId.get(row.student.id) ?? "—"}</td>
+                <td data-label="Nilai Akhir Semester">{row.semesterScore?.toFixed(2) ?? "—"}</td>
+                <td data-label="Peringkat Kelas">{rankByStudentId.get(row.student.id) ?? "—"}</td>
               </tr>
             ))}
             {orderedRows.length === 0 && (

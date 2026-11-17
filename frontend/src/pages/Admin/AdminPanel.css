@@ -1021,3 +1021,481 @@
     box-shadow: 0 0 0 3px rgb(143 125 185 / 14%);
   }
 }
+
+@media (max-width: 700px) {
+  .admin-dashboard-heading .admin-active-period {
+    display: none;
+  }
+
+  .admin-stat-card {
+    min-height: 92px;
+    border-color: #50698d;
+    background: #50698d;
+    box-shadow: 0 4px 10px rgb(16 43 83 / 9%);
+  }
+
+  .admin-stat-card > span,
+  .admin-stat-card small {
+    color: #e8edf5;
+  }
+
+  .admin-stat-card strong {
+    color: #fff;
+  }
+
+  .admin-period-card {
+    overflow: hidden;
+    border-color: #e4dcf2;
+    background: #f0ebf8;
+  }
+
+  .admin-period-card .admin-card-heading {
+    padding: 13px 13px 8px;
+  }
+
+  .admin-period-card .admin-table-scroll,
+  .admin-entity-scroll,
+  .admin-class-scroll {
+    overflow: visible;
+  }
+
+  .admin-period-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-period-table thead {
+    display: none;
+  }
+
+  .admin-period-table tbody,
+  .admin-period-table tbody tr {
+    display: grid;
+    gap: 8px;
+  }
+
+  .admin-period-table tbody tr {
+    padding: 0 12px 13px;
+  }
+
+  .admin-period-table td {
+    display: grid;
+    height: auto;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    color: #4a3e6c;
+    font-size: 9px;
+    white-space: normal;
+  }
+
+  .admin-period-table td::before {
+    content: attr(data-label);
+    color: #625779;
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .admin-period-table input,
+  .admin-period-table select {
+    min-height: 39px;
+    font-size: 11px;
+  }
+
+  .admin-period-table .admin-primary-button {
+    width: 100%;
+  }
+
+  .admin-dashboard-class-table,
+  .admin-entity-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .admin-dashboard-class-table thead,
+  .admin-entity-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .admin-dashboard-class-table tbody,
+  .admin-entity-table tbody {
+    display: grid;
+    gap: 9px;
+    padding: 8px;
+  }
+
+  .admin-dashboard-class-table tbody tr,
+  .admin-entity-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 8px;
+    padding: 9px;
+    border: 1px solid #e8e2f0;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 3px 9px rgb(16 43 83 / 4%);
+  }
+
+  .admin-dashboard-class-table tbody td,
+  .admin-entity-table tbody td {
+    position: static;
+    display: grid;
+    height: auto;
+    min-width: 0;
+    align-content: start;
+    gap: 4px;
+    padding: 7px 4px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: #4f5e78;
+    font-size: 10px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .admin-dashboard-class-table tbody td::before,
+  .admin-entity-table tbody td::before {
+    content: attr(data-label);
+    color: #77819a;
+    font-size: 8px;
+    font-weight: 600;
+  }
+
+  .admin-report-table tbody td[data-label="Nama Siswa"] {
+    grid-column: 1 / -1;
+    border-radius: 7px;
+    background: #f0ebf8;
+    color: #102b53;
+    font-weight: 700;
+  }
+
+  .admin-report-table tbody td[data-label="Nama Siswa"]::before {
+    display: none;
+  }
+
+  .admin-dashboard-class-table .admin-row-action-button {
+    width: 100%;
+  }
+
+  .admin-dashboard-class-table tbody td:last-child,
+  .admin-entity-table tbody td.admin-row-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: 4px;
+    padding-top: 8px;
+    border-top: 1px solid #eeeaf4;
+  }
+
+  .admin-dashboard-class-table tbody td:last-child {
+    display: block;
+  }
+
+  .admin-dashboard-class-table tbody td:last-child::before {
+    display: none;
+  }
+
+  .admin-entity-table tbody td.admin-row-actions::before {
+    grid-column: 1 / -1;
+  }
+
+  .admin-entity-table tbody td.admin-row-actions button {
+    min-height: 32px;
+    padding: 4px;
+    border: 1px solid #e8e2f0;
+    border-radius: 6px;
+    background: #faf9fc;
+    font-size: 9px;
+    text-align: center;
+  }
+
+  .admin-dashboard-class-table .admin-empty,
+  .admin-entity-table .admin-empty {
+    display: block;
+    grid-column: 1 / -1;
+    height: auto !important;
+    padding: 22px 10px !important;
+    text-align: center;
+  }
+
+  .admin-dashboard-class-table .admin-empty::before,
+  .admin-entity-table .admin-empty::before {
+    display: none;
+  }
+
+  .admin-records-footer {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-grade-ranking-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .admin-grade-ranking-card {
+    min-width: 0;
+    min-height: 100px;
+    padding: 10px;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-grade-ranking-card strong {
+    font-size: 14px;
+  }
+
+  .admin-grade-ranking-card > span:last-child {
+    font-size: 9px;
+  }
+
+  .admin-records-toolbar {
+    display: flex;
+    min-width: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 6px;
+    padding: 10px;
+    touch-action: pan-x;
+  }
+
+  .admin-records-toolbar > * {
+    flex: 0 0 auto;
+  }
+
+  .admin-search {
+    width: 132px;
+    min-width: 132px;
+    max-width: 132px;
+    flex: 0 0 132px;
+  }
+
+  .admin-student-filters {
+    display: flex;
+    width: 104px;
+    min-width: 104px;
+    grid-column: auto;
+    flex: 0 0 104px;
+  }
+
+  .admin-student-filters label,
+  .admin-student-filters select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-file-actions {
+    display: flex;
+    grid-column: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 5px;
+  }
+
+  .admin-file-actions .admin-secondary-button {
+    min-width: max-content;
+    min-height: 35px;
+    padding: 0 8px;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  .admin-records-toolbar > .admin-primary-button {
+    width: auto;
+    grid-column: auto;
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .admin-period-card .admin-table-scroll {
+    overflow: visible;
+  }
+
+  .admin-entity-scroll,
+  .admin-class-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+  }
+
+  .admin-entity-table,
+  .admin-dashboard-class-table {
+    display: table;
+    width: max-content;
+    min-width: 720px;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .admin-dashboard-class-table {
+    min-width: 640px;
+  }
+
+  .admin-report-table {
+    min-width: 900px;
+  }
+
+  .admin-dashboard-class-table thead,
+  .admin-entity-table thead {
+    position: static;
+    display: table-header-group;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    clip-path: none;
+  }
+
+  .admin-dashboard-class-table tbody,
+  .admin-entity-table tbody {
+    display: table-row-group;
+    gap: 0;
+    padding: 0;
+  }
+
+  .admin-dashboard-class-table tbody tr,
+  .admin-entity-table tbody tr {
+    display: table-row;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .admin-dashboard-class-table tbody td,
+  .admin-entity-table tbody td {
+    position: relative;
+    display: table-cell;
+    height: 43px;
+    min-width: 105px;
+    align-content: normal;
+    padding: 8px 10px;
+    border: 0;
+    border-bottom: 1px solid #eeeaf4;
+    background: #fff;
+    box-shadow: none;
+    color: #4f5e78;
+    font-size: 9px;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+
+  .admin-dashboard-class-table tbody td::before,
+  .admin-entity-table tbody td::before {
+    display: none;
+    content: none;
+  }
+
+  .admin-dashboard-class-table th:first-child,
+  .admin-dashboard-class-table td:first-child,
+  .admin-entity-table th:first-child,
+  .admin-entity-table td:first-child {
+    position: sticky;
+    z-index: 2;
+    left: 0;
+    min-width: 96px;
+    background: #fff;
+  }
+
+  .admin-dashboard-class-table th:first-child,
+  .admin-entity-table th:first-child {
+    background: #f7f8f5;
+  }
+
+  .admin-dashboard-class-table th:nth-child(2),
+  .admin-dashboard-class-table td:nth-child(2),
+  .admin-entity-table th:nth-child(2),
+  .admin-entity-table td:nth-child(2) {
+    position: sticky;
+    z-index: 2;
+    left: 96px;
+    min-width: 150px;
+    background: #fff;
+    box-shadow: 3px 0 5px rgb(41 63 53 / 5%);
+  }
+
+  .admin-dashboard-class-table th:nth-child(2),
+  .admin-entity-table th:nth-child(2) {
+    background: #f7f8f5;
+  }
+
+  .admin-dashboard-class-table th:last-child,
+  .admin-dashboard-class-table td:last-child,
+  .admin-entity-table th:last-child,
+  .admin-entity-table td:last-child {
+    position: sticky;
+    z-index: 3;
+    right: 0;
+    background: #fff;
+    box-shadow: -3px 0 5px rgb(41 63 53 / 6%);
+  }
+
+  .admin-dashboard-class-table th:last-child,
+  .admin-entity-table th:last-child {
+    background: #f7f8f5;
+  }
+
+  .admin-dashboard-class-table tbody td:last-child,
+  .admin-entity-table tbody td.admin-row-actions {
+    display: table-cell;
+    grid-column: auto;
+    grid-template-columns: none;
+    align-items: normal;
+    gap: 0;
+    padding: 6px 8px;
+    border-top: 0;
+    white-space: nowrap;
+  }
+
+  .admin-dashboard-class-table .admin-row-action-button {
+    width: auto;
+  }
+
+  .admin-entity-table tbody td.admin-row-actions::before {
+    display: none;
+    grid-column: auto;
+  }
+
+  .admin-entity-table tbody td.admin-row-actions button {
+    min-height: 30px;
+    padding: 4px 7px;
+    font-size: 9px;
+  }
+
+  .admin-report-table tbody td[data-label="Nama Siswa"] {
+    grid-column: auto;
+    border-radius: 0;
+    background: #fff;
+    color: #4f5e78;
+    font-weight: 400;
+  }
+
+  .admin-dashboard-class-table .admin-empty,
+  .admin-entity-table .admin-empty {
+    display: table-cell;
+    grid-column: auto;
+    height: 60px !important;
+    padding: 16px 10px !important;
+    text-align: center;
+  }
+
+  .admin-dashboard-class-table .admin-empty::before,
+  .admin-entity-table .admin-empty::before {
+    display: none;
+  }
+}

@@ -22,7 +22,7 @@ import StudentDataPage from "./StudentDataPage";
 import SubjectDataPage from "./SubjectDataPage";
 import TeacherAssignmentsPage from "./TeacherAssignmentsPage";
 import TeacherDataPage from "./TeacherDataPage";
-import type { AdminRecord } from "./types";
+import type { AdminRecord, AdminRoute, AdminSection } from "./types";
 import "./AdminPanel.css";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -34,6 +34,13 @@ const studentSpreadsheetHeaders = [
   "Kode Kelas",
   "Status",
 ];
+const spreadsheetFileNames: Record<AdminRoute, string> = {
+  students: "data-siswa-sipena.xlsx",
+  teachers: "data-guru-sipena.xlsx",
+  classes: "data-kelas-sipena.xlsx",
+  subjects: "data-mata-pelajaran-sipena.xlsx",
+  assignments: "data-pembagian-tugas-guru-sipena.xlsx",
+};
 
 interface AdminPanelProps {
   route: string;
@@ -564,6 +571,211 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     }
   }
 
+  async function exportEntity(routeSnapshot: AdminRoute, sectionSnapshot: AdminSection) {
+    const headers = sectionSnapshot.fields.map((field) => field.label);
+    const dataRows = records[routeSnapshot].map((record) =>
+      sectionSnapshot.fields.map((field) => record[field.key] ?? ""),
+    );
+    try {
+      await downloadSpreadsheet(
+        spreadsheetFileNames[routeSnapshot],
+        [headers, ...dataRows],
+        sectionSnapshot.title,
+      );
+      setNotice(`${sectionSnapshot.title} berhasil diekspor.`, routeSnapshot);
+    } catch (error) {
+      console.error(`Failed to export ${routeSnapshot}.`, error);
+      setNotice(`${sectionSnapshot.title} tidak dapat diekspor. Silakan coba lagi.`, routeSnapshot);
+    }
+  }
+
+  async function downloadEntityTemplate(routeSnapshot: AdminRoute, sectionSnapshot: AdminSection) {
+    try {
+      await downloadSpreadsheet(
+        `template-${spreadsheetFileNames[routeSnapshot]}`,
+        [sectionSnapshot.fields.map((field) => field.label)],
+        sectionSnapshot.title,
+      );
+      setNotice(`Template ${sectionSnapshot.title.toLocaleLowerCase("id")} berhasil diunduh.`, routeSnapshot);
+    } catch (error) {
+      console.error(`Failed to download ${routeSnapshot} template.`, error);
+      setNotice(
+        `Template ${sectionSnapshot.title.toLocaleLowerCase("id")} tidak dapat diunduh. Silakan coba lagi.`,
+        routeSnapshot,
+      );
+    }
+  }
+
+  async function importEntity(
+    event: ChangeEvent<HTMLInputElement>,
+    routeSnapshot: AdminRoute,
+    sectionSnapshot: AdminSection,
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024 || !/\.(csv|xlsx)$/i.test(file.name)) {
+      setNotice("Pilih file .xlsx atau .csv berukuran maksimal 5 MB.", routeSnapshot);
+      return;
+    }
+
+    try {
+      const rawRows = await readSpreadsheetFile(file);
+      if (!rawRows?.length) {
+        setNotice("File tidak memiliki lembar kerja.", routeSnapshot);
+        return;
+      }
+
+      const headerIndexes = sectionSnapshot.fields.map((field) =>
+        rawRows[0].findIndex(
+          (header) =>
+            String(header).trim().toLocaleLowerCase("id") ===
+            field.label.toLocaleLowerCase("id"),
+        ),
+      );
+      if (headerIndexes.some((index) => index < 0)) {
+        setNotice(
+          `Impor dibatalkan: gunakan template ${sectionSnapshot.title.toLocaleLowerCase("id")} agar semua kolom tersedia.`,
+          routeSnapshot,
+        );
+        return;
+      }
+
+      const importedRows = rawRows
+        .slice(1)
+        .filter((row) => row.some((value) => String(value).trim()))
+        .map((row) =>
+          Object.fromEntries(
+            sectionSnapshot.fields.map((field, index) => [
+              field.key,
+              String(row[headerIndexes[index]] ?? "").trim(),
+            ]),
+          ),
+        ) as AdminRecord[];
+      if (importedRows.length === 0) {
+        setNotice("Tidak ada data untuk diimpor.", routeSnapshot);
+        return;
+      }
+
+      const candidates: AdminRecord[] = [];
+      const recordsForValidation: RecordSet = {
+        ...records,
+        [routeSnapshot]: [...records[routeSnapshot]],
+      };
+      for (let index = 0; index < importedRows.length; index += 1) {
+        const candidate = importedRows[index];
+        const emptyField = sectionSnapshot.fields.find(
+          (field) => field.required !== false && !candidate[field.key],
+        );
+        if (emptyField) {
+          setNotice(
+            `Impor dibatalkan: kolom ${emptyField.label} pada baris ${index + 2} wajib diisi.`,
+            routeSnapshot,
+          );
+          return;
+        }
+
+        const invalidOption = sectionSnapshot.fields.find((field) => {
+          if (field.type !== "select") return false;
+          const options = field.options ?? getFieldOptions(
+            field.key,
+            recordsForValidation,
+            currentPeriod,
+            periodOptions,
+          );
+          return options.length > 0 && !options.includes(candidate[field.key]);
+        });
+        if (invalidOption) {
+          setNotice(
+            `Impor dibatalkan: nilai ${invalidOption.label} pada baris ${index + 2} tidak terdaftar.`,
+            routeSnapshot,
+          );
+          return;
+        }
+
+        const validationMessage = validateAdminRecord(
+          candidate,
+          routeSnapshot,
+          sectionSnapshot,
+          recordsForValidation,
+          null,
+        );
+        if (validationMessage) {
+          setNotice(`Impor dibatalkan pada baris ${index + 2}: ${validationMessage}`, routeSnapshot);
+          return;
+        }
+        const record = { ...candidate, id: createId() };
+        candidates.push(record);
+        recordsForValidation[routeSnapshot].push(record);
+      }
+
+      const token = getStoredAccessToken();
+      if (!token) {
+        setRecords((previous) => ({
+          ...previous,
+          [routeSnapshot]: [...previous[routeSnapshot], ...candidates],
+        }));
+        setNotice(`${candidates.length} data ${sectionSnapshot.title.toLocaleLowerCase("id")} berhasil diimpor.`, routeSnapshot);
+        return;
+      }
+
+      const savedRecords: AdminRecord[] = [];
+      let failureMessage = "";
+      for (let index = 0; index < candidates.length; index += 1) {
+        try {
+          const response = await fetch(`${apiBaseUrl}${endpointByRoute[routeSnapshot]}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(importedRows[index]),
+          });
+          const payload = (await response.json().catch(() => null)) as {
+            message?: string;
+            data?: AdminRecord;
+          } | null;
+          if (!response.ok) {
+            failureMessage = payload?.message ?? `Baris ${index + 2} ditolak oleh server.`;
+            break;
+          }
+          savedRecords.push(payload?.data ?? candidates[index]);
+        } catch {
+          failureMessage = `Koneksi terputus saat menyimpan baris ${index + 2}.`;
+          break;
+        }
+      }
+
+      if (savedRecords.length > 0) {
+        const refreshed = await refreshOverview();
+        if (!refreshed) {
+          setRecords((previous) => ({
+            ...previous,
+            [routeSnapshot]: [...previous[routeSnapshot], ...savedRecords],
+          }));
+        }
+      }
+
+      if (failureMessage) {
+        setNotice(
+          savedRecords.length > 0
+            ? `${savedRecords.length} data berhasil diimpor. Impor berhenti: ${failureMessage}`
+            : `Impor gagal: ${failureMessage}`,
+          routeSnapshot,
+        );
+      } else {
+        setNotice(
+          `${savedRecords.length} data ${sectionSnapshot.title.toLocaleLowerCase("id")} berhasil diimpor.`,
+          routeSnapshot,
+        );
+      }
+    } catch (error) {
+      console.error(`Failed to import ${routeSnapshot}.`, error);
+      setNotice("File tidak dapat dibaca. Periksa format dan coba lagi.", routeSnapshot);
+    }
+  }
+
   if (route === "dashboard") {
     const classes = records.classes.filter((classRecord) => classRecord.period === currentPeriod);
     return (
@@ -663,7 +875,33 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           Ekspor
         </button>
       </div>
-    ) : undefined;
+    ) : (
+      <div className="admin-file-actions">
+        <button
+          className="admin-secondary-button"
+          onClick={() => void downloadEntityTemplate(currentRoute, section)}
+          type="button"
+        >
+          Template XLSX
+        </button>
+        <label className="admin-secondary-button admin-file-button">
+          Impor
+          <input
+            accept=".csv,.xlsx"
+            aria-label={`Impor ${section.title.toLocaleLowerCase("id")}`}
+            onChange={(event) => void importEntity(event, currentRoute, section)}
+            type="file"
+          />
+        </label>
+        <button
+          className="admin-secondary-button"
+          onClick={() => void exportEntity(currentRoute, section)}
+          type="button"
+        >
+          Ekspor
+        </button>
+      </div>
+    );
   const page =
     currentRoute === "students" ? (
       <StudentDataPage
@@ -674,13 +912,13 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         selectedClass={selectedClass}
       />
     ) : currentRoute === "teachers" ? (
-      <TeacherDataPage {...commonProps} />
+      <TeacherDataPage {...commonProps} fileActions={fileActions} />
     ) : currentRoute === "classes" ? (
-      <ClassDataPage {...commonProps} />
+      <ClassDataPage {...commonProps} fileActions={fileActions} />
     ) : currentRoute === "subjects" ? (
-      <SubjectDataPage {...commonProps} />
+      <SubjectDataPage {...commonProps} fileActions={fileActions} />
     ) : (
-      <TeacherAssignmentsPage {...commonProps} />
+      <TeacherAssignmentsPage {...commonProps} fileActions={fileActions} />
     );
 
   return (

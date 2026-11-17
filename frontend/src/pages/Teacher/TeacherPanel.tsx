@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   downloadSpreadsheet as writeSpreadsheet,
   readSpreadsheetFile,
@@ -58,11 +58,34 @@ function TeacherPanel({
   const [hasUnsavedKkm, setHasUnsavedKkm] = useState(false);
   const [search, setSearch] = useState("");
   const [gradeStatusFilter, setGradeStatusFilter] = useState("Semua status");
-  const [notice, setNotice] = useState("");
+  const [notice, setNoticeState] = useState<{ message: string; route: string; id: number } | null>(
+    null,
+  );
+  const noticeId = useRef(0);
+
+  function setNotice(message: string, noticeRoute = route) {
+    if (!message) {
+      setNoticeState(null);
+      return;
+    }
+
+    noticeId.current += 1;
+    setNoticeState({ message, route: noticeRoute, id: noticeId.current });
+  }
 
   useEffect(() => {
     onUnsavedChange?.(hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm);
   }, [hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm, onUnsavedChange]);
+
+  useEffect(() => {
+    if (!notice) return;
+
+    const timeout = window.setTimeout(() => {
+      setNoticeState((current) => (current?.id === notice.id ? null : current));
+    }, 10_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   function applyWorkspacePayload(data: {
     assignments?: TeachingAssignment[];
@@ -912,9 +935,9 @@ function TeacherPanel({
 
   return (
     <div className="teacher-panel">
-      {notice && (
+      {notice?.route === route && (
         <p className="teacher-notice" role="status">
-          {notice}
+          {notice.message}
         </p>
       )}
       {content}

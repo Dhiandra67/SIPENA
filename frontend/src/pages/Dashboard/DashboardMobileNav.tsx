@@ -1,5 +1,17 @@
 import DashboardIcon, { type NavItem } from "./DashboardIcon";
 
+const mobileLabels: Record<string, string> = {
+  Dashboard: "Beranda",
+  "Data Siswa": "Siswa",
+  "Data Guru": "Guru",
+  "Data Kelas": "Kelas",
+  "Mata Pelajaran": "Mapel",
+  "Pembagian Tugas Guru": "Tugas Guru",
+  "Nilai Kelas": "Nilai",
+  "Pengaturan Komponen Nilai": "Komponen",
+  "Input dan Kelola Nilai": "Input Nilai",
+};
+
 interface DashboardMobileNavProps {
   isAdmin: boolean;
   navigation: NavItem[];
@@ -55,6 +67,7 @@ function DashboardMobileNav({
           {navigation.map((item) => (
             <a
               aria-current={item.href === `#${activeRoute}` ? "page" : undefined}
+              aria-label={item.label}
               href={item.href}
               key={item.label}
               onClick={(event) => {
@@ -66,7 +79,11 @@ function DashboardMobileNav({
               }}
             >
               <DashboardIcon name={item.icon} />
-              <span>{item.label}</span>
+              <span>
+                {item.label === "Dashboard" && !isAdmin
+                  ? item.label
+                  : mobileLabels[item.label] ?? item.label}
+              </span>
             </a>
           ))}
           <button

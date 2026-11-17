@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherPanel from "./TeacherPanel";
 
 const xlsxMocks = vi.hoisted(() => ({
@@ -31,8 +31,8 @@ const workspace = {
         period,
         kkm: 75,
         students: [
-          { id: "s1", nis: "2026001", name: "Andi Pratama", gender: "L" },
-          { id: "s2", nis: "2026002", name: "Budi Santoso", gender: "L" },
+          { id: "s1", nis: "2026001", nisn: "0123456701", name: "Andi Pratama", gender: "L" },
+          { id: "s2", nis: "2026002", nisn: "0123456702", name: "Budi Santoso", gender: "L" },
         ],
       },
     ],
@@ -60,6 +60,10 @@ const workspace = {
     selectedPeriod: period,
   },
 };
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("rekap nilai pada detail kelas", () => {
   beforeEach(() => {
@@ -134,8 +138,33 @@ describe("rekap nilai pada detail kelas", () => {
     expect(screen.queryByRole("columnheader", { name: "Predikat" })).not.toBeInTheDocument();
 
     const table = screen.getByRole("table");
+    expect(screen.getByRole("columnheader", { name: "NISN" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Jenis Kelamin" })).toBeInTheDocument();
+    expect(within(table).getByText("0123456701")).toBeInTheDocument();
     const saveButton = screen.getByRole("button", { name: "Simpan nilai" });
     expect(table.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("membatasi notifikasi guru ke halaman terkait dan menghapusnya setelah 10 detik", async () => {
+    const { rerender } = render(
+      <TeacherPanel onNavigate={() => undefined} route="grade-entry" />,
+    );
+    await screen.findByRole("heading", { name: "Input dan Kelola Nilai" });
+    vi.useFakeTimers();
+    window.localStorage.removeItem("sipena.accessToken");
+
+    fireEvent.click(screen.getByRole("button", { name: "Simpan nilai" }));
+    const message = "Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Nilai tidak disimpan.";
+    expect(screen.getByText(message)).toBeInTheDocument();
+
+    rerender(<TeacherPanel onNavigate={() => undefined} route="grade-settings" />);
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    rerender(<TeacherPanel onNavigate={() => undefined} route="grade-entry" />);
+    expect(screen.queryByText(message)).not.toBeInTheDocument();
   });
 
   it("menyimpan beberapa entri nilai untuk satu komponen", async () => {

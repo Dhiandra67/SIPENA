@@ -499,6 +499,7 @@ class GuruPenilaianController extends Controller
                     'id' => $studentId,
                     'anggota_kelas_id' => (string) $anggota->id,
                     'nis' => $siswa->nis,
+                    'nisn' => $siswa->nisn,
                     'name' => $siswa->nama_lengkap,
                     'gender' => $siswa->jenis_kelamin,
                 ];
