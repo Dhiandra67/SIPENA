@@ -60,6 +60,27 @@ const workspace = {
     selectedPeriod: period,
   },
 };
+const secondAssignment = {
+  ...workspace.data.assignments[0],
+  id: "science-vii-b",
+  subject: "IPA",
+  className: "VII-B",
+  kkm: 70,
+  students: [],
+};
+const secondAssignmentComponents = workspace.data.componentsByAssignment["math-vii-a"].map(
+  (component) => ({ ...component, id: `science-${component.id}` }),
+);
+const workspaceWithMultipleAssignments = {
+  data: {
+    ...workspace.data,
+    assignments: [...workspace.data.assignments, secondAssignment],
+    componentsByAssignment: {
+      ...workspace.data.componentsByAssignment,
+      [secondAssignment.id]: secondAssignmentComponents,
+    },
+  },
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -143,6 +164,15 @@ describe("rekap nilai pada detail kelas", () => {
     expect(within(table).getByText("0123456701")).toBeInTheDocument();
     const saveButton = screen.getByRole("button", { name: "Simpan nilai" });
     expect(table.compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("membuka pengaturan komponen dari halaman input nilai", async () => {
+    const onNavigate = vi.fn();
+    render(<TeacherPanel onNavigate={onNavigate} route="grade-entry" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Atur komponen" }));
+
+    expect(onNavigate).toHaveBeenCalledWith("grade-settings");
   });
 
   it("membatasi notifikasi guru ke halaman terkait dan menghapusnya setelah 10 detik", async () => {
@@ -279,6 +309,14 @@ describe("rekap nilai pada detail kelas", () => {
   });
 
   it("mengatur dan menyimpan KKM ketika filter Semua Pengajaran dipilih", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => workspaceWithMultipleAssignments,
+      }),
+    );
     const fetchMock = vi.mocked(fetch);
     render(
       <TeacherPanel
@@ -291,6 +329,7 @@ describe("rekap nilai pada detail kelas", () => {
     fireEvent.change(assignmentSelect, { target: { value: "all" } });
 
     const kkmInput = screen.getByLabelText("KKM Semua Pengajaran");
+    expect(kkmInput).toHaveValue(null);
     fireEvent.change(kkmInput, { target: { value: "78" } });
     fireEvent.click(screen.getByRole("button", { name: "Simpan KKM" }));
 
@@ -300,6 +339,44 @@ describe("rekap nilai pada detail kelas", () => {
       );
       expect(saveCall).toBeDefined();
       expect(JSON.parse(String(saveCall?.[1]?.body))).toEqual({ kkm: 78 });
+    });
+  });
+
+  it("menyimpan komponen untuk semua pengajaran", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => workspaceWithMultipleAssignments,
+      }),
+    );
+    const fetchMock = vi.mocked(fetch);
+    render(
+      <TeacherPanel
+        onNavigate={() => undefined}
+        route="grade-settings"
+      />,
+    );
+
+    fireEvent.change(await screen.findByLabelText("Pilih pengajaran"), {
+      target: { value: "all" },
+    });
+    const componentNameInputs = screen.getAllByLabelText("Nama komponen");
+    fireEvent.change(componentNameInputs[0], { target: { value: "Tugas Bersama" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan komponen" }));
+
+    await waitFor(() => {
+      const saveCall = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith("/v1/pengajaran/all/komponen"),
+      );
+      expect(saveCall).toBeDefined();
+      expect(JSON.parse(String(saveCall?.[1]?.body))).toMatchObject({
+        components: [
+          { name: "Tugas Bersama", weight: "50" },
+          { name: "Ulangan Harian", weight: "50" },
+        ],
+      });
     });
   });
 });

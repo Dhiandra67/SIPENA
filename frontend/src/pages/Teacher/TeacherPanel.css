@@ -825,6 +825,17 @@
   gap: 14px;
 }
 
+.teacher-grade-context-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.teacher-grade-context-controls .teacher-secondary-button {
+  min-height: 37px;
+  white-space: nowrap;
+}
+
 .teacher-grade-context small {
   color: #77847b;
   font-size: 9px;
@@ -1122,6 +1133,16 @@
   .teacher-grade-context {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .teacher-grade-context-controls {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .teacher-grade-context-controls .teacher-secondary-button {
+    width: 100%;
   }
 
   .teacher-grade-toolbar {

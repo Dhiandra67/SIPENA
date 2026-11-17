@@ -105,8 +105,13 @@ function TeacherPanel({
     }
     if (Array.isArray(data.assignments)) {
       setAssignmentList(data.assignments);
+      const assignmentKkms = data.assignments.map((assignment) => String(assignment.kkm));
+      const sharedKkm =
+        assignmentKkms.every((kkm) => kkm === assignmentKkms[0])
+          ? assignmentKkms[0] ?? "75"
+          : "";
       setKkmDrafts({
-        all: String(data.assignments[0]?.kkm ?? 75),
+        all: sharedKkm,
         ...Object.fromEntries(
           data.assignments.map((assignment) => [assignment.id, String(assignment.kkm)]),
         ),
@@ -949,6 +954,7 @@ function TeacherPanel({
             onExportGrades={() => void exportGrades()}
             onGradeStatusFilterChange={setGradeStatusFilter}
             onImportGrades={(event) => void importGrades(event)}
+            onNavigate={navigate}
             onSaveScores={() => void saveScoresToBackend()}
             onSearchChange={setSearch}
             onUpdateScoreEntries={updateScoreEntries}
