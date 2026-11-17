@@ -34,6 +34,13 @@ const studentSpreadsheetHeaders = [
   "Kode Kelas",
   "Status",
 ];
+const emptyRecords: RecordSet = {
+  students: [],
+  teachers: [],
+  classes: [],
+  subjects: [],
+  assignments: [],
+};
 
 interface AdminPanelProps {
   route: string;
@@ -41,17 +48,23 @@ interface AdminPanelProps {
 }
 
 function AdminPanel({ route, onNavigate }: AdminPanelProps) {
-  const [records, setRecords] = useState<RecordSet>(initialRecords);
-  const [academicPeriods, setAcademicPeriods] = useState<AdminRecord[]>([
-    { id: "p1", name: activePeriod, status: "Aktif" },
-  ]);
-  const [currentPeriod, setCurrentPeriod] = useState(activePeriod);
-  const [periodOptions, setPeriodOptions] = useState([activePeriod]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [records, setRecords] = useState<RecordSet>(() =>
+    getStoredAccessToken() ? emptyRecords : initialRecords,
+  );
+  const [academicPeriods, setAcademicPeriods] = useState<AdminRecord[]>(() =>
+    getStoredAccessToken() ? [] : [{ id: "p1", name: activePeriod, status: "Aktif" }],
+  );
+  const [currentPeriod, setCurrentPeriod] = useState(() =>
+    getStoredAccessToken() ? "" : activePeriod,
+  );
+  const [periodOptions, setPeriodOptions] = useState(() =>
+    getStoredAccessToken() ? [] : [activePeriod],
+  );
+  const [isLoading, setIsLoading] = useState(() => Boolean(getStoredAccessToken()));
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
-  const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(
-    initialRecords.classes[0],
+  const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(() =>
+    getStoredAccessToken() ? null : initialRecords.classes[0],
   );
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
@@ -83,12 +96,12 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     };
     setRecords(nextRecords);
 
-    if (Array.isArray(data.academic) && data.academic.length > 0) {
+    if (Array.isArray(data.academic)) {
       setAcademicPeriods(data.academic);
       const names = data.academic.map((period) => period.name);
       setPeriodOptions(names);
       const active =
-        data.academic.find((period) => period.status === "Aktif")?.name ?? names[0] ?? activePeriod;
+        data.academic.find((period) => period.status === "Aktif")?.name ?? names[0] ?? "";
       setCurrentPeriod(active);
       setSelectedGradeClass((previous) => {
         if (previous) {
@@ -112,17 +125,20 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         }
         return nextRecords.classes[0] ?? null;
       });
+    } else if (nextRecords.classes.length === 0) {
+      setSelectedGradeClass(null);
     }
   }
 
-  async function refreshOverview(): Promise<boolean> {
+  async function refreshOverview(showLoading = true): Promise<boolean> {
     const token = getStoredAccessToken();
     if (!token) {
       return false;
     }
-    setIsLoading(true);
+    if (showLoading) setIsLoading(true);
     try {
       const response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
+        cache: "no-store",
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
@@ -140,12 +156,29 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     } catch {
       return false;
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }
 
   useEffect(() => {
     void refreshOverview();
+  }, []);
+
+  useEffect(() => {
+    if (!getStoredAccessToken()) return;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshOverview(false);
+      }
+    };
+    const interval = window.setInterval(refreshWhenVisible, 5_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -570,6 +603,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       <DashboardPage
         classes={classes}
         currentPeriod={currentPeriod}
+        isLoading={isLoading}
         notice={notice?.route === route ? notice.message : ""}
         onCreatePeriod={(year, semester) => {
           void addPeriod(year, semester);
