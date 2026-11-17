@@ -64,15 +64,21 @@ function GradeRecapSection({
               const score = calculateFinal(student.id, components, scores);
               return (
                 <tr key={student.id}>
-                  <td>{index + 1}</td>
-                  <td>{student.nis}</td>
-                  <td className="teacher-student-name">{student.name}</td>
+                  <td data-label="No">{index + 1}</td>
+                  <td data-label="NIS">{student.nis}</td>
+                  <td className="teacher-student-name" data-label="Nama Siswa">
+                    {student.name}
+                  </td>
                   {components.map((component) => (
-                    <td key={component.id}>{scores[student.id]?.[component.id] || "—"}</td>
+                    <td data-label={component.name} key={component.id}>
+                      {scores[student.id]?.[component.id] || "—"}
+                    </td>
                   ))}
-                  <td className="teacher-final-score">{score?.toFixed(2) ?? "—"}</td>
-                  <td>{resolvePredicate(score, gradeRanges)}</td>
-                  <td>
+                  <td className="teacher-final-score" data-label="Nilai Akhir">
+                    {score?.toFixed(2) ?? "—"}
+                  </td>
+                  <td data-label="Predikat">{resolvePredicate(score, gradeRanges)}</td>
+                  <td data-label="Status Kesesuaian">
                     <span
                       className={`teacher-pass-chip${
                         score !== null && score >= currentAssignment.kkm ? " pass" : ""

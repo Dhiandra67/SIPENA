@@ -44,26 +44,43 @@ function ClassGradesPage({
     if (!token || !classRecord.id) return;
 
     let cancelled = false;
-    void fetch(`${apiBaseUrl}/v1/kelas/${classRecord.id}/rekap`, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => (res.ok ? (res.json() as Promise<RecapResponsePayload>) : null))
-      .then((payload) => {
-        if (cancelled || !payload?.data) return;
+    let requestPending = false;
+    const refreshRecap = async () => {
+      if (cancelled || requestPending) return;
+      requestPending = true;
+      try {
+        const response = await fetch(`${apiBaseUrl}/v1/kelas/${classRecord.id}/rekap`, {
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as RecapResponsePayload;
+        if (cancelled || !payload.data) return;
         if (Array.isArray(payload.data.subjects) && Array.isArray(payload.data.students)) {
           setRecapSubjects(payload.data.subjects);
           setRecapStudents(payload.data.students);
         }
-      })
-      .catch(() => {
+      } catch {
         // Fallback to local records if backend recap endpoint is unavailable
-      });
+      } finally {
+        requestPending = false;
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshRecap();
+    };
+
+    void refreshRecap();
+    const interval = window.setInterval(refreshWhenVisible, 5_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [classRecord.id]);
 

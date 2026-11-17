@@ -300,6 +300,20 @@ class AcademicApiTest extends TestCase
         ]);
     }
 
+    public function test_teacher_dashboard_includes_student_nisn_for_grade_entry_table(): void
+    {
+        $this->seed();
+        $teacherToken = $this->loginAs('guru@example.com', 'guru12345');
+
+        $students = $this->withToken($teacherToken)
+            ->getJson('/api/v1/guru/dashboard')
+            ->assertOk()
+            ->json('data.assignments.0.students');
+
+        $this->assertNotEmpty($students);
+        $this->assertNotEmpty($students[0]['nisn']);
+    }
+
     public function test_updating_assignment_kkm_recalculates_student_passing_status(): void
     {
         $this->seed();

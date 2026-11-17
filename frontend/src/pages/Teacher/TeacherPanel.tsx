@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   downloadSpreadsheet as writeSpreadsheet,
   readSpreadsheetFile,
@@ -59,11 +59,34 @@ function TeacherPanel({
   const [hasUnsavedKkm, setHasUnsavedKkm] = useState(false);
   const [search, setSearch] = useState("");
   const [gradeStatusFilter, setGradeStatusFilter] = useState("Semua status");
-  const [notice, setNotice] = useState("");
+  const [notice, setNoticeState] = useState<{ message: string; route: string; id: number } | null>(
+    null,
+  );
+  const noticeId = useRef(0);
+
+  function setNotice(message: string, noticeRoute = route) {
+    if (!message) {
+      setNoticeState(null);
+      return;
+    }
+
+    noticeId.current += 1;
+    setNoticeState({ message, route: noticeRoute, id: noticeId.current });
+  }
 
   useEffect(() => {
     onUnsavedChange?.(hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm);
   }, [hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm, onUnsavedChange]);
+
+  useEffect(() => {
+    if (!notice) return;
+
+    const timeout = window.setTimeout(() => {
+      setNoticeState((current) => (current?.id === notice.id ? null : current));
+    }, 10_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   function applyWorkspacePayload(data: {
     assignments?: TeachingAssignment[];
@@ -160,6 +183,7 @@ function TeacherPanel({
     try {
       const query = periodName ? `?period=${encodeURIComponent(periodName)}` : "";
       const res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
+        cache: "no-store",
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
@@ -195,6 +219,30 @@ function TeacherPanel({
   useEffect(() => {
     void loadTeacherWorkspace();
   }, []);
+
+  useEffect(() => {
+    if (
+      !getStoredAccessToken() ||
+      hasUnsavedScores ||
+      hasUnsavedComponents ||
+      hasUnsavedKkm
+    ) {
+      return;
+    }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadTeacherWorkspace(selectedPeriod || undefined);
+      }
+    };
+    const interval = window.setInterval(refreshWhenVisible, 5_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [selectedPeriod, hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm]);
 
   const currentAssignment =
     assignmentList.find((assignment) => assignment.id === selectedAssignmentId) ??
@@ -937,9 +985,9 @@ function TeacherPanel({
 
   return (
     <div className="teacher-panel">
-      {notice && (
+      {notice?.route === route && (
         <p className="teacher-notice" role="status">
-          {notice}
+          {notice.message}
         </p>
       )}
       {content}

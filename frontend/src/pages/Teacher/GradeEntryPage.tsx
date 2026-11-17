@@ -203,13 +203,13 @@ function GradeEntryPage({
         </div>
 
         <div className="teacher-table-scroll">
-          <table className="teacher-table">
+          <table className="teacher-table teacher-grade-entry-table">
             <thead>
               <tr>
                 <th scope="col">No</th>
-                <th scope="col">NIS</th>
+                <th scope="col">NISN</th>
                 <th scope="col">Nama Siswa</th>
-                <th scope="col">L/P</th>
+                <th scope="col">Jenis Kelamin</th>
                 {components.map((component) => (
                   <th key={component.id} scope="col">
                     <button
@@ -232,12 +232,14 @@ function GradeEntryPage({
                 const finalScore = calculateFinal(student.id, components, scores);
                 return (
                   <tr key={`${currentAssignment.id}-${student.id}`}>
-                    <td>{index + 1}</td>
-                    <td>{student.nis}</td>
-                    <td className="teacher-student-name">{student.name}</td>
-                    <td>{student.gender}</td>
+                    <td data-label="No">{index + 1}</td>
+                    <td data-label="NISN">{student.nisn || student.nis}</td>
+                    <td className="teacher-student-name" data-label="Nama Siswa">
+                      {student.name}
+                    </td>
+                    <td data-label="Jenis Kelamin">{student.gender}</td>
                     {components.map((component) => (
-                      <td key={component.id}>
+                      <td data-label={component.name} key={component.id}>
                         <ScoreEntriesDropdown
                           componentName={component.name}
                           disabled={isGradeLocked}
@@ -257,8 +259,10 @@ function GradeEntryPage({
                         />
                       </td>
                     ))}
-                    <td className="teacher-final-score">{finalScore?.toFixed(2) ?? "—"}</td>
-                    <td>{formatCompletionStatus(finalScore, currentAssignment.kkm)}</td>
+                    <td className="teacher-final-score" data-label="Nilai Akhir">
+                      {finalScore?.toFixed(2) ?? "—"}
+                    </td>
+                    <td data-label="Status KKM">{formatCompletionStatus(finalScore, currentAssignment.kkm)}</td>
                   </tr>
                 );
               })}
