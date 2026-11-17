@@ -217,6 +217,7 @@
   background: #fff;
   box-shadow: 0 14px 32px rgb(28 40 46 / 14%);
   color: #384B54;
+  animation: sipena-popover-enter 160ms ease-out both;
 }
 
 .profile-popover-header {
@@ -357,6 +358,8 @@
   justify-content: center;
   padding: 16px;
   background: rgb(25 35 40 / 48%);
+  backdrop-filter: blur(2px);
+  animation: sipena-overlay-enter 160ms ease-out both;
 }
 
 .profile-modal {
@@ -368,6 +371,7 @@
   background: #fff;
   box-shadow: 0 20px 48px rgb(20 30 35 / 22%);
   color: #384B54;
+  animation: sipena-modal-enter 180ms ease-out both;
 }
 
 .profile-modal-heading {
@@ -879,6 +883,8 @@
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     transition-delay: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 
@@ -1196,5 +1202,112 @@
   .admin-dashboard .dashboard-content,
   .teacher-dashboard .dashboard-content {
     padding: 17px 15px 24px;
+  }
+}
+
+@media screen {
+  .dashboard-content > .admin-panel > *,
+  .dashboard-content > .teacher-panel > * {
+    animation: sipena-section-enter 220ms ease-out both;
+  }
+
+  .dashboard-app .mobile-menu,
+  .dashboard-app .profile-popover,
+  .dashboard-app .profile-modal,
+  .dashboard-app .admin-dialog,
+  .dashboard-app .admin-table-scroll,
+  .dashboard-app .teacher-table-scroll,
+  .dashboard-app .teacher-score-entry-list {
+    scrollbar-color: #b7a9cf #f2eff7;
+    scrollbar-width: thin;
+  }
+
+  .dashboard-app .mobile-menu::-webkit-scrollbar,
+  .dashboard-app .profile-popover::-webkit-scrollbar,
+  .dashboard-app .profile-modal::-webkit-scrollbar,
+  .dashboard-app .admin-dialog::-webkit-scrollbar,
+  .dashboard-app .admin-table-scroll::-webkit-scrollbar,
+  .dashboard-app .teacher-table-scroll::-webkit-scrollbar,
+  .dashboard-app .teacher-score-entry-list::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dashboard-app .mobile-menu::-webkit-scrollbar-track,
+  .dashboard-app .profile-popover::-webkit-scrollbar-track,
+  .dashboard-app .profile-modal::-webkit-scrollbar-track,
+  .dashboard-app .admin-dialog::-webkit-scrollbar-track,
+  .dashboard-app .admin-table-scroll::-webkit-scrollbar-track,
+  .dashboard-app .teacher-table-scroll::-webkit-scrollbar-track,
+  .dashboard-app .teacher-score-entry-list::-webkit-scrollbar-track {
+    background: #f2eff7;
+  }
+
+  .dashboard-app .mobile-menu::-webkit-scrollbar-thumb,
+  .dashboard-app .profile-popover::-webkit-scrollbar-thumb,
+  .dashboard-app .profile-modal::-webkit-scrollbar-thumb,
+  .dashboard-app .admin-dialog::-webkit-scrollbar-thumb,
+  .dashboard-app .admin-table-scroll::-webkit-scrollbar-thumb,
+  .dashboard-app .teacher-table-scroll::-webkit-scrollbar-thumb,
+  .dashboard-app .teacher-score-entry-list::-webkit-scrollbar-thumb {
+    border: 2px solid #f2eff7;
+    border-radius: 999px;
+    background: #b7a9cf;
+  }
+
+  .dashboard-app .mobile-menu::-webkit-scrollbar-thumb:hover,
+  .dashboard-app .profile-popover::-webkit-scrollbar-thumb:hover,
+  .dashboard-app .profile-modal::-webkit-scrollbar-thumb:hover,
+  .dashboard-app .admin-dialog::-webkit-scrollbar-thumb:hover,
+  .dashboard-app .admin-table-scroll::-webkit-scrollbar-thumb:hover,
+  .dashboard-app .teacher-table-scroll::-webkit-scrollbar-thumb:hover,
+  .dashboard-app .teacher-score-entry-list::-webkit-scrollbar-thumb:hover {
+    background: #9583bf;
+  }
+}
+
+@keyframes sipena-section-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sipena-popover-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sipena-overlay-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sipena-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

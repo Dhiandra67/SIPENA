@@ -793,7 +793,7 @@
   }
 }
 
-@media (min-width: 701px) {
+@media screen and (min-width: 701px) {
   .admin-panel {
     gap: 22px;
     color: #102b53;
@@ -1589,5 +1589,86 @@
   .admin-dashboard-class-table .admin-empty::before,
   .admin-entity-table .admin-empty::before {
     display: none;
+  }
+}
+
+.admin-dialog-backdrop {
+  backdrop-filter: blur(2px);
+  animation: sipena-overlay-enter 160ms ease-out both;
+}
+
+.admin-dialog {
+  animation: sipena-modal-enter 180ms ease-out both;
+}
+
+@media screen and (min-width: 701px) {
+  .admin-stat-card,
+  .admin-overview-card,
+  .admin-records-card {
+    border-radius: var(--sipena-radius-card);
+    box-shadow: var(--sipena-shadow-card);
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .admin-section-heading h2 {
+    position: relative;
+    padding-left: 12px;
+  }
+
+  .admin-section-heading h2::before {
+    position: absolute;
+    top: 0.2em;
+    left: 0;
+    width: 3px;
+    height: 1.15em;
+    border-radius: 999px;
+    background: var(--sipena-accent);
+    content: "";
+  }
+
+  .admin-table tbody td {
+    transition: background-color 140ms ease;
+  }
+}
+
+@media screen and (min-width: 701px) and (hover: hover) and (pointer: fine) {
+  .admin-stat-card:hover,
+  .admin-overview-card:hover,
+  .admin-records-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sipena-shadow-card-hover);
+  }
+
+  .admin-table tbody tr:hover td {
+    background-color: rgb(220 211 239 / 24%);
+  }
+
+  .admin-primary-button,
+  .admin-secondary-button,
+  .admin-row-action-button,
+  .admin-grade-dashboard-link {
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .admin-primary-button:hover,
+  .admin-secondary-button:hover,
+  .admin-row-action-button:hover,
+  .admin-grade-dashboard-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgb(16 43 83 / 10%);
+  }
+
+  .admin-primary-button:active,
+  .admin-secondary-button:active,
+  .admin-row-action-button:active,
+  .admin-grade-dashboard-link:active {
+    transform: translateY(0);
+    box-shadow: none;
   }
 }

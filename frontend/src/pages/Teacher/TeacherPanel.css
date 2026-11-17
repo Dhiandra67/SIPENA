@@ -546,6 +546,12 @@
   white-space: normal;
 }
 
+@media screen {
+  .teacher-score-entry-editor {
+    animation: sipena-popover-enter 150ms ease-out both;
+  }
+}
+
 .teacher-score-entry-list {
   display: grid;
   max-height: 120px;
@@ -1215,7 +1221,7 @@
   }
 }
 
-@media (min-width: 701px) {
+@media screen and (min-width: 701px) {
   .teacher-panel {
     gap: 22px;
     color: #102b53;
@@ -1870,5 +1876,83 @@
     height: 60px !important;
     padding: 16px 10px !important;
     text-align: center;
+  }
+}
+
+@media screen and (min-width: 701px) {
+  .teacher-stat-grid article,
+  .teacher-card,
+  .teacher-assignment-card,
+  .teacher-academic-banner {
+    border-radius: var(--sipena-radius-card);
+    box-shadow: var(--sipena-shadow-card);
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .teacher-card-heading h2 {
+    position: relative;
+    padding-left: 12px;
+  }
+
+  .teacher-card-heading h2::before {
+    position: absolute;
+    top: 0.2em;
+    left: 0;
+    width: 3px;
+    height: 1.15em;
+    border-radius: 999px;
+    background: var(--sipena-accent);
+    content: "";
+  }
+
+  .teacher-assignment-icon {
+    border-radius: var(--sipena-radius-control);
+  }
+
+  .teacher-table td {
+    transition: background-color 140ms ease;
+  }
+}
+
+@media screen and (min-width: 701px) and (hover: hover) and (pointer: fine) {
+  .teacher-stat-grid article:hover,
+  .teacher-card:hover,
+  .teacher-assignment-card:hover,
+  .teacher-academic-banner:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sipena-shadow-card-hover);
+  }
+
+  .teacher-table tbody tr:hover td {
+    background-color: rgb(220 211 239 / 24%);
+  }
+
+  .teacher-primary-button:not(:disabled),
+  .teacher-secondary-button:not(:disabled),
+  .teacher-link-button,
+  .teacher-assignment-card > button {
+    transition:
+      transform 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .teacher-primary-button:not(:disabled):hover,
+  .teacher-secondary-button:not(:disabled):hover,
+  .teacher-link-button:hover,
+  .teacher-assignment-card > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgb(16 43 83 / 10%);
+  }
+
+  .teacher-primary-button:not(:disabled):active,
+  .teacher-secondary-button:not(:disabled):active,
+  .teacher-link-button:active,
+  .teacher-assignment-card > button:active {
+    transform: translateY(0);
+    box-shadow: none;
   }
 }
