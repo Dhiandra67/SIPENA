@@ -1324,7 +1324,10 @@
     overflow: visible;
   }
 
-  .admin-entity-scroll,
+  .admin-entity-scroll {
+    overflow: hidden;
+  }
+
   .admin-class-scroll {
     overflow-x: auto;
     overflow-y: hidden;
@@ -1335,9 +1338,14 @@
   .admin-dashboard-class-table {
     display: table;
     width: max-content;
-    min-width: 720px;
     border-collapse: separate;
     border-spacing: 0;
+  }
+
+  .admin-entity-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
   }
 
   .admin-dashboard-class-table {
@@ -1401,10 +1409,13 @@
     content: none;
   }
 
+  .admin-entity-table th:nth-child(n + 4):not(:last-child),
+  .admin-entity-table td:nth-child(n + 4):not(:last-child) {
+    display: none;
+  }
+
   .admin-dashboard-class-table th:first-child,
-  .admin-dashboard-class-table td:first-child,
-  .admin-entity-table th:first-child,
-  .admin-entity-table td:first-child {
+  .admin-dashboard-class-table td:first-child {
     position: sticky;
     z-index: 2;
     left: 0;
@@ -1412,15 +1423,12 @@
     background: #fff;
   }
 
-  .admin-dashboard-class-table th:first-child,
-  .admin-entity-table th:first-child {
+  .admin-dashboard-class-table th:first-child {
     background: #f7f8f5;
   }
 
   .admin-dashboard-class-table th:nth-child(2),
-  .admin-dashboard-class-table td:nth-child(2),
-  .admin-entity-table th:nth-child(2),
-  .admin-entity-table td:nth-child(2) {
+  .admin-dashboard-class-table td:nth-child(2) {
     position: sticky;
     z-index: 2;
     left: 96px;
@@ -1429,15 +1437,12 @@
     box-shadow: 3px 0 5px rgb(41 63 53 / 5%);
   }
 
-  .admin-dashboard-class-table th:nth-child(2),
-  .admin-entity-table th:nth-child(2) {
+  .admin-dashboard-class-table th:nth-child(2) {
     background: #f7f8f5;
   }
 
   .admin-dashboard-class-table th:last-child,
-  .admin-dashboard-class-table td:last-child,
-  .admin-entity-table th:last-child,
-  .admin-entity-table td:last-child {
+  .admin-dashboard-class-table td:last-child {
     position: sticky;
     z-index: 3;
     right: 0;
@@ -1445,8 +1450,7 @@
     box-shadow: -3px 0 5px rgb(41 63 53 / 6%);
   }
 
-  .admin-dashboard-class-table th:last-child,
-  .admin-entity-table th:last-child {
+  .admin-dashboard-class-table th:last-child {
     background: #f7f8f5;
   }
 
@@ -1462,6 +1466,52 @@
     white-space: nowrap;
   }
 
+  .admin-entity-table th,
+  .admin-entity-table tbody td {
+    min-width: 0;
+  }
+
+  .admin-entity-table th,
+  .admin-entity-table tbody td:not(.admin-row-actions) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-entity-table th:first-child,
+  .admin-entity-table td:first-child,
+  .admin-entity-table th:nth-child(2),
+  .admin-entity-table td:nth-child(2) {
+    position: static;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+
+  .admin-entity-table th:first-child,
+  .admin-entity-table td:first-child {
+    width: 20%;
+  }
+
+  .admin-entity-table th:nth-child(2),
+  .admin-entity-table td:nth-child(2) {
+    width: 30%;
+  }
+
+  .admin-entity-table th:nth-child(3),
+  .admin-entity-table td:nth-child(3) {
+    width: 20%;
+  }
+
+  .admin-entity-table th:last-child,
+  .admin-entity-table td:last-child {
+    width: 30%;
+  }
+
+  .admin-entity-table tbody td.admin-row-actions {
+    white-space: normal;
+  }
+
   .admin-dashboard-class-table .admin-row-action-button {
     width: auto;
   }
@@ -1475,6 +1525,7 @@
     min-height: 30px;
     padding: 4px 7px;
     font-size: 9px;
+    white-space: nowrap;
   }
 
   .admin-report-table tbody td[data-label="Nama Siswa"] {

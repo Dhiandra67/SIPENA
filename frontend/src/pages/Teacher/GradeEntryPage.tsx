@@ -239,7 +239,11 @@ function GradeEntryPage({
                     </td>
                     <td data-label="Jenis Kelamin">{student.gender}</td>
                     {components.map((component) => (
-                      <td data-label={component.name} key={component.id}>
+                      <td
+                        className="teacher-score-entry-cell"
+                        data-label={component.name}
+                        key={component.id}
+                      >
                         <ScoreEntriesDropdown
                           componentName={component.name}
                           disabled={isGradeLocked}
