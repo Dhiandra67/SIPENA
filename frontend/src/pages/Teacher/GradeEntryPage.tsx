@@ -116,7 +116,6 @@ function GradeEntryPage({
       {heading}
       <section className="teacher-card teacher-grade-context">
         <div>
-          <span>Pengajaran aktif</span>
           <strong>
             {currentAssignment.subject} · Kelas {currentAssignment.className}
           </strong>
@@ -129,19 +128,17 @@ function GradeEntryPage({
 
       {isGradeLocked && (
         <p className="teacher-inline-warning" role="alert">
-          Pengisian nilai untuk kelas ini sedang dikunci oleh Admin Sekolah. Hubungi Admin jika
-          perlu melakukan revisi nilai.
+          Nilai kelas ini dikunci oleh Admin Sekolah.
         </p>
       )}
       {hasUnsavedScores && !isGradeLocked && (
         <p className="teacher-inline-warning" role="status">
-          Ada perubahan nilai yang belum disimpan ke database. Klik tombol{" "}
-          <strong>Simpan nilai</strong> sebelum berpindah halaman atau menutup tab.
+          Nilai belum disimpan. Klik <strong>Simpan nilai</strong>.
         </p>
       )}
       {!hasValidWeights && (
         <p className="teacher-inline-warning" role="alert">
-          Total bobot komponen belum 100%. Perbaiki komponen sebelum menghitung nilai akhir.
+          Total bobot harus 100%.
         </p>
       )}
 
@@ -194,10 +191,7 @@ function GradeEntryPage({
         <div className="teacher-card-heading">
           <div>
             <h2>Input Nilai Siswa</h2>
-            <p>
-              {completionCount} dari {currentAssignment.students.length} siswa memiliki nilai
-              lengkap.
-            </p>
+            <p>{completionCount}/{currentAssignment.students.length} nilai lengkap.</p>
           </div>
           <span className="teacher-total-weight">Bobot {totalWeight}%</span>
         </div>
@@ -282,7 +276,7 @@ function GradeEntryPage({
         </div>
 
         <footer className="teacher-table-footer">
-          <span>Nilai akhir dihitung jika semua komponen terisi.</span>
+          <span>Nilai akhir perlu semua komponen.</span>
           <span>Rentang nilai 0-100</span>
         </footer>
         <div className="teacher-form-actions teacher-grade-save-actions">

@@ -37,11 +37,9 @@ function ClassDetailPage({
       <section className="teacher-card teacher-class-summary">
         <div className="teacher-card-heading">
           <div>
-            <span className="teacher-eyebrow">DETAIL PENGAJARAN</span>
             <h2>
               {currentAssignment.subject} · Kelas {currentAssignment.className}
             </h2>
-            <p>{currentAssignment.period}</p>
           </div>
           {assignmentSelector}
         </div>

@@ -27,7 +27,6 @@ function GradeRecapSection({
       <div className="teacher-card-heading">
         <div>
           <h2>Rekapitulasi Nilai</h2>
-          <p>Nilai komponen, nilai akhir, dan kesesuaian dengan KKM.</p>
         </div>
         <div className="teacher-button-row">
           <button
