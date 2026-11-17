@@ -1761,7 +1761,6 @@
   .teacher-kkm-card .teacher-table-scroll {
     overflow-x: auto;
     overflow-y: hidden;
-    touch-action: pan-x;
   }
 
   .teacher-grade-card .teacher-grade-entry-table,
