@@ -542,4 +542,35 @@ class AcademicApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.copiedClasses', 4);
     }
+
+    public function test_teacher_can_update_kkm_for_all_assignments_and_admin_can_import_teachers(): void
+    {
+        $this->seed();
+        $adminToken = $this->loginAs('test@example.com', 'password');
+        $teacherToken = $this->loginAs('guru@example.com', 'guru12345');
+
+        $this->withToken($teacherToken)
+            ->putJson('/api/v1/pengajaran/all/kkm', ['kkm' => 80])
+            ->assertOk()
+            ->assertJsonPath('data.assignments.0.kkm', 80);
+
+        $this->withToken($adminToken)
+            ->postJson('/api/v1/guru/import', [
+                'teachers' => [
+                    [
+                        'nip' => '199401012022012001',
+                        'name' => 'Lailatul Munawaroh,S.Pd',
+                        'gender' => 'P',
+                        'email' => 'lailatulmunawaroh21@guru.smp.belajar.id',
+                        'status' => 'Aktif',
+                    ],
+                ],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.0.email', 'lailatulmunawaroh21@guru.smp.belajar.id');
+
+        $this->withToken($adminToken)
+            ->getJson('/api/v1/guru/export')
+            ->assertOk();
+    }
 }

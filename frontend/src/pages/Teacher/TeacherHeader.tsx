@@ -1,4 +1,5 @@
 import type { PeriodOption, TeachingAssignment } from "./types";
+import { sortPeriodOptions } from "./utils";
 
 interface TeacherPageHeadingProps {
   title: string;
@@ -33,7 +34,7 @@ export function TeacherPageHeading({
             onChange={(event) => onPeriodChange(event.target.value)}
             value={selectedPeriod || fallbackPeriod}
           >
-            {periodList.map((item) => (
+            {sortPeriodOptions(periodList).map((item) => (
               <option key={item.id} value={item.name}>
                 {item.name}
                 {item.isActive ? " (Aktif)" : " (Arsip)"}

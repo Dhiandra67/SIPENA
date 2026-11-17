@@ -16,8 +16,8 @@ class PeriodeController extends Controller
 {
     public function index(): JsonResponse
     {
-        $periods = PeriodeAkademik::orderByDesc('is_active')
-            ->orderByDesc('tanggal_mulai')
+        $periods = PeriodeAkademik::orderBy('tahun_ajaran')
+            ->orderByRaw("CASE WHEN semester = 'GANJIL' THEN 1 ELSE 2 END")
             ->get()
             ->map(fn (PeriodeAkademik $p) => $this->formatPeriode($p));
 
@@ -156,6 +156,26 @@ class PeriodeController extends Controller
             &$copiedAssignmentCount
         ): void {
             $classIdMap = [];
+
+            $sourceTeacherIds = DB::table('periode_guru')
+                ->where('periode_id', $sourcePeriode->id)
+                ->pluck('guru_id');
+            foreach ($sourceTeacherIds as $guruId) {
+                DB::table('periode_guru')->updateOrInsert(
+                    ['periode_id' => $targetPeriode->id, 'guru_id' => $guruId],
+                    ['created_at' => now(), 'updated_at' => now()]
+                );
+            }
+
+            $sourceMapelIds = DB::table('periode_mata_pelajaran')
+                ->where('periode_id', $sourcePeriode->id)
+                ->pluck('mapel_id');
+            foreach ($sourceMapelIds as $mapelId) {
+                DB::table('periode_mata_pelajaran')->updateOrInsert(
+                    ['periode_id' => $targetPeriode->id, 'mapel_id' => $mapelId],
+                    ['created_at' => now(), 'updated_at' => now()]
+                );
+            }
 
             foreach ($sourceClasses as $srcKelas) {
                 $targetTingkat = $srcKelas->tingkat;

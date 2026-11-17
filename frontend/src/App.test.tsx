@@ -127,6 +127,52 @@ describe("alur aplikasi", () => {
       .toHaveAttribute("aria-expanded", "true");
   });
 
+  it("menampilkan nama dan email panjang di popover profil dengan atribut lengkap", async () => {
+    const longTeacher: AuthUser = {
+      id: "teacher-long",
+      name: "Lailatul Munawaroh,S.Pd",
+      email: "lailatulmunawaroh21@guru.smp.belajar.id",
+      role: "guru",
+    };
+    vi.mocked(restoreSession).mockResolvedValue(longTeacher);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            name: longTeacher.name,
+            email: longTeacher.email,
+            nip: "1005",
+            status: "Aktif",
+          },
+        }),
+      }),
+    );
+
+    render(<App />);
+    const triggerButton = await screen.findByRole("button", {
+      name: /lailatul munawaroh,s\.pd/i,
+    });
+    expect(triggerButton.querySelector("strong")).toHaveAttribute("title", longTeacher.name);
+
+    fireEvent.click(triggerButton);
+
+    const dialog = screen.getByRole("dialog", { name: /informasi profil pengguna/i });
+    expect(dialog).toBeInTheDocument();
+    expect(dialog.querySelector(".profile-popover-identity strong")).toHaveAttribute(
+      "title",
+      longTeacher.name,
+    );
+    expect(dialog.querySelector(".profile-popover-identity small")).toHaveAttribute(
+      "title",
+      longTeacher.email,
+    );
+    expect(screen.getAllByText(longTeacher.email)).toHaveLength(2);
+    expect(await screen.findByText("1005")).toBeInTheDocument();
+  });
+
   it("keluar dari dashboard dan kembali ke halaman login", async () => {
     vi.mocked(restoreSession).mockResolvedValue(admin);
     render(<App />);

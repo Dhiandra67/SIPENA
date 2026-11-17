@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -28,5 +29,11 @@ class MataPelajaran extends Model
     public function pengajaran(): HasMany
     {
         return $this->hasMany(Pengajaran::class, 'mapel_id');
+    }
+
+    public function periodeAkademik(): BelongsToMany
+    {
+        return $this->belongsToMany(PeriodeAkademik::class, 'periode_mata_pelajaran', 'mapel_id', 'periode_id')
+            ->withTimestamps();
     }
 }

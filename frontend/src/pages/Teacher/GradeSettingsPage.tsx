@@ -41,7 +41,9 @@ function GradeSettingsPage({
   onSaveComponents,
 }: GradeSettingsPageProps) {
   const showAll = selectedSettingsAssignmentId === "all";
-  const isSettingsLocked = !showAll && Boolean(selectedSettingsAssignment.isLocked);
+  const isSettingsLocked = showAll
+    ? assignmentList.some((assignment) => Boolean(assignment.isLocked))
+    : Boolean(selectedSettingsAssignment.isLocked);
 
   return (
     <>
@@ -61,7 +63,7 @@ function GradeSettingsPage({
               : `${selectedSettingsAssignment.subject} · ${selectedSettingsAssignment.className}`}
           </strong>
           <span>{selectedSettingsAssignment.period}</span>
-          {!showAll && <span>KKM {selectedSettingsAssignment.kkm}</span>}
+          <span>KKM {selectedSettingsAssignment.kkm}</span>
         </div>
       </section>
 
@@ -87,7 +89,11 @@ function GradeSettingsPage({
         <div className="teacher-card-heading">
           <div>
             <h2>Pengaturan KKM</h2>
-            <p>KKM berlaku untuk semua siswa pada pengajaran yang dipilih.</p>
+            <p>
+              {showAll
+                ? "Perubahan KKM akan diterapkan ke seluruh pengajaran yang aktif."
+                : "KKM berlaku untuk semua siswa pada pengajaran yang dipilih."}
+            </p>
           </div>
         </div>
         <div className="teacher-table-scroll">
@@ -102,42 +108,42 @@ function GradeSettingsPage({
               </tr>
             </thead>
             <tbody>
-              {showAll ? (
-                <tr>
-                  <td className="teacher-empty" colSpan={5}>
-                    Pilih satu pengajaran untuk mengatur KKM.
-                  </td>
-                </tr>
-              ) : (
-                <tr>
-                  <td>{selectedSettingsAssignment.subject}</td>
-                  <td>{selectedSettingsAssignment.className}</td>
-                  <td>{selectedSettingsAssignment.period}</td>
-                  <td>
-                    <input
-                      aria-label={`KKM ${selectedSettingsAssignment.subject} ${selectedSettingsAssignment.className}`}
-                      className="teacher-kkm-input"
-                      disabled={isSettingsLocked}
-                      max={100}
-                      min={0}
-                      onChange={(event) => onKkmChange(event.target.value)}
-                      step="0.01"
-                      type="number"
-                      value={kkmValue}
-                    />
-                  </td>
-                  <td>
-                    <button
-                      className="teacher-secondary-button"
-                      disabled={isSettingsLocked}
-                      onClick={onSaveKkm}
-                      type="button"
-                    >
-                      Simpan KKM
-                    </button>
-                  </td>
-                </tr>
-              )}
+              <tr>
+                <td>{showAll ? "Semua Pengajaran" : selectedSettingsAssignment.subject}</td>
+                <td>
+                  {showAll
+                    ? `${assignmentList.length} kelas`
+                    : selectedSettingsAssignment.className}
+                </td>
+                <td>{selectedSettingsAssignment.period}</td>
+                <td>
+                  <input
+                    aria-label={
+                      showAll
+                        ? "KKM Semua Pengajaran"
+                        : `KKM ${selectedSettingsAssignment.subject} ${selectedSettingsAssignment.className}`
+                    }
+                    className="teacher-kkm-input"
+                    disabled={isSettingsLocked}
+                    max={100}
+                    min={0}
+                    onChange={(event) => onKkmChange(event.target.value)}
+                    step="0.01"
+                    type="number"
+                    value={kkmValue}
+                  />
+                </td>
+                <td>
+                  <button
+                    className="teacher-secondary-button"
+                    disabled={isSettingsLocked}
+                    onClick={onSaveKkm}
+                    type="button"
+                  >
+                    Simpan KKM
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

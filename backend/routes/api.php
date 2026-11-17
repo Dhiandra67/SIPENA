@@ -66,7 +66,7 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
         Route::get('/pengajaran/{id}', [GuruPenilaianController::class, 'detailPengajaran'])->whereNumber('id');
         Route::get('/pengajaran/{id}/komponen', [GuruPenilaianController::class, 'getKomponen'])->whereNumber('id');
         Route::put('/pengajaran/{id}/komponen', [GuruPenilaianController::class, 'updateKomponen']);
-        Route::put('/pengajaran/{id}/kkm', [GuruPenilaianController::class, 'updateKkm'])->whereNumber('id');
+        Route::put('/pengajaran/{id}/kkm', [GuruPenilaianController::class, 'updateKkm']);
         Route::get('/pengajaran/{id}/nilai', [GuruPenilaianController::class, 'getNilai'])->whereNumber('id');
         Route::put('/pengajaran/{id}/nilai', [GuruPenilaianController::class, 'updateNilai'])->whereNumber('id');
         Route::post('/pengajaran/{id}/nilai/import', [GuruPenilaianController::class, 'importNilai'])->whereNumber('id');
@@ -95,6 +95,8 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
             Route::delete('/kelas/{id}', [KelasController::class, 'destroy'])->whereNumber('id');
             Route::get('/kelas/{id}/rekap', [KelasController::class, 'rekap'])->whereNumber('id');
 
+            Route::get('/guru/export', [GuruController::class, 'export']);
+            Route::post('/guru/import', [GuruController::class, 'import']);
             Route::get('/guru', [GuruController::class, 'index']);
             Route::get('/guru/{id}', [GuruController::class, 'show'])->whereNumber('id');
             Route::post('/guru', [GuruController::class, 'store']);

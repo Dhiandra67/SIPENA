@@ -242,4 +242,99 @@ describe("panel admin modular", () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
+
+  it("mengunduh template, mengimpor, dan mengekspor data guru", async () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    const headers = [
+      "NIP",
+      "Nama Lengkap",
+      "Jenis Kelamin (L/P)",
+      "Email",
+      "Status",
+    ];
+    spreadsheetMocks.downloadSpreadsheet.mockResolvedValue(undefined);
+    spreadsheetMocks.readSpreadsheetFile.mockResolvedValue([
+      headers,
+      ["199104122018012004", "Lailatul Munawaroh,S.Pd", "P", "lailatul@guru.smp.belajar.id", "Aktif"],
+    ]);
+
+    render(<AdminPanel onNavigate={() => undefined} route="teachers" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Template XLSX" }));
+    await waitFor(() => {
+      expect(spreadsheetMocks.downloadSpreadsheet).toHaveBeenCalledWith(
+        "template-data-guru-sipena.xlsx",
+        [headers],
+        "Data Guru",
+      );
+    });
+    expect(await screen.findByText("Template data guru berhasil diunduh.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Impor data guru"), {
+      target: { files: [new File(["xlsx"], "data-guru.xlsx")] },
+    });
+    expect(await screen.findByText("Lailatul Munawaroh,S.Pd")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ekspor" }));
+    await waitFor(() => {
+      expect(spreadsheetMocks.downloadSpreadsheet).toHaveBeenCalledWith(
+        "data-guru-sipena.xlsx",
+        expect.arrayContaining([headers]),
+        "Data Guru",
+      );
+    });
+  });
+
+  it("mengurutkan dropdown periode ganjil-genap per tahun dan mengosongkan data saat pindah ke periode baru", () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    const { rerender } = render(<AdminPanel onNavigate={() => undefined} route="dashboard" />);
+
+    fireEvent.change(screen.getByLabelText("Tahun ajaran baru"), {
+      target: { value: "2027/2028" },
+    });
+    fireEvent.change(screen.getByLabelText("Semester periode baru"), {
+      target: { value: "Ganjil" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Tambah & Aktifkan/i }));
+
+    fireEvent.change(screen.getByLabelText("Tahun ajaran baru"), {
+      target: { value: "2026/2027" },
+    });
+    fireEvent.change(screen.getByLabelText("Semester periode baru"), {
+      target: { value: "Genap" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Tambah & Aktifkan/i }));
+
+    const periodSelect = screen.getByLabelText("Pilih periode aktif") as HTMLSelectElement;
+    const optionValues = Array.from(periodSelect.options).map((opt) => opt.value);
+    expect(optionValues).toEqual([
+      "2026/2027 · Ganjil",
+      "2026/2027 · Genap",
+      "2027/2028 · Ganjil",
+    ]);
+
+    rerender(<AdminPanel onNavigate={() => undefined} route="students" />);
+    expect(screen.getByText("Data tidak ditemukan.")).toBeInTheDocument();
+
+    rerender(<AdminPanel onNavigate={() => undefined} route="teachers" />);
+    expect(screen.getByText("Data tidak ditemukan.")).toBeInTheDocument();
+
+    rerender(<AdminPanel onNavigate={() => undefined} route="classes" />);
+    expect(screen.getByText("Data tidak ditemukan.")).toBeInTheDocument();
+  });
+
+  it("memfilter dan mengurutkan kelas pada halaman pembagian tugas guru", () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    render(<AdminPanel onNavigate={() => undefined} route="assignments" />);
+
+    const orderSelect = screen.getByLabelText("Urutan kelas");
+    fireEvent.change(orderSelect, { target: { value: "desc" } });
+    const rowsDesc = screen.getAllByRole("row").slice(1);
+    expect(rowsDesc[0]).toHaveTextContent("VIII-A");
+
+    const classFilter = screen.getByLabelText("Filter kelas");
+    fireEvent.change(classFilter, { target: { value: "VII-B" } });
+    expect(screen.getByText("Bahasa Indonesia")).toBeInTheDocument();
+    expect(screen.queryByText("Matematika")).not.toBeInTheDocument();
+  });
 });

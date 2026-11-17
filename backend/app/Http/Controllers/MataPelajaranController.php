@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MataPelajaran;
+use App\Models\PeriodeAkademik;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -10,47 +11,79 @@ class MataPelajaranController extends Controller
 {
     public function index(): JsonResponse
     {
-        $items = MataPelajaran::orderBy('kode_mapel')
-            ->get()
-            ->map(fn (MataPelajaran $m) => $this->formatMapel($m));
+        $periodeAktif = $this->getActivePeriode();
+        $query = MataPelajaran::orderBy('kode_mapel');
+
+        if ($periodeAktif) {
+            $query->whereHas('periodeAkademik', fn ($q) => $q->where('periode_akademik.id', $periodeAktif->id));
+        }
+
+        $items = $query->get()->map(fn (MataPelajaran $m) => $this->formatMapel($m, $periodeAktif?->nama_periode));
 
         return response()->json(['data' => $items]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $payload = $this->validateMapel($request);
-        $mapel = MataPelajaran::create($payload);
+        $periodeAktif = $this->getActivePeriode();
+        $payload = $this->validateMapel($request, null, $periodeAktif?->id);
+
+        $existing = MataPelajaran::whereRaw('LOWER(kode_mapel) = ?', [strtolower($payload['kode_mapel'])])
+            ->orWhereRaw('LOWER(nama_mapel) = ?', [strtolower($payload['nama_mapel'])])
+            ->first();
+
+        if ($existing) {
+            $existing->update($payload);
+            $mapel = $existing;
+        } else {
+            $mapel = MataPelajaran::create($payload);
+        }
+
+        if ($periodeAktif) {
+            $mapel->periodeAkademik()->syncWithoutDetaching([$periodeAktif->id]);
+        }
 
         return response()->json([
             'message' => 'Mata pelajaran berhasil ditambahkan.',
-            'data' => $this->formatMapel($mapel),
+            'data' => $this->formatMapel($mapel, $periodeAktif?->nama_periode),
         ], 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
     {
+        $periodeAktif = $this->getActivePeriode();
         $mapel = MataPelajaran::findOrFail($id);
-        $payload = $this->validateMapel($request, $mapel->id);
+        $payload = $this->validateMapel($request, $mapel->id, $periodeAktif?->id);
         $mapel->update($payload);
 
         return response()->json([
             'message' => 'Mata pelajaran berhasil diperbarui.',
-            'data' => $this->formatMapel($mapel->fresh()),
+            'data' => $this->formatMapel($mapel->fresh(), $periodeAktif?->nama_periode),
         ]);
     }
 
     public function destroy(int $id): JsonResponse
     {
+        $periodeAktif = $this->getActivePeriode();
         $mapel = MataPelajaran::withCount('pengajaran')->findOrFail($id);
 
-        if ($mapel->pengajaran_count > 0) {
+        $inUseInActivePeriod = $periodeAktif
+            ? $mapel->pengajaran()->where('periode_id', $periodeAktif->id)->exists()
+            : ($mapel->pengajaran_count > 0);
+
+        if ($inUseInActivePeriod) {
             return response()->json([
                 'message' => 'Data masih digunakan oleh data akademik lain. Hapus atau pindahkan relasinya terlebih dahulu.',
             ], 422);
         }
 
-        $mapel->delete();
+        if ($periodeAktif) {
+            $mapel->periodeAkademik()->detach($periodeAktif->id);
+        }
+
+        if (! $mapel->periodeAkademik()->exists() && ! $mapel->pengajaran()->exists()) {
+            $mapel->delete();
+        }
 
         return response()->json(['message' => 'Mata pelajaran berhasil dihapus.']);
     }
@@ -58,7 +91,7 @@ class MataPelajaranController extends Controller
     /**
      * @return array<string, mixed>
      */
-    public function formatMapel(MataPelajaran $m): array
+    public function formatMapel(MataPelajaran $m, ?string $periodName = null): array
     {
         $kkm = rtrim(rtrim(number_format((float) $m->kkm_default, 2, '.', ''), '0'), '.');
 
@@ -72,15 +105,22 @@ class MataPelajaranController extends Controller
             'kelompok' => $m->kelompok,
             'kkm' => $kkm,
             'kkm_default' => (float) $m->kkm_default,
+            'period' => $periodName ?? ($this->getActivePeriode()?->nama_periode ?? ''),
             'is_active' => (bool) $m->is_active,
             'status' => $m->is_active ? 'Aktif' : 'Tidak aktif',
         ];
     }
 
+    private function getActivePeriode(): ?PeriodeAkademik
+    {
+        return PeriodeAkademik::where('is_active', true)->first()
+            ?? PeriodeAkademik::orderByDesc('id')->first();
+    }
+
     /**
      * @return array<string, mixed>
      */
-    private function validateMapel(Request $request, ?int $ignoreId = null): array
+    private function validateMapel(Request $request, ?int $ignoreId = null, ?int $periodeId = null): array
     {
         $kode = strtoupper(trim((string) ($request->input('kode_mapel') ?? $request->input('code') ?? '')));
         $nama = trim((string) ($request->input('nama_mapel') ?? $request->input('name') ?? ''));
@@ -102,6 +142,8 @@ class MataPelajaranController extends Controller
         });
         if ($ignoreId !== null) {
             $duplicateQuery->where('id', '!=', $ignoreId);
+        } elseif ($periodeId !== null) {
+            $duplicateQuery->whereHas('periodeAkademik', fn ($q) => $q->where('periode_akademik.id', $periodeId));
         }
         if ($duplicateQuery->exists()) {
             abort(response()->json(['message' => 'Kode atau nama mata pelajaran sudah terdaftar.'], 422));
