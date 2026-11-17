@@ -47,11 +47,25 @@ function AdminEntityPage({
         </div>
 
         <div className="admin-table-scroll admin-entity-scroll admin-master-data-scroll">
-          <table className="admin-table admin-entity-table admin-master-data-table">
+          <table
+            className={`admin-table admin-entity-table admin-master-data-table${section.mobileVisibleColumns ? " admin-custom-mobile-table" : ""}`}
+          >
             <thead>
               <tr>
                 {section.columns.map((column) => (
-                  <th key={column.key} scope="col">{column.label}</th>
+                  <th
+                    data-column-key={column.key}
+                    data-mobile-hidden={
+                      section.mobileVisibleColumns &&
+                      !section.mobileVisibleColumns.includes(column.key)
+                        ? ""
+                        : undefined
+                    }
+                    key={column.key}
+                    scope="col"
+                  >
+                    {column.label}
+                  </th>
                 ))}
                 <th scope="col">Aksi</th>
               </tr>
@@ -60,7 +74,17 @@ function AdminEntityPage({
               {visibleRows.map((record) => (
                 <tr key={record.id}>
                   {section.columns.map((column) => (
-                    <td data-label={column.label} key={column.key}>
+                    <td
+                      data-column-key={column.key}
+                      data-label={column.label}
+                      data-mobile-hidden={
+                        section.mobileVisibleColumns &&
+                        !section.mobileVisibleColumns.includes(column.key)
+                          ? ""
+                          : undefined
+                      }
+                      key={column.key}
+                    >
                       {renderCell?.(record, column.key) ??
                         (column.key === "status"
                           ? (

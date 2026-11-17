@@ -7,6 +7,7 @@ export const classSection: AdminSection = {
   title: "Data Kelas",
   description: "Kelola rombongan belajar dan wali kelas pada periode aktif.",
   addLabel: "Tambah kelas",
+  mobileVisibleColumns: ["name", "homeroom"],
   columns: [
     { key: "code", label: "Kode Kelas" },
     { key: "name", label: "Nama Kelas" },

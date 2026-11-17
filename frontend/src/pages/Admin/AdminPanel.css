@@ -1331,13 +1331,11 @@
   .admin-report-scroll {
     overflow-x: auto;
     overflow-y: hidden;
-    touch-action: pan-x;
   }
 
   .admin-class-scroll {
     overflow-x: auto;
     overflow-y: hidden;
-    touch-action: pan-x;
   }
 
   .admin-entity-table,
@@ -1418,8 +1416,13 @@
     content: none;
   }
 
-  .admin-master-data-table th:nth-child(n + 4):not(:last-child),
-  .admin-master-data-table td:nth-child(n + 4):not(:last-child) {
+  .admin-master-data-table:not(.admin-custom-mobile-table) th:nth-child(n + 4):not(:last-child),
+  .admin-master-data-table:not(.admin-custom-mobile-table) td:nth-child(n + 4):not(:last-child) {
+    display: none;
+  }
+
+  .admin-master-data-table [data-mobile-hidden],
+  .admin-dashboard-class-table [data-mobile-hidden] {
     display: none;
   }
 
@@ -1463,9 +1466,29 @@
     width: 35%;
   }
 
+  .admin-dashboard-class-table th:nth-child(4),
+  .admin-dashboard-class-table td:nth-child(4) {
+    width: 45%;
+  }
+
   .admin-dashboard-class-table th:last-child,
   .admin-dashboard-class-table td:last-child {
+    width: 30%;
+  }
+
+  .admin-custom-mobile-table th[data-column-key="name"],
+  .admin-custom-mobile-table td[data-column-key="name"] {
     width: 25%;
+  }
+
+  .admin-custom-mobile-table th[data-column-key="homeroom"],
+  .admin-custom-mobile-table td[data-column-key="homeroom"] {
+    width: 45%;
+  }
+
+  .admin-custom-mobile-table th:last-child,
+  .admin-custom-mobile-table td:last-child {
+    width: 30%;
   }
 
   .admin-dashboard-class-table tbody td:last-child,
