@@ -181,6 +181,7 @@ function TeacherPanel({
     try {
       const query = periodName ? `?period=${encodeURIComponent(periodName)}` : "";
       const res = await fetch(`${apiBaseUrl}/v1/guru/dashboard${query}`, {
+        cache: "no-store",
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
@@ -216,6 +217,30 @@ function TeacherPanel({
   useEffect(() => {
     void loadTeacherWorkspace();
   }, []);
+
+  useEffect(() => {
+    if (
+      !getStoredAccessToken() ||
+      hasUnsavedScores ||
+      hasUnsavedComponents ||
+      hasUnsavedKkm
+    ) {
+      return;
+    }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadTeacherWorkspace(selectedPeriod || undefined);
+      }
+    };
+    const interval = window.setInterval(refreshWhenVisible, 5_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [selectedPeriod, hasUnsavedScores, hasUnsavedComponents, hasUnsavedKkm]);
 
   const currentAssignment =
     assignmentList.find((assignment) => assignment.id === selectedAssignmentId) ??

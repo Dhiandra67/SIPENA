@@ -3,6 +3,7 @@ import type { AdminRecord } from "./types";
 
 interface DashboardPageProps {
   currentPeriod: string;
+  isLoading: boolean;
   periodOptions: string[];
   classes: AdminRecord[];
   totalStudents: number;
@@ -17,6 +18,7 @@ interface DashboardPageProps {
 
 function DashboardPage({
   currentPeriod,
+  isLoading,
   periodOptions,
   classes,
   totalStudents,
@@ -45,21 +47,21 @@ function DashboardPage({
           <h1>Dashboard Admin</h1>
           <p>Kelola informasi akademik dan pantau data sekolah.</p>
         </div>
-        <span className="admin-active-period">{currentPeriod}</span>
+        <span className="admin-active-period">{isLoading ? "Memuat..." : currentPeriod}</span>
       </section>
 
       <section className="admin-stat-grid" aria-label="Ringkasan data sekolah">
         <article className="admin-stat-card">
-          <span>Total Siswa</span><strong>{totalStudents}</strong><small>Siswa terdaftar</small>
+          <span>Total Siswa</span><strong>{isLoading ? "..." : totalStudents}</strong><small>Siswa terdaftar</small>
         </article>
         <article className="admin-stat-card">
-          <span>Total Guru</span><strong>{totalTeachers}</strong><small>Guru terdaftar</small>
+          <span>Total Guru</span><strong>{isLoading ? "..." : totalTeachers}</strong><small>Guru terdaftar</small>
         </article>
         <article className="admin-stat-card">
-          <span>Total Kelas</span><strong>{totalClasses}</strong><small>Kelas terdaftar</small>
+          <span>Total Kelas</span><strong>{isLoading ? "..." : totalClasses}</strong><small>Kelas terdaftar</small>
         </article>
         <article className="admin-stat-card">
-          <span>Mata Pelajaran</span><strong>{totalSubjects}</strong><small>Mata pelajaran terdaftar</small>
+          <span>Mata Pelajaran</span><strong>{isLoading ? "..." : totalSubjects}</strong><small>Mata pelajaran terdaftar</small>
         </article>
       </section>
 
@@ -165,14 +167,16 @@ function DashboardPage({
               ))}
               {classes.length === 0 && (
                 <tr>
-                  <td className="admin-empty" colSpan={6}>Belum ada kelas pada periode ini.</td>
+                  <td className="admin-empty" colSpan={6}>
+                    {isLoading ? "Memuat data dari database..." : "Belum ada kelas pada periode ini."}
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
         <footer className="admin-records-footer">
-          <span>{classes.length} kelas pada periode aktif</span>
+          <span>{isLoading ? "Memuat data..." : `${classes.length} kelas pada periode aktif`}</span>
         </footer>
       </section>
 

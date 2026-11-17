@@ -210,6 +210,7 @@ describe("panel admin modular", () => {
 
     render(<AdminPanel onNavigate={() => undefined} route="students" />);
 
+    expect(await screen.findByText("Andi Pratama")).toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Integrasi endpoint backend belum tersedia/i),
@@ -276,5 +277,47 @@ describe("panel admin modular", () => {
       screen.queryByText(/Nilai rapor dimuat langsung dari database SIPENA/i),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  it("menghindari data contoh sebelum pemuatan dan memperbarui dashboard berkala", async () => {
+    window.localStorage.setItem("sipena.accessToken", "token-admin");
+    vi.useFakeTimers();
+    let students = [...overviewPayload.data.students];
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: { ...overviewPayload.data, students },
+        }),
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AdminPanel onNavigate={() => undefined} route="dashboard" />);
+
+    expect(screen.getAllByText("...")).toHaveLength(4);
+    expect(screen.queryByText("8")).not.toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Total Siswa").parentElement?.querySelector("strong")).toHaveTextContent("1");
+
+    students = [
+      ...students,
+      {
+        ...overviewPayload.data.students[0],
+        id: "102",
+        nis: "2026002",
+        name: "Nadia Lestari",
+      },
+    ];
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(screen.getByText("Total Siswa").parentElement?.querySelector("strong")).toHaveTextContent("2");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
