@@ -8,6 +8,18 @@
   --sipena-shadow-card: 0 5px 16px rgb(16 43 83 / 5%);
   --sipena-shadow-card-hover: 0 9px 22px rgb(16 43 83 / 10%);
   --sipena-accent: #ceb5d4;
+  --sipena-focus-ring: #9583bf;
+  --sipena-space-1: 4px;
+  --sipena-space-2: 8px;
+  --sipena-space-3: 12px;
+  --sipena-space-4: 16px;
+  --sipena-space-5: 20px;
+  --sipena-space-6: 24px;
+  --sipena-space-7: 32px;
+  --sipena-font-body: 13px;
+  --sipena-font-section: 16px;
+  --sipena-font-page-title: 28px;
+  --sipena-line-body: 1.5;
   font-family: "Poppins", "Segoe UI", Arial, sans-serif;
   color: #384B54;
   background: #f4f1ea;
@@ -36,6 +48,11 @@ input {
 
 button {
   color: inherit;
+}
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--sipena-focus-ring);
+  outline-offset: 2px;
 }
 
 input::-ms-reveal,

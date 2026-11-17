@@ -84,6 +84,11 @@ function AdminEntityPage({
                           : undefined
                       }
                       key={column.key}
+                      title={
+                          record[column.key] == null
+                            ? undefined
+                            : String(record[column.key])
+                      }
                     >
                       {renderCell?.(record, column.key) ??
                         (column.key === "status"

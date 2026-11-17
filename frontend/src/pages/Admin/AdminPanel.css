@@ -1,8 +1,8 @@
 .admin-panel {
   display: grid;
-  gap: 20px;
+  gap: var(--sipena-space-5);
   color: #384B54;
-  font-size: 13px;
+  font-size: var(--sipena-font-body);
 }
 
 .admin-page-heading {
@@ -24,7 +24,7 @@
 .admin-page-heading h1 {
   margin: 0;
   color: #384B54;
-  font-size: 24px;
+  font-size: var(--sipena-font-page-title);
   font-weight: 750;
   letter-spacing: -0.5px;
 }
@@ -33,7 +33,7 @@
   margin: 5px 0 0;
   color: #68776e;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: var(--sipena-line-body);
 }
 
 .admin-active-period {
@@ -50,7 +50,7 @@
 .admin-stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--sipena-space-3);
 }
 
 .admin-stat-card,
@@ -79,6 +79,7 @@
   color: #384B54;
   font-size: 27px;
   font-weight: 750;
+  font-variant-numeric: tabular-nums;
   line-height: 1.2;
 }
 
@@ -162,6 +163,7 @@
 .admin-grade-ranking-card strong {
   color: #384B54;
   font-size: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-grade-ranking-card > span:last-child {
@@ -253,7 +255,7 @@
   min-height: 64px;
   align-items: center;
   gap: 9px;
-  padding: 12px 15px;
+  padding: var(--sipena-space-3) var(--sipena-space-4);
   border-bottom: 1px solid #efeee9;
 }
 
@@ -271,7 +273,7 @@
   min-height: 38px;
   padding: 8px 11px;
   border: 1px solid #e2e4de;
-  border-radius: 7px;
+  border-radius: var(--sipena-radius-control);
   outline: 0;
   background: #fff;
   color: #384B54;
@@ -301,7 +303,7 @@
   max-width: 185px;
   padding: 0 24px 0 9px;
   border: 1px solid #e2e4de;
-  border-radius: 7px;
+  border-radius: var(--sipena-radius-control);
   background: #fff;
   color: #53645a;
   font: inherit;
@@ -376,10 +378,11 @@
 .admin-table th,
 .admin-table td {
   height: 47px;
-  padding: 9px 13px;
+  padding: var(--sipena-space-2) var(--sipena-space-3);
   border-bottom: 1px solid #f0f0eb;
   color: #53645a;
   font-size: 10px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -436,7 +439,13 @@
 
 .admin-empty {
   height: 100px !important;
-  color: #7d8981 !important;
+  padding: 20px 12px;
+  border-radius: 8px;
+  background: #faf9fc;
+  color: #65728a !important;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
   text-align: center;
 }
 
@@ -568,7 +577,7 @@
 
 @media (max-width: 700px) {
   .admin-panel {
-    gap: 15px;
+    gap: var(--sipena-space-4);
   }
 
   .admin-grade-navigation {
@@ -797,7 +806,7 @@
   .admin-panel {
     gap: 22px;
     color: #102b53;
-    font-size: 14px;
+    font-size: var(--sipena-font-body);
   }
 
   .admin-page-heading h1,
@@ -806,12 +815,17 @@
   }
 
   .admin-page-heading h1 {
-    font-size: 28px;
+    font-size: var(--sipena-font-page-title);
   }
 
   .admin-page-heading p,
   .admin-section-heading p {
     color: #65728a;
+  }
+
+  .admin-section-heading h2 {
+    font-size: var(--sipena-font-section);
+    line-height: 1.35;
   }
 
   .admin-eyebrow {
@@ -870,7 +884,7 @@
   .admin-records-card {
     border-color: #e8e2f0;
     border-radius: 15px;
-    box-shadow: 0 5px 16px rgb(16 43 83 / 5%);
+    box-shadow: var(--sipena-shadow-card);
   }
 
   .admin-stat-card {
@@ -924,7 +938,7 @@
   .admin-form select,
   .admin-student-filters select {
     border-color: #ded8e9;
-    border-radius: 9px;
+    border-radius: var(--sipena-radius-control);
     color: #102b53;
     font-size: 12px;
   }
@@ -941,7 +955,7 @@
     min-height: 40px;
     padding-right: 15px;
     padding-left: 15px;
-    border-radius: 9px;
+    border-radius: var(--sipena-radius-control);
     font-size: 11px;
   }
 
@@ -967,7 +981,7 @@
   .admin-table th,
   .admin-table td {
     height: 52px;
-    padding: 12px 16px;
+    padding: var(--sipena-space-3) var(--sipena-space-4);
     border-bottom-color: #eeeaf4;
     color: #4f5e78;
     font-size: 12px;
@@ -1602,6 +1616,19 @@
 }
 
 @media screen and (min-width: 701px) {
+  .admin-report-scroll {
+    max-height: min(65vh, 640px);
+    overflow: auto;
+  }
+
+  .admin-report-scroll .admin-table thead th {
+    position: sticky;
+    z-index: 2;
+    top: 0;
+  }
+}
+
+@media screen and (min-width: 701px) {
   .admin-stat-card,
   .admin-overview-card,
   .admin-records-card {
@@ -1671,4 +1698,74 @@
     transform: translateY(0);
     box-shadow: none;
   }
+}
+
+@media print {
+  .admin-records-toolbar,
+  .admin-file-actions,
+  .admin-dialog-backdrop,
+  .admin-period-card form,
+  .admin-grade-navigation button,
+  .admin-row-actions,
+  .admin-primary-button,
+  .admin-secondary-button,
+  .admin-row-action-button {
+    display: none !important;
+  }
+
+  .admin-panel {
+    gap: var(--sipena-space-3);
+    color: #000;
+    font-size: 10pt;
+  }
+
+  .admin-page-heading {
+    border: 0;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .admin-stat-card,
+  .admin-overview-card,
+  .admin-records-card {
+    border-color: #999;
+    box-shadow: none;
+  }
+
+  .admin-report-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .admin-report-scroll .admin-table th,
+  .admin-report-scroll .admin-table td {
+    position: static !important;
+    left: auto !important;
+    box-shadow: none;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    height: auto;
+    padding: 6px;
+    color: #000;
+    font-size: 9pt;
+    white-space: normal;
+  }
+}
+
+.admin-table .admin-empty::before,
+.admin-table.admin-dashboard-class-table tbody td.admin-empty::before,
+.admin-table.admin-entity-table tbody td.admin-empty::before {
+  display: block;
+  width: 30px;
+  height: 30px;
+  margin: 0 auto var(--sipena-space-2);
+  border: 1px solid #dcd3ef;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, #9583bf 0 2px, transparent 2.5px),
+    radial-gradient(ellipse at 50% 86%, transparent 0 6px, #9583bf 6px 7px, transparent 7.5px),
+    #f0ebf8;
+  content: "";
 }
