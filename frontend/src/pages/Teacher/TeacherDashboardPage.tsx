@@ -35,17 +35,14 @@ function TeacherDashboardPage({
         <article>
           <span>Kelas Diampu</span>
           <strong>{assignmentList.length}</strong>
-          <small>Periode aktif</small>
         </article>
         <article>
           <span>Mata Pelajaran</span>
           <strong>{new Set(assignmentList.map((item) => item.subject)).size}</strong>
-          <small>Pengajaran aktif</small>
         </article>
         <article>
           <span>Jumlah Siswa</span>
           <strong>{studentTotal}</strong>
-          <small>Di seluruh kelas</small>
         </article>
         <article>
           <span>Progres Input</span>
@@ -56,19 +53,10 @@ function TeacherDashboardPage({
         </article>
       </section>
 
-      <section className="teacher-academic-banner">
-        <div>
-          <span>Periode akademik aktif</span>
-          <strong>{currentAssignment.period}</strong>
-        </div>
-        <span className="teacher-status-chip">Aktif</span>
-      </section>
-
       <section className="teacher-card">
         <div className="teacher-card-heading">
           <div>
             <h2>Pengajaran Saya</h2>
-            <p>Pilih kelas untuk membuka detail dan mengelola penilaian.</p>
           </div>
           <button
             className="teacher-link-button"

@@ -52,7 +52,6 @@ function GradeSettingsPage({
         <div className="teacher-card-heading">
           <div>
             <h2>Pengajaran</h2>
-            <p>Pilih satu pengajaran atau terapkan komponen yang sama ke seluruh kelas.</p>
           </div>
           {assignmentSelector}
         </div>
@@ -69,19 +68,17 @@ function GradeSettingsPage({
 
       {isSettingsLocked && (
         <p className="teacher-inline-warning" role="alert">
-          Pengisian nilai dan pengaturan komponen untuk kelas ini sedang dikunci oleh Admin Sekolah.
+          Pengaturan dikunci oleh Admin Sekolah.
         </p>
       )}
       {hasUnsavedComponents && (
         <p className="teacher-inline-warning" role="status">
-          Ada perubahan komponen penilaian yang belum disimpan ke database. Klik tombol{" "}
-          <strong>Simpan komponen</strong> sebelum berpindah halaman.
+          Komponen belum disimpan. Klik <strong>Simpan komponen</strong>.
         </p>
       )}
       {hasUnsavedKkm && (
         <p className="teacher-inline-warning" role="status">
-          Ada perubahan KKM yang belum disimpan ke database. Klik tombol{" "}
-          <strong>Simpan KKM</strong> sebelum berpindah halaman.
+          KKM belum disimpan. Klik <strong>Simpan KKM</strong>.
         </p>
       )}
 
@@ -89,11 +86,7 @@ function GradeSettingsPage({
         <div className="teacher-card-heading">
           <div>
             <h2>Pengaturan KKM</h2>
-            <p>
-              {showAll
-                ? "Perubahan KKM akan diterapkan ke seluruh pengajaran yang aktif."
-                : "KKM berlaku untuk semua siswa pada pengajaran yang dipilih."}
-            </p>
+            {showAll && <p>Berlaku untuk semua pengajaran aktif.</p>}
           </div>
         </div>
         <div className="teacher-table-scroll">
@@ -153,11 +146,7 @@ function GradeSettingsPage({
         <div className="teacher-card-heading">
           <div>
             <h2>Komponen Nilai</h2>
-            <p>
-              {showAll
-                ? "Perubahan komponen dan bobot akan diterapkan ke seluruh pengajaran."
-                : "Total bobot seluruh komponen harus tepat 100%."}
-            </p>
+            {showAll && <p>Berlaku untuk semua pengajaran.</p>}
           </div>
           <button
             className="teacher-secondary-button"
@@ -224,8 +213,8 @@ function GradeSettingsPage({
           </div>
           <small>
             {settingsHasValidWeights
-              ? "Bobot sudah tepat 100%."
-              : "Sesuaikan bobot hingga tepat 100% sebelum menyimpan."}
+              ? "Bobot tepat 100%."
+              : "Total bobot harus 100% sebelum disimpan."}
           </small>
         </div>
         <div className="teacher-form-actions">
