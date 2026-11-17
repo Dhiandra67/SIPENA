@@ -62,7 +62,13 @@ function GradeSettingsPage({
               : `${selectedSettingsAssignment.subject} · ${selectedSettingsAssignment.className}`}
           </strong>
           <span>{selectedSettingsAssignment.period}</span>
-          <span>KKM {selectedSettingsAssignment.kkm}</span>
+          <span>
+            {showAll
+              ? String(kkmValue).trim()
+                ? `KKM ${kkmValue}`
+                : "KKM berbeda"
+              : `KKM ${selectedSettingsAssignment.kkm}`}
+          </span>
         </div>
       </section>
 
@@ -103,8 +109,32 @@ function GradeSettingsPage({
             <tbody>
               {showAll ? (
                 <tr>
-                  <td className="teacher-empty" colSpan={5}>
-                    Pilih satu pengajaran untuk mengatur KKM.
+                  <td data-label="Mata Pelajaran">Semua pengajaran</td>
+                  <td data-label="Kelas">{assignmentList.length} kelas</td>
+                  <td data-label="Periode">{selectedSettingsAssignment.period}</td>
+                  <td data-label="KKM">
+                    <input
+                      aria-label="KKM Semua Pengajaran"
+                      className="teacher-kkm-input"
+                      disabled={isSettingsLocked}
+                      max={100}
+                      min={0}
+                      onChange={(event) => onKkmChange(event.target.value)}
+                      placeholder="KKM semua kelas"
+                      step="0.01"
+                      type="number"
+                      value={kkmValue}
+                    />
+                  </td>
+                  <td data-label="Aksi">
+                    <button
+                      className="teacher-secondary-button"
+                      disabled={isSettingsLocked}
+                      onClick={onSaveKkm}
+                      type="button"
+                    >
+                      Simpan KKM
+                    </button>
                   </td>
                 </tr>
               ) : (

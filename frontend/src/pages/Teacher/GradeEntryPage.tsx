@@ -29,6 +29,7 @@ interface GradeEntryPageProps {
   onImportGrades: (event: ChangeEvent<HTMLInputElement>) => void;
   onExportGrades: () => void;
   onUpdateScoreEntries: (studentId: string, componentId: string, values: string[]) => void;
+  onNavigate: (route: string) => void;
   onSaveScores: () => void;
 }
 
@@ -52,6 +53,7 @@ function GradeEntryPage({
   onImportGrades,
   onExportGrades,
   onUpdateScoreEntries,
+  onNavigate,
   onSaveScores,
 }: GradeEntryPageProps) {
   const [openComponent, setOpenComponent] = useState<{
@@ -123,7 +125,16 @@ function GradeEntryPage({
             {currentAssignment.period} · KKM {currentAssignment.kkm}
           </small>
         </div>
-        {assignmentSelector}
+        <div className="teacher-grade-context-controls">
+          {assignmentSelector}
+          <button
+            className="teacher-secondary-button"
+            onClick={() => onNavigate("grade-settings")}
+            type="button"
+          >
+            Atur komponen
+          </button>
+        </div>
       </section>
 
       {isGradeLocked && (
