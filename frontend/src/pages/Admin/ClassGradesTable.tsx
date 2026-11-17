@@ -7,7 +7,6 @@ interface ClassGradesTableProps {
   orderedRows: ReportRow[];
   rankByStudentId: Map<string, number>;
   isExporting: boolean;
-  isBackendSynced: boolean;
   onExport: () => void;
 }
 
@@ -17,7 +16,6 @@ function ClassGradesTable({
   orderedRows,
   rankByStudentId,
   isExporting,
-  isBackendSynced,
   onExport,
 }: ClassGradesTableProps) {
   return (
@@ -72,11 +70,6 @@ function ClassGradesTable({
             )}
           </tbody>
         </table>
-      </div>
-      <div className="admin-demo-notice" role="note">
-        {isBackendSynced
-          ? "Nilai rapor dimuat langsung dari database SIPENA berdasarkan perhitungan nilai akhir guru."
-          : "Nilai yang ditampilkan merupakan data pratinjau lokal."}
       </div>
     </section>
   );

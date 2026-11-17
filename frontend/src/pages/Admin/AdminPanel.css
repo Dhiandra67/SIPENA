@@ -233,16 +233,6 @@
   font-size: 10px;
 }
 
-.admin-demo-notice {
-  padding: 9px 11px;
-  border: 1px solid #e7e9e3;
-  border-radius: 8px;
-  background: #f6f7f3;
-  color: #68766d;
-  font-size: 10px;
-  line-height: 1.5;
-}
-
 .admin-notice {
   margin: -5px 0 -7px;
   padding: 10px 12px;
@@ -759,10 +749,6 @@
     font-size: 8px;
   }
 
-  .admin-demo-notice {
-    font-size: 9px;
-  }
-
   .admin-dialog-backdrop {
     align-items: end;
     padding: 0;
@@ -804,5 +790,234 @@
     min-width: 0;
     padding: 0 5px;
     font-size: 7px;
+  }
+}
+
+@media (min-width: 701px) {
+  .admin-panel {
+    gap: 22px;
+    color: #102b53;
+    font-size: 14px;
+  }
+
+  .admin-page-heading h1,
+  .admin-section-heading h2 {
+    color: #102b53;
+  }
+
+  .admin-page-heading h1 {
+    font-size: 28px;
+  }
+
+  .admin-page-heading p,
+  .admin-section-heading p {
+    color: #65728a;
+  }
+
+  .admin-eyebrow {
+    color: #78689b;
+  }
+
+  .admin-dashboard-heading {
+    min-height: 178px;
+    align-items: center;
+    padding: 28px 32px;
+    border: 0;
+    border-radius: 18px;
+    background:
+      linear-gradient(100deg, rgb(16 43 83 / 96%) 0%, rgb(16 43 83 / 82%) 54%, rgb(16 43 83 / 42%) 100%),
+      url("../../assets/classroom-banner.jpg") center 48% / cover no-repeat;
+    box-shadow: 0 12px 30px rgb(16 43 83 / 14%);
+    color: #fff;
+  }
+
+  .admin-dashboard-heading h1,
+  .admin-dashboard-heading p,
+  .admin-dashboard-heading .admin-eyebrow {
+    color: #fff;
+  }
+
+  .admin-dashboard-heading .admin-eyebrow {
+    opacity: 0.8;
+  }
+
+  .admin-dashboard-heading h1 {
+    font-size: 30px;
+  }
+
+  .admin-dashboard-heading p {
+    color: #e2e8f2;
+    font-size: 13px;
+  }
+
+  .admin-dashboard-heading .admin-active-period {
+    border-color: rgb(255 255 255 / 28%);
+    background: rgb(255 255 255 / 15%);
+    color: #fff;
+    font-size: 12px;
+    backdrop-filter: blur(6px);
+  }
+
+  .admin-active-period {
+    border-color: #e4dcf2;
+    background: #f0ebf8;
+    color: #4a3e6c;
+    font-size: 11px;
+  }
+
+  .admin-stat-card,
+  .admin-overview-card,
+  .admin-records-card {
+    border-color: #e8e2f0;
+    border-radius: 15px;
+    box-shadow: 0 5px 16px rgb(16 43 83 / 5%);
+  }
+
+  .admin-stat-card {
+    min-height: 130px;
+    padding: 19px;
+  }
+
+  .admin-stat-card > span {
+    color: #65728a;
+    font-size: 12px;
+  }
+
+  .admin-stat-card strong {
+    color: #102b53;
+    font-size: 30px;
+  }
+
+  .admin-stat-card small {
+    color: #7a8497;
+    font-size: 11px;
+  }
+
+  .admin-card-heading {
+    padding: 20px 20px 13px;
+  }
+
+  .admin-section-heading h2 {
+    font-size: 16px;
+  }
+
+  .admin-section-heading p {
+    font-size: 12px;
+  }
+
+  .admin-notice {
+    border-color: #d7e8d9;
+    background: #f1f8f2;
+    color: #315d3b;
+    font-size: 12px;
+  }
+
+  .admin-records-toolbar {
+    min-height: 76px;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom-color: #eee9f4;
+  }
+
+  .admin-search input,
+  .admin-form input,
+  .admin-form select,
+  .admin-student-filters select {
+    border-color: #ded8e9;
+    border-radius: 9px;
+    color: #102b53;
+    font-size: 12px;
+  }
+
+  .admin-search input:focus,
+  .admin-form input:focus,
+  .admin-form select:focus {
+    border-color: #9583bf;
+    box-shadow: 0 0 0 3px rgb(143 125 185 / 14%);
+  }
+
+  .admin-primary-button,
+  .admin-secondary-button {
+    min-height: 40px;
+    padding-right: 15px;
+    padding-left: 15px;
+    border-radius: 9px;
+    font-size: 11px;
+  }
+
+  .admin-primary-button {
+    border-color: #102b53;
+    background: #102b53;
+  }
+
+  .admin-primary-button:hover {
+    background: #193d70;
+  }
+
+  .admin-secondary-button {
+    border-color: #ddd5eb;
+    background: #fff;
+    color: #4b3d6c;
+  }
+
+  .admin-secondary-button:hover {
+    background: #f6f2fb;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    height: 52px;
+    padding: 12px 16px;
+    border-bottom-color: #eeeaf4;
+    color: #4f5e78;
+    font-size: 12px;
+  }
+
+  .admin-table th {
+    height: 48px;
+    background: #dcd3ef;
+    color: #352b53;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .admin-row-actions button {
+    color: #4b3d6c;
+    font-size: 11px;
+  }
+
+  .admin-row-actions button.danger {
+    color: #ad4b55;
+  }
+
+  .admin-status.active {
+    background: #e6f4ea;
+    color: #287143;
+  }
+
+  .admin-status.inactive {
+    background: #f0edf4;
+    color: #686174;
+  }
+
+  .admin-records-footer {
+    padding: 14px 20px;
+    border-top-color: #eee9f4;
+    color: #7a8497;
+    font-size: 11px;
+  }
+
+  .admin-period-table input,
+  .admin-period-table select {
+    border-color: #ded8e9;
+    border-radius: 9px;
+    color: #102b53;
+    font-size: 12px;
+  }
+
+  .admin-period-table input:focus,
+  .admin-period-table select:focus {
+    border-color: #9583bf;
+    box-shadow: 0 0 0 3px rgb(143 125 185 / 14%);
   }
 }

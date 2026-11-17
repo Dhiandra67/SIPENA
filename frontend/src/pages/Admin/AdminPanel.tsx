@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { downloadSpreadsheet, readSpreadsheetFile } from "../../lib/spreadsheet";
 import { getStoredAccessToken } from "../Login/auth";
 import {
@@ -26,6 +26,14 @@ import type { AdminRecord } from "./types";
 import "./AdminPanel.css";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+const studentSpreadsheetHeaders = [
+  "NIS",
+  "NISN",
+  "Nama Lengkap",
+  "Jenis Kelamin (L/P)",
+  "Kode Kelas",
+  "Status",
+];
 
 interface AdminPanelProps {
   route: string;
@@ -40,7 +48,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [currentPeriod, setCurrentPeriod] = useState(activePeriod);
   const [periodOptions, setPeriodOptions] = useState([activePeriod]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
   const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(
@@ -49,7 +56,22 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
   const [formError, setFormError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNoticeState] = useState<{
+    message: string;
+    route: string;
+    id: number;
+  } | null>(null);
+  const noticeId = useRef(0);
+
+  function setNotice(message: string, noticeRoute = route) {
+    if (!message) {
+      setNoticeState(null);
+      return;
+    }
+
+    noticeId.current += 1;
+    setNoticeState({ message, route: noticeRoute, id: noticeId.current });
+  }
 
   function applyOverviewData(data: OverviewPayload) {
     const nextRecords: RecordSet = {
@@ -91,7 +113,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         return nextRecords.classes[0] ?? null;
       });
     }
-    setIsBackendSynced(true);
   }
 
   async function refreshOverview(): Promise<boolean> {
@@ -108,7 +129,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         },
       });
       if (!response.ok) {
-        setIsBackendSynced(false);
         return false;
       }
       const payload = (await response.json().catch(() => null)) as { data?: OverviewPayload } | null;
@@ -118,7 +138,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       }
       return false;
     } catch {
-      setIsBackendSynced(false);
       return false;
     } finally {
       setIsLoading(false);
@@ -128,6 +147,16 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   useEffect(() => {
     void refreshOverview();
   }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+
+    const timeout = window.setTimeout(() => {
+      setNoticeState((current) => (current?.id === notice.id ? null : current));
+    }, 10_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   const currentRoute = isAdminRoute(route) ? route : null;
   const section = currentRoute ? sections[currentRoute] : null;
@@ -403,7 +432,6 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
   }
 
   async function exportStudents() {
-    const headers = ["NIS", "NISN", "Nama Lengkap", "Jenis Kelamin (L/P)", "Kode Kelas", "Status"];
     let sourceStudents = records.students;
 
     const token = getStoredAccessToken();
@@ -437,11 +465,29 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       student.status,
     ]);
     try {
-      await downloadSpreadsheet("data-siswa-sipena.xlsx", [headers, ...dataRows], "Data Siswa");
+      await downloadSpreadsheet(
+        "data-siswa-sipena.xlsx",
+        [studentSpreadsheetHeaders, ...dataRows],
+        "Data Siswa",
+      );
       setNotice("Data siswa berhasil diekspor.");
     } catch (error) {
       console.error("Failed to export students.", error);
       setNotice("Data siswa tidak dapat diekspor. Silakan coba lagi.");
+    }
+  }
+
+  async function downloadStudentTemplate() {
+    try {
+      await downloadSpreadsheet(
+        "template-data-siswa-sipena.xlsx",
+        [studentSpreadsheetHeaders],
+        "Data Siswa",
+      );
+      setNotice("Template data siswa berhasil diunduh.");
+    } catch (error) {
+      console.error("Failed to download student template.", error);
+      setNotice("Template data siswa tidak dapat diunduh. Silakan coba lagi.");
     }
   }
 
@@ -524,8 +570,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       <DashboardPage
         classes={classes}
         currentPeriod={currentPeriod}
-        isBackendSynced={isBackendSynced}
-        notice={notice}
+        notice={notice?.route === route ? notice.message : ""}
         onCreatePeriod={(year, semester) => {
           void addPeriod(year, semester);
         }}
@@ -590,11 +635,17 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       void deleteRecord(record);
     },
     isLoading,
-    isBackendSynced,
   };
   const fileActions =
     currentRoute === "students" ? (
       <div className="admin-file-actions">
+        <button
+          className="admin-secondary-button"
+          onClick={() => void downloadStudentTemplate()}
+          type="button"
+        >
+          Template XLSX
+        </button>
         <label className="admin-secondary-button admin-file-button">
           Impor
           <input
@@ -634,9 +685,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
 
   return (
     <>
-      {notice && (
+      {notice?.route === route && (
         <p className="admin-notice" role="status">
-          {notice}
+          {notice.message}
         </p>
       )}
       {page}

@@ -35,12 +35,10 @@ function ClassGradesPage({
   const [exportNotice, setExportNotice] = useState("");
   const [recapSubjects, setRecapSubjects] = useState<AdminRecord[] | null>(null);
   const [recapStudents, setRecapStudents] = useState<RecapStudentPayload[] | null>(null);
-  const [isBackendSynced, setIsBackendSynced] = useState(false);
 
   useEffect(() => {
     setRecapSubjects(null);
     setRecapStudents(null);
-    setIsBackendSynced(false);
 
     const token = getStoredAccessToken();
     if (!token || !classRecord.id) return;
@@ -58,7 +56,6 @@ function ClassGradesPage({
         if (Array.isArray(payload.data.subjects) && Array.isArray(payload.data.students)) {
           setRecapSubjects(payload.data.subjects);
           setRecapStudents(payload.data.students);
-          setIsBackendSynced(true);
         }
       })
       .catch(() => {
@@ -69,6 +66,13 @@ function ClassGradesPage({
       cancelled = true;
     };
   }, [classRecord.id]);
+
+  useEffect(() => {
+    if (!exportNotice) return;
+
+    const timeout = window.setTimeout(() => setExportNotice(""), 10_000);
+    return () => window.clearTimeout(timeout);
+  }, [exportNotice]);
 
   const effectiveSubjects = recapSubjects ?? subjects;
   const { orderedRows, rankByStudentId, rankedStudents } = buildClassReportData(
@@ -159,7 +163,6 @@ function ClassGradesPage({
       <ClassGradesTable
         classNameLabel={classRecord.name}
         effectiveSubjects={effectiveSubjects}
-        isBackendSynced={isBackendSynced}
         isExporting={isExporting}
         onExport={() => void exportReport()}
         orderedRows={orderedRows}

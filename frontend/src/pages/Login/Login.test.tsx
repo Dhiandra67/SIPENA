@@ -83,4 +83,11 @@ describe("formulir login", () => {
     expect(screen.getByLabelText("Email")).toHaveValue("");
     expect(screen.getByLabelText("Kata sandi")).toHaveValue("");
   });
+
+  it("tidak menampilkan bagian bantuan akun di bawah formulir", () => {
+    render(<LoginPage onLoginSuccess={vi.fn()} />);
+
+    expect(screen.queryByText("Belum memiliki akun atau sulit masuk?")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Hubungi admin sekolah" })).not.toBeInTheDocument();
+  });
 });

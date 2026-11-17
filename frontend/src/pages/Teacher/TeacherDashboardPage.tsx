@@ -123,26 +123,6 @@ function TeacherDashboardPage({
         </div>
       </section>
 
-      <section className="teacher-card teacher-dashboard-actions">
-        <div className="teacher-card-heading">
-          <div>
-            <h2>Akses cepat</h2>
-            <p>Lanjutkan pekerjaan penilaian Anda.</p>
-          </div>
-        </div>
-        <div className="teacher-action-grid">
-          <button onClick={() => onNavigate("grade-settings")} type="button">
-            <strong>01</strong>
-            <span>Atur komponen &amp; bobot</span>
-            <small>Pastikan jumlah bobot 100%</small>
-          </button>
-          <button onClick={() => onNavigate("grade-entry")} type="button">
-            <strong>02</strong>
-            <span>Input dan kelola nilai</span>
-            <small>Nilai akhir dihitung otomatis</small>
-          </button>
-        </div>
-      </section>
     </>
   );
 }

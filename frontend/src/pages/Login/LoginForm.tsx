@@ -124,23 +124,6 @@ function LoginForm({ onLoginSuccess }: LoginFormProps) {
           {!isSubmitting && <LoginIcon name="arrow" />}
         </button>
       </form>
-
-      <p className="contact-copy">
-        Belum memiliki akun atau sulit masuk?
-        <br />
-        <button
-          className="text-button contact-link"
-          onClick={() => {
-            setMessage(
-              "Silakan hubungi admin sekolah jika Anda mengalami kesulitan masuk atau perlu bantuan akun.",
-            );
-            setMessageType("info");
-          }}
-          type="button"
-        >
-          Hubungi admin sekolah
-        </button>
-      </p>
     </section>
   );
 }

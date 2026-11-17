@@ -13,7 +13,6 @@ interface DashboardPageProps {
   onPeriodChange: (period: string) => void;
   onCreatePeriod: (year: string, semester: string) => void;
   onViewGrades: (classRecord: AdminRecord) => void;
-  isBackendSynced?: boolean;
 }
 
 function DashboardPage({
@@ -28,7 +27,6 @@ function DashboardPage({
   onPeriodChange,
   onCreatePeriod,
   onViewGrades,
-  isBackendSynced = false,
 }: DashboardPageProps) {
   function submitPeriod(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,7 +39,7 @@ function DashboardPage({
 
   return (
     <div className="admin-panel">
-      <section className="admin-page-heading">
+      <section className="admin-page-heading admin-dashboard-heading">
         <div>
           <span className="admin-eyebrow">SIPENA · ADMIN</span>
           <h1>Dashboard Admin</h1>
@@ -175,11 +173,6 @@ function DashboardPage({
         </footer>
       </section>
 
-      <div className="admin-demo-notice" role="note">
-        {isBackendSynced
-          ? "Terhubung ke database SIPENA — seluruh perubahan data langsung tersimpan ke server."
-          : "Tidak terhubung ke server backend SIPENA. Pastikan server backend aktif agar data tersinkron ke database."}
-      </div>
     </div>
   );
 }

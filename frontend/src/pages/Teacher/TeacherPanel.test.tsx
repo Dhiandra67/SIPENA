@@ -77,10 +77,7 @@ describe("rekap nilai pada detail kelas", () => {
   it("menampilkan nilai per komponen dan status, tanpa pilihan statistik", async () => {
     render(
       <TeacherPanel
-        displayName="Guru"
-        email="guru@example.com"
         onNavigate={() => undefined}
-        onProfileChange={() => undefined}
         route="class-detail"
       />,
     );
@@ -96,10 +93,7 @@ describe("rekap nilai pada detail kelas", () => {
   it("mengunduh nilai komponen, nilai akhir, dan status ke Excel", async () => {
     render(
       <TeacherPanel
-        displayName="Guru"
-        email="guru@example.com"
         onNavigate={() => undefined}
-        onProfileChange={() => undefined}
         route="class-detail"
       />,
     );
@@ -127,10 +121,7 @@ describe("rekap nilai pada detail kelas", () => {
   it("memfilter status ketuntasan dan meletakkan tombol simpan setelah tabel", async () => {
     render(
       <TeacherPanel
-        displayName="Guru"
-        email="guru@example.com"
         onNavigate={() => undefined}
-        onProfileChange={() => undefined}
         route="grade-entry"
       />,
     );
@@ -151,10 +142,7 @@ describe("rekap nilai pada detail kelas", () => {
     const fetchMock = vi.mocked(fetch);
     render(
       <TeacherPanel
-        displayName="Guru"
-        email="guru@example.com"
         onNavigate={() => undefined}
-        onProfileChange={() => undefined}
         route="grade-entry"
       />,
     );
@@ -165,6 +153,7 @@ describe("rekap nilai pada detail kelas", () => {
     const tableCell = trigger.closest("td");
     expect(tableCell).not.toBeNull();
     expect(scoreInput.closest("td")).toBe(tableCell);
+    expect(scoreInput).toHaveFocus();
     const entryList = within(tableCell as HTMLElement).getByRole("list");
     expect(within(entryList).getByText("Nilai 1")).toBeInTheDocument();
     expect(within(entryList).getByText("80,00")).toBeInTheDocument();
@@ -172,7 +161,7 @@ describe("rekap nilai pada detail kelas", () => {
     fireEvent.change(scoreInput, {
       target: { value: "100" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Tambah" }));
+    fireEvent.click(within(tableCell as HTMLElement).getByRole("button", { name: "Tambah" }));
     expect(document.activeElement).toBe(scoreInput);
     expect(scoreInput).toHaveValue(null);
     expect(within(entryList).getByText("Nilai 2")).toBeInTheDocument();
@@ -180,6 +169,19 @@ describe("rekap nilai pada detail kelas", () => {
     expect(
       screen.getByLabelText("Tugas Harian Andi Pratama: rata-rata 90,00"),
     ).toBeInTheDocument();
+
+    const ulanganHeader = screen.getByRole("columnheader", { name: /Ulangan Harian/ });
+    fireEvent.click(within(ulanganHeader).getByRole("button"));
+    expect(
+      screen.queryByLabelText("Nilai baru Tugas Harian untuk Andi Pratama"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Nilai baru Ulangan Harian untuk Andi Pratama"),
+    ).toHaveFocus();
+
+    const dailyHeader = screen.getByRole("columnheader", { name: /Tugas Harian/ });
+    fireEvent.click(within(dailyHeader).getByRole("button"));
+    expect(screen.getByText("100,00")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Simpan nilai" }));
     await waitFor(() => {
@@ -194,14 +196,41 @@ describe("rekap nilai pada detail kelas", () => {
     });
   });
 
+  it("membuka satu kolom komponen untuk semua siswa dan menutupnya saat klik area kosong", async () => {
+    render(
+      <TeacherPanel
+        onNavigate={() => undefined}
+        route="grade-entry"
+      />,
+    );
+
+    const dailyHeader = await screen.findByRole("columnheader", { name: /Tugas Harian/ });
+    fireEvent.click(within(dailyHeader).getByRole("button"));
+
+    const dailyAndi = screen.getByLabelText("Nilai baru Tugas Harian untuk Andi Pratama");
+    const dailyBudi = screen.getByLabelText("Nilai baru Tugas Harian untuk Budi Santoso");
+    expect(dailyAndi).toHaveFocus();
+    expect(dailyBudi).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Nilai baru Ulangan Harian untuk Andi Pratama"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.pointerDown(dailyAndi);
+    expect(dailyAndi).toBeInTheDocument();
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Simpan nilai" }));
+    expect(dailyAndi).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+    expect(
+      screen.queryByLabelText("Nilai baru Tugas Harian untuk Andi Pratama"),
+    ).not.toBeInTheDocument();
+  });
+
   it("menyimpan KKM dari tabel pengaturan nilai", async () => {
     const fetchMock = vi.mocked(fetch);
     render(
       <TeacherPanel
-        displayName="Guru"
-        email="guru@example.com"
         onNavigate={() => undefined}
-        onProfileChange={() => undefined}
         route="grade-settings"
       />,
     );

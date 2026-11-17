@@ -38,7 +38,6 @@ export const titleByRoute: Record<TeacherRoute, string> = {
   "class-detail": "Detail Kelas",
   "grade-settings": "Pengaturan Komponen Nilai",
   "grade-entry": "Input dan Kelola Nilai",
-  profile: "Profil Saya",
 };
 
 export function createComponentId() {
