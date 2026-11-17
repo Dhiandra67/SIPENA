@@ -285,6 +285,36 @@ describe("rekap nilai pada detail kelas", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("membuka dropdown hanya pada baris siswa yang diklik", async () => {
+    render(
+      <TeacherPanel
+        onNavigate={() => undefined}
+        route="grade-entry"
+      />,
+    );
+
+    const dailyAndi = await screen.findByLabelText(
+      "Tugas Harian Andi Pratama: rata-rata 80,00",
+    );
+    fireEvent.click(dailyAndi);
+    expect(
+      screen.getByLabelText("Nilai baru Tugas Harian untuk Andi Pratama"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Nilai baru Tugas Harian untuk Budi Santoso"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByLabelText("Tugas Harian Budi Santoso: rata-rata 75,00"),
+    );
+    expect(
+      screen.queryByLabelText("Nilai baru Tugas Harian untuk Andi Pratama"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Nilai baru Tugas Harian untuk Budi Santoso"),
+    ).toBeInTheDocument();
+  });
+
   it("menyimpan KKM dari tabel pengaturan nilai", async () => {
     const fetchMock = vi.mocked(fetch);
     render(
