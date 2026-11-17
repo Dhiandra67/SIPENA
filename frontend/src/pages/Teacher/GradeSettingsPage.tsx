@@ -108,42 +108,42 @@ function GradeSettingsPage({
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>{showAll ? "Semua Pengajaran" : selectedSettingsAssignment.subject}</td>
-                <td>
-                  {showAll
-                    ? `${assignmentList.length} kelas`
-                    : selectedSettingsAssignment.className}
-                </td>
-                <td>{selectedSettingsAssignment.period}</td>
-                <td>
-                  <input
-                    aria-label={
-                      showAll
-                        ? "KKM Semua Pengajaran"
-                        : `KKM ${selectedSettingsAssignment.subject} ${selectedSettingsAssignment.className}`
-                    }
-                    className="teacher-kkm-input"
-                    disabled={isSettingsLocked}
-                    max={100}
-                    min={0}
-                    onChange={(event) => onKkmChange(event.target.value)}
-                    step="0.01"
-                    type="number"
-                    value={kkmValue}
-                  />
-                </td>
-                <td>
-                  <button
-                    className="teacher-secondary-button"
-                    disabled={isSettingsLocked}
-                    onClick={onSaveKkm}
-                    type="button"
-                  >
-                    Simpan KKM
-                  </button>
-                </td>
-              </tr>
+              {showAll ? (
+                <tr>
+                  <td className="teacher-empty" colSpan={5}>
+                    Pilih satu pengajaran untuk mengatur KKM.
+                  </td>
+                </tr>
+              ) : (
+                <tr>
+                  <td data-label="Mata Pelajaran">{selectedSettingsAssignment.subject}</td>
+                  <td data-label="Kelas">{selectedSettingsAssignment.className}</td>
+                  <td data-label="Periode">{selectedSettingsAssignment.period}</td>
+                  <td data-label="KKM">
+                    <input
+                      aria-label={`KKM ${selectedSettingsAssignment.subject} ${selectedSettingsAssignment.className}`}
+                      className="teacher-kkm-input"
+                      disabled={isSettingsLocked}
+                      max={100}
+                      min={0}
+                      onChange={(event) => onKkmChange(event.target.value)}
+                      step="0.01"
+                      type="number"
+                      value={kkmValue}
+                    />
+                  </td>
+                  <td data-label="Aksi">
+                    <button
+                      className="teacher-secondary-button"
+                      disabled={isSettingsLocked}
+                      onClick={onSaveKkm}
+                      type="button"
+                    >
+                      Simpan KKM
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

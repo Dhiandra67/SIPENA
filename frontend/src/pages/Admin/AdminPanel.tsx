@@ -24,7 +24,7 @@ import StudentDataPage from "./StudentDataPage";
 import SubjectDataPage from "./SubjectDataPage";
 import TeacherAssignmentsPage from "./TeacherAssignmentsPage";
 import TeacherDataPage from "./TeacherDataPage";
-import type { AdminRecord } from "./types";
+import type { AdminRecord, AdminRoute, AdminSection } from "./types";
 import "./AdminPanel.css";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -43,6 +43,20 @@ const teacherSpreadsheetHeaders = [
   "Email",
   "Status",
 ];
+const spreadsheetFileNames: Record<AdminRoute, string> = {
+  students: "data-siswa-sipena.xlsx",
+  teachers: "data-guru-sipena.xlsx",
+  classes: "data-kelas-sipena.xlsx",
+  subjects: "data-mata-pelajaran-sipena.xlsx",
+  assignments: "data-pembagian-tugas-guru-sipena.xlsx",
+};
+const emptyRecords: RecordSet = {
+  students: [],
+  teachers: [],
+  classes: [],
+  subjects: [],
+  assignments: [],
+};
 
 interface AdminPanelProps {
   route: string;
@@ -50,18 +64,24 @@ interface AdminPanelProps {
 }
 
 function AdminPanel({ route, onNavigate }: AdminPanelProps) {
-  const [records, setRecords] = useState<RecordSet>(initialRecords);
-  const [academicPeriods, setAcademicPeriods] = useState<AdminRecord[]>([
-    { id: "p1", name: activePeriod, status: "Aktif" },
-  ]);
-  const [currentPeriod, setCurrentPeriod] = useState(activePeriod);
-  const [periodOptions, setPeriodOptions] = useState([activePeriod]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [records, setRecords] = useState<RecordSet>(() =>
+    getStoredAccessToken() ? emptyRecords : initialRecords,
+  );
+  const [academicPeriods, setAcademicPeriods] = useState<AdminRecord[]>(() =>
+    getStoredAccessToken() ? [] : [{ id: "p1", name: activePeriod, status: "Aktif" }],
+  );
+  const [currentPeriod, setCurrentPeriod] = useState(() =>
+    getStoredAccessToken() ? "" : activePeriod,
+  );
+  const [periodOptions, setPeriodOptions] = useState(() =>
+    getStoredAccessToken() ? [] : [activePeriod],
+  );
+  const [isLoading, setIsLoading] = useState(() => Boolean(getStoredAccessToken()));
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("Semua Kelas");
   const [assignmentClassOrder, setAssignmentClassOrder] = useState<"asc" | "desc">("asc");
-  const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(
-    initialRecords.classes[0],
+  const [selectedGradeClass, setSelectedGradeClass] = useState<AdminRecord | null>(() =>
+    getStoredAccessToken() ? null : initialRecords.classes[0],
   );
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | "details" | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<AdminRecord | null>(null);
@@ -105,9 +125,11 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     };
     setRecords(nextRecords);
 
-    if (Array.isArray(data.academic) && data.academic.length > 0) {
+    if (Array.isArray(data.academic)) {
       setAcademicPeriods(data.academic);
       setPeriodOptions(names);
+      const active =
+        data.academic.find((period) => period.status === "Aktif")?.name ?? names[0] ?? "";
       setCurrentPeriod(active);
       setSelectedGradeClass((previous) => {
         if (previous) {
@@ -128,17 +150,20 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
         }
         return nextRecords.classes[0] ?? null;
       });
+    } else if (nextRecords.classes.length === 0) {
+      setSelectedGradeClass(null);
     }
   }
 
-  async function refreshOverview(): Promise<boolean> {
+  async function refreshOverview(showLoading = true): Promise<boolean> {
     const token = getStoredAccessToken();
     if (!token) {
       return false;
     }
-    setIsLoading(true);
+    if (showLoading) setIsLoading(true);
     try {
       const response = await fetch(`${apiBaseUrl}/v1/admin/overview`, {
+        cache: "no-store",
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
@@ -156,12 +181,29 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     } catch {
       return false;
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }
 
   useEffect(() => {
     void refreshOverview();
+  }, []);
+
+  useEffect(() => {
+    if (!getStoredAccessToken()) return;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshOverview(false);
+      }
+    };
+    const interval = window.setInterval(refreshWhenVisible, 5_000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -702,81 +744,256 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       setNotice("Pilih file .xlsx atau .csv berukuran maksimal 5 MB.");
       return;
     }
+
     try {
       const rawRows = await readSpreadsheetFile(file);
-      if (!rawRows) {
+      if (!rawRows?.length) {
         setNotice("File tidak memiliki lembar kerja.");
         return;
       }
-      const imported = rawRows
+
+      const normalized = (value: string) =>
+        value.toLocaleLowerCase("id").replace(/[^a-z0-9]/g, "");
+      const headerIndexes = ["NIP", "Nama Lengkap", "Jenis Kelamin (L/P)", "Email", "Status"]
+        .map((header) =>
+          rawRows[0].findIndex(
+            (candidate) => normalized(String(candidate)) === normalized(header),
+          ),
+        );
+      if (headerIndexes.some((index) => index < 0)) {
+        setNotice("Impor dibatalkan: gunakan template data guru yang tersedia.");
+        return;
+      }
+
+      const candidates = rawRows
         .slice(1)
         .filter((row) => row.some((value) => String(value).trim()))
-        .map((row) => {
-          const thirdCell = String(row[2] ?? "").trim();
-          const hasEmailInThirdCell = thirdCell.includes("@");
-          const genderRaw = hasEmailInThirdCell ? "L" : thirdCell.toUpperCase() || "L";
-          const emailRaw = hasEmailInThirdCell
-            ? thirdCell.toLowerCase()
-            : String(row[3] ?? "").trim().toLowerCase();
-          const statusRaw = hasEmailInThirdCell
-            ? String(row[3] ?? "Aktif").trim()
-            : String(row[4] ?? "Aktif").trim();
-          return {
-            id: createId(),
-            nip: String(row[0] ?? "").trim(),
-            name: String(row[1] ?? "").trim(),
-            gender: genderRaw,
-            email: emailRaw,
-            status: statusRaw || "Aktif",
-            period: currentPeriod,
-          };
-        });
+        .map((row) => ({
+          id: createId(),
+          nip: String(row[headerIndexes[0]] ?? "").trim(),
+          name: String(row[headerIndexes[1]] ?? "").trim(),
+          gender: String(row[headerIndexes[2]] ?? "").trim().toUpperCase(),
+          email: String(row[headerIndexes[3]] ?? "").trim().toLowerCase(),
+          status: String(row[headerIndexes[4]] ?? "Aktif").trim() || "Aktif",
+          period: currentPeriod,
+        })) as AdminRecord[];
+
       if (
-        imported.length === 0 ||
-        imported.some(
-          (teacher) =>
-            !teacher.nip ||
-            !teacher.name ||
-            !teacher.email ||
-            !teacher.email.includes("@") ||
-            !["L", "P"].includes(teacher.gender),
+        candidates.length === 0 ||
+        candidates.some((teacher) =>
+          !teacher.nip ||
+          !teacher.name ||
+          !teacher.email ||
+          !teacher.email.includes("@") ||
+          !["L", "P"].includes(String(teacher.gender)),
         )
       ) {
-        setNotice(
-          "Impor dibatalkan: setiap baris harus berisi NIP, nama lengkap, jenis kelamin (L/P), dan email yang valid.",
-        );
+        setNotice("Impor dibatalkan: setiap baris harus berisi NIP, nama lengkap, jenis kelamin (L/P), dan email yang valid.");
         return;
       }
 
       const token = getStoredAccessToken();
       if (!token) {
-        setRecords((previous) => ({ ...previous, teachers: [...previous.teachers, ...imported] }));
-        setNotice(`${imported.length} data guru berhasil diimpor.`);
+        setRecords((previous) => ({
+          ...previous,
+          teachers: [...previous.teachers, ...candidates],
+        }));
+        setNotice(`${candidates.length} data guru berhasil diimpor.`);
         return;
       }
 
-      const response = await fetch(`${apiBaseUrl}/v1/guru/import`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ teachers: imported }),
-      });
-      const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-      if (!response.ok) {
-        setNotice(payload?.message ?? "Impor guru ditolak oleh server.");
-        return;
+      const savedRecords: AdminRecord[] = [];
+      for (const candidate of candidates) {
+        const response = await fetch(`${apiBaseUrl}/v1/guru`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(candidate),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string;
+          data?: AdminRecord;
+        } | null;
+        if (!response.ok) {
+          setNotice(payload?.message ?? "Impor guru ditolak oleh server.");
+          return;
+        }
+        savedRecords.push(payload?.data ?? candidate);
       }
+
       const refreshed = await refreshOverview();
       if (!refreshed) {
-        setRecords((previous) => ({ ...previous, teachers: [...previous.teachers, ...imported] }));
+        setRecords((previous) => ({
+          ...previous,
+          teachers: [...previous.teachers, ...savedRecords],
+        }));
       }
-      setNotice(payload?.message ?? `${imported.length} data guru berhasil diimpor.`);
+      setNotice(`${savedRecords.length} data guru berhasil diimpor.`);
     } catch (error) {
       console.error("Failed to import teachers.", error);
       setNotice("File guru tidak dapat dibaca. Periksa format dan coba lagi.");
+    }
+  }
+
+  async function exportEntity(routeSnapshot: AdminRoute, sectionSnapshot: AdminSection) {
+    const headers = sectionSnapshot.fields.map((field) => field.label);
+    const dataRows = periodRecords[routeSnapshot].map((record) =>
+      sectionSnapshot.fields.map((field) => record[field.key] ?? ""),
+    );
+    try {
+      await downloadSpreadsheet(
+        spreadsheetFileNames[routeSnapshot],
+        [headers, ...dataRows],
+        sectionSnapshot.title,
+      );
+      setNotice(`${sectionSnapshot.title} berhasil diekspor.`, routeSnapshot);
+    } catch (error) {
+      console.error(`Failed to export ${routeSnapshot}.`, error);
+      setNotice(`${sectionSnapshot.title} tidak dapat diekspor. Silakan coba lagi.`, routeSnapshot);
+    }
+  }
+
+  async function downloadEntityTemplate(routeSnapshot: AdminRoute, sectionSnapshot: AdminSection) {
+    try {
+      await downloadSpreadsheet(
+        `template-${spreadsheetFileNames[routeSnapshot]}`,
+        [sectionSnapshot.fields.map((field) => field.label)],
+        sectionSnapshot.title,
+      );
+      setNotice(`Template ${sectionSnapshot.title.toLocaleLowerCase("id")} berhasil diunduh.`, routeSnapshot);
+    } catch (error) {
+      console.error(`Failed to download ${routeSnapshot} template.`, error);
+      setNotice("Template tidak dapat diunduh. Silakan coba lagi.", routeSnapshot);
+    }
+  }
+
+  async function importEntity(
+    event: ChangeEvent<HTMLInputElement>,
+    routeSnapshot: AdminRoute,
+    sectionSnapshot: AdminSection,
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024 || !/(\.csv|\.xlsx)$/i.test(file.name)) {
+      setNotice("Pilih file .xlsx atau .csv berukuran maksimal 5 MB.", routeSnapshot);
+      return;
+    }
+
+    try {
+      const rawRows = await readSpreadsheetFile(file);
+      if (!rawRows?.length) {
+        setNotice("File tidak memiliki lembar kerja.", routeSnapshot);
+        return;
+      }
+
+      const headerIndexes = sectionSnapshot.fields.map((field) =>
+        rawRows[0].findIndex(
+          (header) =>
+            String(header).trim().toLocaleLowerCase("id") ===
+            field.label.toLocaleLowerCase("id"),
+        ),
+      );
+      if (headerIndexes.some((index) => index < 0)) {
+        setNotice(
+          `Impor dibatalkan: gunakan template ${sectionSnapshot.title.toLocaleLowerCase("id")} agar semua kolom tersedia.`,
+          routeSnapshot,
+        );
+        return;
+      }
+
+      const candidates = rawRows
+        .slice(1)
+        .filter((row) => row.some((value) => String(value).trim()))
+        .map((row) =>
+          Object.fromEntries(
+            sectionSnapshot.fields.map((field, index) => [
+              field.key,
+              String(row[headerIndexes[index]] ?? "").trim(),
+            ]),
+          ),
+        ) as AdminRecord[];
+      if (candidates.length === 0) {
+        setNotice("Tidak ada data untuk diimpor.", routeSnapshot);
+        return;
+      }
+
+      const recordsForValidation: RecordSet = {
+        ...records,
+        [routeSnapshot]: [...records[routeSnapshot]],
+      };
+      for (let index = 0; index < candidates.length; index += 1) {
+        const candidate = candidates[index];
+        const emptyField = sectionSnapshot.fields.find(
+          (field) => field.required !== false && !candidate[field.key],
+        );
+        if (emptyField) {
+          setNotice(
+            `Impor dibatalkan: kolom ${emptyField.label} pada baris ${index + 2} wajib diisi.`,
+            routeSnapshot,
+          );
+          return;
+        }
+        const validationMessage = validateAdminRecord(
+          candidate,
+          routeSnapshot,
+          sectionSnapshot,
+          recordsForValidation,
+          null,
+        );
+        if (validationMessage) {
+          setNotice(`Impor dibatalkan pada baris ${index + 2}: ${validationMessage}`, routeSnapshot);
+          return;
+        }
+        recordsForValidation[routeSnapshot].push(candidate);
+      }
+
+      const token = getStoredAccessToken();
+      if (!token) {
+        setRecords((previous) => ({
+          ...previous,
+          [routeSnapshot]: [...previous[routeSnapshot], ...candidates],
+        }));
+        setNotice(`${candidates.length} data berhasil diimpor.`, routeSnapshot);
+        return;
+      }
+
+      const savedRecords: AdminRecord[] = [];
+      for (const candidate of candidates) {
+        const response = await fetch(`${apiBaseUrl}${endpointByRoute[routeSnapshot]}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(candidate),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string;
+          data?: AdminRecord;
+        } | null;
+        if (!response.ok) {
+          setNotice(payload?.message ?? "Impor ditolak oleh server.", routeSnapshot);
+          return;
+        }
+        savedRecords.push(payload?.data ?? candidate);
+      }
+
+      const refreshed = await refreshOverview();
+      if (!refreshed) {
+        setRecords((previous) => ({
+          ...previous,
+          [routeSnapshot]: [...previous[routeSnapshot], ...savedRecords],
+        }));
+      }
+      setNotice(`${savedRecords.length} data berhasil diimpor.`, routeSnapshot);
+    } catch (error) {
+      console.error(`Failed to import ${routeSnapshot}.`, error);
+      setNotice("File tidak dapat dibaca. Periksa format dan coba lagi.", routeSnapshot);
     }
   }
 
@@ -790,6 +1007,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       <DashboardPage
         classes={classes}
         currentPeriod={currentPeriod}
+        isLoading={isLoading}
         notice={notice?.route === route ? notice.message : ""}
         onCreatePeriod={(year, semester) => {
           void addPeriod(year, semester);
@@ -911,7 +1129,33 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           Ekspor
         </button>
       </div>
-    ) : undefined;
+    ) : (
+      <div className="admin-file-actions">
+        <button
+          className="admin-secondary-button"
+          onClick={() => void downloadEntityTemplate(currentRoute, section)}
+          type="button"
+        >
+          Template XLSX
+        </button>
+        <label className="admin-secondary-button admin-file-button">
+          Impor
+          <input
+            accept=".csv,.xlsx"
+            aria-label={`Impor ${section.title.toLocaleLowerCase("id")}`}
+            onChange={(event) => void importEntity(event, currentRoute, section)}
+            type="file"
+          />
+        </label>
+        <button
+          className="admin-secondary-button"
+          onClick={() => void exportEntity(currentRoute, section)}
+          type="button"
+        >
+          Ekspor
+        </button>
+      </div>
+    );
   const page =
     currentRoute === "students" ? (
       <StudentDataPage
@@ -924,14 +1168,15 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     ) : currentRoute === "teachers" ? (
       <TeacherDataPage {...commonProps} fileActions={fileActions} />
     ) : currentRoute === "classes" ? (
-      <ClassDataPage {...commonProps} />
+      <ClassDataPage {...commonProps} fileActions={fileActions} />
     ) : currentRoute === "subjects" ? (
-      <SubjectDataPage {...commonProps} />
+      <SubjectDataPage {...commonProps} fileActions={fileActions} />
     ) : (
       <TeacherAssignmentsPage
         {...commonProps}
         classOptions={classOptions}
         classOrder={assignmentClassOrder}
+        fileActions={fileActions}
         onClassChange={setSelectedClass}
         onClassOrderChange={setAssignmentClassOrder}
         selectedClass={selectedClass}
