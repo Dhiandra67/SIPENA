@@ -24,7 +24,7 @@ export const studentSection: AdminSection = {
     { key: "name", label: "Nama lengkap" },
     { key: "gender", label: "Jenis kelamin", type: "select", options: ["L", "P"] },
     { key: "className", label: "Kode kelas", type: "select" },
-    { key: "status", label: "Status", type: "select", options: ["Aktif", "Lulus", "Pindah", "Nonaktif"] },
+    { key: "status", label: "Status", type: "select", options: ["Aktif", "Nonaktif"] },
   ],
   searchKeys: ["nis", "nisn", "name", "className"],
 };

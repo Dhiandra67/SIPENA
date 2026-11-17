@@ -40,5 +40,4 @@ export interface AdminEntityPageProps {
   footerNote?: string;
   renderCell?: (record: AdminRecord, key: string) => ReactNode;
   isLoading?: boolean;
-  isBackendSynced?: boolean;
 }

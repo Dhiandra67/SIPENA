@@ -1,4 +1,4 @@
-import type { ChangeEvent, ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type ReactNode } from "react";
 import ScoreEntriesDropdown from "./ScoreEntriesDropdown";
 import type {
   GradeComponent,
@@ -54,6 +54,10 @@ function GradeEntryPage({
   onUpdateScoreEntries,
   onSaveScores,
 }: GradeEntryPageProps) {
+  const [openComponent, setOpenComponent] = useState<{
+    componentId: string;
+    focusStudentId: string | null;
+  } | null>(null);
   const isGradeLocked = Boolean(currentAssignment.isLocked);
 
   const visibleStudents = filteredStudents.filter((student) => {
@@ -65,6 +69,47 @@ function GradeEntryPage({
       ? finalScore >= currentAssignment.kkm
       : finalScore < currentAssignment.kkm;
   });
+
+  useEffect(() => {
+    if (!openComponent) return;
+
+    function closeOnOutsidePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        setOpenComponent(null);
+        return;
+      }
+
+      if (
+        target.closest(
+          ".teacher-score-entry-dropdown, .teacher-component-accordion-trigger, input, button, select, textarea, a, [role='button']",
+        )
+      ) {
+        return;
+      }
+
+      setOpenComponent(null);
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointerDown);
+  }, [openComponent]);
+
+  function toggleComponentFromHeader(componentId: string) {
+    setOpenComponent((current) =>
+      current?.componentId === componentId
+        ? null
+        : { componentId, focusStudentId: visibleStudents[0]?.id ?? null },
+    );
+  }
+
+  function toggleComponentFromCell(componentId: string, studentId: string) {
+    setOpenComponent((current) =>
+      current?.componentId === componentId && current.focusStudentId === studentId
+        ? null
+        : { componentId, focusStudentId: studentId },
+    );
+  }
 
   return (
     <>
@@ -167,8 +212,15 @@ function GradeEntryPage({
                 <th scope="col">L/P</th>
                 {components.map((component) => (
                   <th key={component.id} scope="col">
-                    {component.name}
-                    <small>{component.weight}%</small>
+                    <button
+                      aria-expanded={openComponent?.componentId === component.id}
+                      className="teacher-component-accordion-trigger"
+                      onClick={() => toggleComponentFromHeader(component.id)}
+                      type="button"
+                    >
+                      {component.name}
+                      <small>{component.weight}%</small>
+                    </button>
                   </th>
                 ))}
                 <th scope="col">Nilai Akhir</th>
@@ -189,9 +241,12 @@ function GradeEntryPage({
                         <ScoreEntriesDropdown
                           componentName={component.name}
                           disabled={isGradeLocked}
+                          isOpen={openComponent?.componentId === component.id}
                           onSave={(values) =>
                             onUpdateScoreEntries(student.id, component.id, values)
                           }
+                          onToggle={() => toggleComponentFromCell(component.id, student.id)}
+                          shouldFocus={openComponent?.focusStudentId === student.id}
                           studentName={student.name}
                           values={
                             scoreEntries[student.id]?.[component.id] ??

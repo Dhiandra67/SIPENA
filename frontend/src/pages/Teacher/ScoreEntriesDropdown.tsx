@@ -1,10 +1,13 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 interface ScoreEntriesDropdownProps {
   componentName: string;
   studentName: string;
   values: string[];
   disabled?: boolean;
+  isOpen: boolean;
+  shouldFocus: boolean;
+  onToggle: () => void;
   onSave: (values: string[]) => void;
 }
 
@@ -19,14 +22,22 @@ function ScoreEntriesDropdown({
   studentName,
   values,
   disabled = false,
+  isOpen,
+  shouldFocus,
+  onToggle,
   onSave,
 }: ScoreEntriesDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const scoreInputRef = useRef<HTMLInputElement>(null);
   const parsedDraft = Number(draft);
   const canAdd =
     draft !== "" && Number.isFinite(parsedDraft) && parsedDraft >= 0 && parsedDraft <= 100;
+
+  useEffect(() => {
+    if (isOpen && shouldFocus) {
+      scoreInputRef.current?.focus();
+    }
+  }, [isOpen, shouldFocus]);
 
   function addEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,13 +52,13 @@ function ScoreEntriesDropdown({
   }
 
   return (
-    <details className="teacher-score-entry-dropdown" open={isOpen}>
+    <details className="teacher-score-entry-dropdown" data-score-entry-root open={isOpen}>
       <summary
         aria-label={`${componentName} ${studentName}: rata-rata ${formatAverage(values)}`}
         className="teacher-score-entry-trigger"
         onClick={(event) => {
           event.preventDefault();
-          setIsOpen((open) => !open);
+          onToggle();
         }}
       >
         <span>{formatAverage(values)}</span>

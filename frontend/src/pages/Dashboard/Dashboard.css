@@ -1,4 +1,6 @@
 .dashboard-app {
+  --dashboard-sidebar-width: clamp(230px, 17.36vw, 250px);
+
   display: flex;
   min-height: 100vh;
   background: #f4f1ea;
@@ -11,19 +13,19 @@
   position: fixed;
   z-index: 5;
   display: flex;
-  width: 148px;
+  width: var(--dashboard-sidebar-width);
   height: 100vh;
   flex-direction: column;
-  padding: 14px 10px 12px;
+  padding: 20px 16px 16px;
   background: #384B54;
   color: #f8faf8;
 }
 
 .dashboard-brand {
   display: flex;
-  min-height: 34px;
+  min-height: 42px;
   align-items: center;
-  gap: 7px;
+  gap: 11px;
   color: inherit;
   text-decoration: none;
 }
@@ -35,88 +37,103 @@
 }
 
 .dashboard-brand strong {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 750;
   line-height: 1;
 }
 
 .dashboard-brand small {
   color: #c4d0c9;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
   line-height: 1;
 }
 
 .dashboard-brand-mark {
   display: inline-flex;
-  width: 23px;
-  height: 23px;
-  flex: 0 0 23px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 9px;
   background: #52636c;
   color: #fff;
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .sidebar-navigation {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 9px;
-  padding-top: 8px;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 10px;
   border-top: 1px solid rgb(255 255 255 / 12%);
 }
 
 .navigation-link {
   display: flex;
-  min-height: 25px;
+  min-height: 40px;
   align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: 4px;
+  gap: 10px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: transparent;
   color: #e2e8e4;
-  font-size: 8px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   text-decoration: none;
-  transition: background-color 150ms ease;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
-.navigation-link:hover,
-.navigation-link.active {
-  background: rgb(255 255 255 / 9%);
+.navigation-link:hover:not(.active) {
+  background: rgb(255 255 255 / 8%);
   color: #fff;
 }
 
+.navigation-link.active {
+  background: #e8eee9;
+  color: #384B54;
+}
+
+.navigation-link.active:hover {
+  background: #f0f4f0;
+}
+
+.navigation-link:focus-visible,
+.sidebar-logout:focus-visible {
+  outline: 2px solid #dfe9e2;
+  outline-offset: 2px;
+}
+
 .dashboard-icon {
-  width: 12px;
-  height: 12px;
-  flex: 0 0 12px;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
 }
 
 .sidebar-logout {
   display: flex;
-  min-height: 27px;
+  min-height: 40px;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-top: auto;
-  padding: 7px 8px 0;
+  padding: 12px 11px 0;
   border: 0;
   border-top: 1px solid rgb(255 255 255 / 12%);
   background: transparent;
   color: #e2e8e4;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 600;
   text-align: left;
 }
 
 .dashboard-main {
-  width: calc(100% - 148px);
+  width: calc(100% - var(--dashboard-sidebar-width));
   min-height: 100vh;
-  margin-left: 148px;
+  margin-left: var(--dashboard-sidebar-width);
 }
 
 .dashboard-topbar {
@@ -494,60 +511,6 @@
   padding: 19px 16px 30px;
 }
 
-.teacher-dashboard .dashboard-sidebar {
-  width: 250px;
-  padding: 20px 14px 16px;
-}
-
-.teacher-dashboard .dashboard-main {
-  width: calc(100% - 250px);
-  margin-left: 250px;
-}
-
-.teacher-dashboard .dashboard-brand {
-  min-height: 42px;
-  gap: 11px;
-}
-
-.teacher-dashboard .dashboard-brand strong {
-  font-size: 13px;
-}
-
-.teacher-dashboard .dashboard-brand small {
-  font-size: 9px;
-}
-
-.teacher-dashboard .dashboard-brand-mark {
-  width: 36px;
-  height: 36px;
-  flex-basis: 36px;
-  border-radius: 9px;
-  font-size: 16px;
-}
-
-.teacher-dashboard .sidebar-navigation {
-  gap: 6px;
-  margin-top: 14px;
-}
-
-.teacher-dashboard .navigation-link {
-  min-height: 40px;
-  gap: 10px;
-  padding: 8px 11px;
-  font-size: 12px;
-}
-
-.teacher-dashboard .navigation-link .dashboard-icon {
-  width: 15px;
-  height: 15px;
-  flex-basis: 15px;
-}
-
-.teacher-dashboard .sidebar-logout {
-  min-height: 38px;
-  font-size: 11px;
-}
-
 .teacher-dashboard .dashboard-topbar {
   height: 54px;
   padding: 0 22px;
@@ -562,72 +525,6 @@
 
 .teacher-dashboard .dashboard-content {
   padding: 24px 22px 32px;
-}
-
-.admin-dashboard .dashboard-sidebar {
-  width: 202px;
-  padding: 16px 14px 14px;
-}
-
-.admin-dashboard .dashboard-main {
-  width: calc(100% - 202px);
-  margin-left: 202px;
-}
-
-.admin-dashboard .dashboard-brand {
-  min-height: 36px;
-  gap: 9px;
-}
-
-.admin-dashboard .dashboard-brand strong {
-  font-size: 12px;
-}
-
-.admin-dashboard .dashboard-brand small {
-  font-size: 9px;
-}
-
-.admin-dashboard .dashboard-brand-mark {
-  width: 32px;
-  height: 32px;
-  flex-basis: 32px;
-  border-radius: 7px;
-  font-size: 14px;
-}
-
-.admin-dashboard .sidebar-navigation {
-  gap: 7px;
-  margin-top: 12px;
-  padding-top: 0;
-  border-top: 0;
-}
-
-.admin-dashboard .navigation-link {
-  min-height: 33px;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 5px;
-  font-size: 11px;
-}
-
-.admin-dashboard .navigation-link .dashboard-icon {
-  width: 14px;
-  height: 14px;
-  flex-basis: 14px;
-}
-
-.admin-dashboard .navigation-link:hover,
-.admin-dashboard .navigation-link.active {
-  background: #e8eee9;
-  color: #384B54;
-}
-
-.admin-dashboard .sidebar-logout {
-  min-height: 38px;
-  justify-content: center;
-  gap: 10px;
-  padding: 8px 8px 0;
-  font-size: 10px;
 }
 
 .admin-dashboard .dashboard-topbar {

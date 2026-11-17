@@ -34,7 +34,6 @@ export const teacherNavigation: NavItem[] = [
   { label: "Dashboard", icon: "dashboard", href: "#dashboard" },
   { label: "Pengaturan Komponen Nilai", icon: "settings", href: "#grade-settings" },
   { label: "Input dan Kelola Nilai", icon: "grades", href: "#grade-entry" },
-  { label: "Profil Saya", icon: "teacher", href: "#profile" },
 ];
 
 function DashboardIcon({ name }: { name: IconName }) {

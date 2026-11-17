@@ -140,12 +140,9 @@ function Dashboard({ user, onLogout }: DashboardProps) {
             />
           ) : (
             <TeacherPanel
-              displayName={displayName}
-              email={profileEmail}
               onNavigate={(route) => {
                 window.location.hash = route;
               }}
-              onProfileChange={setDisplayName}
               onUnsavedChange={setHasUnsavedChanges}
               route={activeRoute}
             />

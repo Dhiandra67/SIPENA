@@ -3,8 +3,7 @@ export type TeacherRoute =
   | "assignments"
   | "class-detail"
   | "grade-settings"
-  | "grade-entry"
-  | "profile";
+  | "grade-entry";
 
 export interface TeacherStudent {
   id: string;
@@ -47,9 +46,6 @@ export type ScoreEntriesMap = Record<string, Record<string, string[]>>;
 
 export interface TeacherPanelProps {
   route: string;
-  displayName: string;
-  email: string;
   onNavigate: (route: string) => void;
-  onProfileChange: (name: string) => void;
   onUnsavedChange?: (hasUnsaved: boolean) => void;
 }

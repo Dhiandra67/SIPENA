@@ -1,6 +1,17 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import AdminPanel from "./AdminPanel";
+
+const spreadsheetMocks = vi.hoisted(() => ({
+  downloadSpreadsheet: vi.fn(),
+  readSpreadsheetFile: vi.fn(),
+}));
+
+vi.mock("../../lib/spreadsheet", () => spreadsheetMocks);
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const overviewPayload = {
   data: {
@@ -48,10 +59,16 @@ const overviewPayload = {
 };
 
 describe("panel admin modular", () => {
-  it("membuat siswa baru dari halaman data siswa", () => {
-    render(<AdminPanel onNavigate={() => undefined} route="students" />);
+  it("membatasi notifikasi tambah siswa ke halaman terkait selama 10 detik", () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    vi.useFakeTimers();
+    const { rerender } = render(<AdminPanel onNavigate={() => undefined} route="students" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Tambah siswa/i }));
+    expect(screen.queryByRole("option", { name: "Lulus" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Pindah" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Aktif" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Nonaktif" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("NIS"), { target: { value: "2026010" } });
     fireEvent.change(screen.getByLabelText("NISN"), { target: { value: "0123456710" } });
     fireEvent.change(screen.getByLabelText("Nama lengkap"), { target: { value: "Kirana Putri" } });
@@ -61,6 +78,17 @@ describe("panel admin modular", () => {
     fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
 
     expect(screen.getByText("Kirana Putri")).toBeInTheDocument();
+    expect(screen.getByText("Data berhasil ditambahkan.")).toBeInTheDocument();
+
+    rerender(<AdminPanel onNavigate={() => undefined} route="teachers" />);
+    expect(screen.queryByText("Data berhasil ditambahkan.")).not.toBeInTheDocument();
+
+    rerender(<AdminPanel onNavigate={() => undefined} route="students" />);
+    expect(screen.getByText("Data berhasil ditambahkan.")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByText("Data berhasil ditambahkan.")).not.toBeInTheDocument();
   });
 
   it("membuka rekap nilai dari dashboard admin", () => {
@@ -70,6 +98,40 @@ describe("panel admin modular", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Lihat Nilai" })[0]);
 
     expect(onNavigate).toHaveBeenCalledWith("grades");
+  });
+
+  it("mengunduh template Excel siswa yang dapat diisi lalu diimpor", async () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    const headers = [
+      "NIS",
+      "NISN",
+      "Nama Lengkap",
+      "Jenis Kelamin (L/P)",
+      "Kode Kelas",
+      "Status",
+    ];
+    spreadsheetMocks.downloadSpreadsheet.mockResolvedValue(undefined);
+    spreadsheetMocks.readSpreadsheetFile.mockResolvedValue([
+      headers,
+      ["2026012", "0123456712", "Mawar Putri", "P", "VII-A", "Aktif"],
+    ]);
+
+    render(<AdminPanel onNavigate={() => undefined} route="students" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Template XLSX" }));
+    await waitFor(() => {
+      expect(spreadsheetMocks.downloadSpreadsheet).toHaveBeenCalledWith(
+        "template-data-siswa-sipena.xlsx",
+        [headers],
+        "Data Siswa",
+      );
+    });
+    expect(await screen.findByText("Template data siswa berhasil diunduh.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Impor data siswa"), {
+      target: { files: [new File(["xlsx"], "data-siswa.xlsx")] },
+    });
+    expect(await screen.findByText("Mawar Putri")).toBeInTheDocument();
   });
 
   it("memuat overview backend dan menyimpan siswa baru ke endpoint CRUD", async () => {
@@ -113,7 +175,7 @@ describe("panel admin modular", () => {
 
     render(<AdminPanel onNavigate={() => undefined} route="students" />);
 
-    expect(await screen.findByText(/Terhubung ke database SIPENA/i)).toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Integrasi endpoint backend belum tersedia/i),
     ).not.toBeInTheDocument();
@@ -176,7 +238,8 @@ describe("panel admin modular", () => {
 
     expect(await screen.findByText("Nilai akhir semester 91.50")).toBeInTheDocument();
     expect(
-      screen.getByText(/Nilai rapor dimuat langsung dari database SIPENA/i),
-    ).toBeInTheDocument();
+      screen.queryByText(/Nilai rapor dimuat langsung dari database SIPENA/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
 });

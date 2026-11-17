@@ -16,7 +16,6 @@ function AdminEntityPage({
   footerNote,
   renderCell,
   isLoading = false,
-  isBackendSynced = false,
 }: AdminEntityPageProps) {
   return (
     <div className="admin-panel">
@@ -101,13 +100,6 @@ function AdminEntityPage({
         </footer>
       </section>
 
-      <div className="admin-demo-notice" role="note">
-        {isLoading
-          ? "Menghubungkan ke database SIPENA..."
-          : isBackendSynced
-            ? "Terhubung ke database SIPENA — perubahan tersimpan langsung ke server."
-            : "Tidak terhubung ke server backend SIPENA. Pastikan server backend aktif agar data tersimpan."}
-      </div>
     </div>
   );
 }

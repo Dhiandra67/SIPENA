@@ -11,7 +11,6 @@ import GradeEntryPage from "./GradeEntryPage";
 import GradeSettingsPage from "./GradeSettingsPage";
 import TeacherDashboardPage from "./TeacherDashboardPage";
 import { AssignmentSelector, TeacherPageHeading } from "./TeacherHeader";
-import TeacherProfilePage from "./TeacherProfilePage";
 import type {
   GradeComponent,
   GradeRange,
@@ -38,10 +37,7 @@ const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, 
 
 function TeacherPanel({
   route,
-  displayName,
-  email,
   onNavigate,
-  onProfileChange,
   onUnsavedChange,
 }: TeacherPanelProps) {
   const [assignmentList, setAssignmentList] = useState<TeachingAssignment[]>([]);
@@ -49,7 +45,6 @@ function TeacherPanel({
   const [periodList, setPeriodList] = useState<PeriodOption[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isBackendSynced, setIsBackendSynced] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
   const [selectedSettingsAssignmentId, setSelectedSettingsAssignmentId] = useState("");
   const [componentsByAssignment, setComponentsByAssignment] = useState<
@@ -64,13 +59,6 @@ function TeacherPanel({
   const [search, setSearch] = useState("");
   const [gradeStatusFilter, setGradeStatusFilter] = useState("Semua status");
   const [notice, setNotice] = useState("");
-  const [profileName, setProfileName] = useState(displayName);
-  const [profileEmail, setProfileEmail] = useState(email);
-
-  useEffect(() => {
-    setProfileName(displayName);
-    setProfileEmail(email);
-  }, [displayName, email]);
 
   useEffect(() => {
     onUnsavedChange?.(hasUnsavedScores || hasUnsavedComponents || hasUnsavedKkm);
@@ -146,7 +134,6 @@ function TeacherPanel({
     setHasUnsavedScores(false);
     setHasUnsavedComponents(false);
     setHasUnsavedKkm(false);
-    setIsBackendSynced(true);
   }
 
   useEffect(() => {
@@ -162,7 +149,6 @@ function TeacherPanel({
   async function loadTeacherWorkspace(periodName?: string) {
     const token = getStoredAccessToken();
     if (!token) {
-      setIsBackendSynced(false);
       setIsLoading(false);
       setNotice(
         "Sesi autentikasi tidak ditemukan atau server backend tidak aktif. Silakan login kembali.",
@@ -178,7 +164,6 @@ function TeacherPanel({
         },
       });
       if (!res.ok) {
-        setIsBackendSynced(false);
         setNotice("Gagal memuat data pengajaran dari server backend.");
         return;
       }
@@ -197,7 +182,6 @@ function TeacherPanel({
         applyWorkspacePayload(payload.data);
       }
     } catch {
-      setIsBackendSynced(false);
       setNotice(
         "Tidak dapat terhubung ke server backend. Pastikan server backend (php artisan serve) sedang aktif.",
       );
@@ -792,7 +776,7 @@ function TeacherPanel({
         </section>
       </>
     );
-  } else if (assignmentList.length === 0 && currentRoute !== "profile") {
+  } else if (assignmentList.length === 0) {
     content = (
       <>
         {renderHeading("Daftar penugasan mengajar pada periode akademik terpilih.")}
@@ -806,15 +790,6 @@ function TeacherPanel({
                 <strong>Pembagian Tugas Guru</strong>.
               </p>
             </div>
-          </div>
-          <div className="teacher-button-row">
-            <button
-              className="teacher-secondary-button"
-              onClick={() => navigate("profile")}
-              type="button"
-            >
-              Buka Profil Saya
-            </button>
           </div>
         </section>
       </>
@@ -918,22 +893,6 @@ function TeacherPanel({
           />
         );
         break;
-      case "profile":
-        content = (
-          <TeacherProfilePage
-            heading={renderHeading("Kelola informasi kontak dan ubah kata sandi akun Anda.")}
-            onNotice={setNotice}
-            onProfileSaved={(name, nextEmail, message) => {
-              setProfileName(name);
-              setProfileEmail(nextEmail);
-              onProfileChange(name);
-              setNotice(message);
-            }}
-            profileEmail={profileEmail}
-            profileName={profileName}
-          />
-        );
-        break;
       default:
         content = (
           <TeacherDashboardPage
@@ -958,13 +917,6 @@ function TeacherPanel({
         </p>
       )}
       {content}
-      <p className="teacher-demo-note" role="note">
-        {isLoading
-          ? "Menghubungkan ke database PostgreSQL SIPENA..."
-          : isBackendSynced
-            ? "Terhubung ke database PostgreSQL SIPENA — komponen dan nilai langsung tersimpan ke server."
-            : "Tidak terhubung ke server backend SIPENA. Pastikan server backend aktif agar data dapat dimuat dan disimpan."}
-      </p>
     </div>
   );
 }
