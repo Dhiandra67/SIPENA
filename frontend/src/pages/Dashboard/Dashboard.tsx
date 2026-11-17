@@ -10,6 +10,22 @@ import ProfileModal from "./ProfileModal";
 import "./Dashboard.css";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+const adminRoutes = new Set([
+  "dashboard",
+  "students",
+  "teachers",
+  "classes",
+  "subjects",
+  "assignments",
+  "grades",
+]);
+const teacherRoutes = new Set([
+  "dashboard",
+  "assignments",
+  "class-detail",
+  "grade-settings",
+  "grade-entry",
+]);
 
 interface DashboardProps {
   user: AuthUser;
@@ -28,9 +44,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const navigation = isAdmin ? adminNavigation : teacherNavigation;
-  const [activeRoute, setActiveRoute] = useState(
-    () => window.location.hash.slice(1) || "dashboard",
-  );
+  const [activeRoute, setActiveRoute] = useState("dashboard");
   const initial = displayName.trim().charAt(0).toUpperCase() || "S";
 
   function confirmAllowNavigation(targetRoute?: string): boolean {
@@ -48,12 +62,21 @@ function Dashboard({ user, onLogout }: DashboardProps) {
 
   useEffect(() => {
     function syncRoute() {
-      setActiveRoute(window.location.hash.slice(1) || "dashboard");
+      const requestedRoute = window.location.hash.slice(1);
+      const routeIsValid = (isAdmin ? adminRoutes : teacherRoutes).has(requestedRoute);
+      const nextRoute = routeIsValid ? requestedRoute : "dashboard";
+      setActiveRoute(nextRoute);
+      if (!routeIsValid) {
+        window.location.hash = nextRoute;
+      }
     }
 
     window.addEventListener("hashchange", syncRoute);
+    if (window.location.hash !== "#dashboard") {
+      window.location.hash = "dashboard";
+    }
     return () => window.removeEventListener("hashchange", syncRoute);
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     const token = getStoredAccessToken();

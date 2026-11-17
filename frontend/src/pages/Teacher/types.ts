@@ -8,6 +8,7 @@ export type TeacherRoute =
 export interface TeacherStudent {
   id: string;
   nis: string;
+  nisn?: string | null;
   name: string;
   gender: "L" | "P";
 }

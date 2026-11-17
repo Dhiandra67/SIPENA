@@ -67,7 +67,10 @@ function DashboardPage({
 
       {notice && <p className="admin-notice" role="status">{notice}</p>}
 
-      <section className="admin-records-card" aria-label="Periode akademik aktif">
+      <section
+        className="admin-records-card admin-period-card"
+        aria-label="Periode akademik aktif"
+      >
         <div className="admin-section-heading admin-card-heading">
           <div>
             <h2>Periode Akademik</h2>
@@ -86,7 +89,7 @@ function DashboardPage({
             </thead>
             <tbody>
               <tr>
-                <td>
+                <td data-label="Pilih Periode Aktif">
                   <label>
                     <span className="visually-hidden">Pilih periode aktif</span>
                     <select onChange={(event) => onPeriodChange(event.target.value)} value={currentPeriod}>
@@ -94,7 +97,7 @@ function DashboardPage({
                     </select>
                   </label>
                 </td>
-                <td>
+                <td data-label="Input Tahun Ajaran">
                   <label>
                     <span className="visually-hidden">Tahun ajaran baru</span>
                     <input
@@ -106,7 +109,7 @@ function DashboardPage({
                     />
                   </label>
                 </td>
-                <td>
+                <td data-label="Semester">
                   <label>
                     <span className="visually-hidden">Semester periode baru</span>
                     <select defaultValue="Ganjil" name="semester">
@@ -115,7 +118,7 @@ function DashboardPage({
                     </select>
                   </label>
                 </td>
-                <td>
+                <td data-label="Aksi">
                   <button className="admin-primary-button" type="submit">Tambah &amp; Aktifkan</button>
                 </td>
               </tr>
@@ -131,8 +134,8 @@ function DashboardPage({
             <p>Daftar kelas yang terdaftar pada periode {currentPeriod}.</p>
           </div>
         </div>
-        <div className="admin-table-scroll">
-          <table className="admin-table">
+        <div className="admin-table-scroll admin-class-scroll">
+          <table className="admin-table admin-dashboard-class-table">
             <thead>
               <tr>
                 <th scope="col">Kode Kelas</th>
@@ -146,12 +149,12 @@ function DashboardPage({
             <tbody>
               {classes.map((classRecord) => (
                 <tr key={classRecord.id}>
-                  <td>{classRecord.code}</td>
-                  <td>{classRecord.name}</td>
-                  <td>{classRecord.level}</td>
-                  <td>{classRecord.homeroom || "—"}</td>
-                  <td>{classRecord.students}</td>
-                  <td>
+                  <td data-label="Kode Kelas">{classRecord.code}</td>
+                  <td data-label="Nama Kelas">{classRecord.name}</td>
+                  <td data-label="Tingkat">{classRecord.level}</td>
+                  <td data-label="Wali Kelas">{classRecord.homeroom || "—"}</td>
+                  <td data-label="Jumlah Siswa">{classRecord.students}</td>
+                  <td data-label="Aksi">
                     <button
                       className="admin-row-action-button"
                       onClick={() => onViewGrades(classRecord)}

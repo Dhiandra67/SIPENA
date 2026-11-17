@@ -46,8 +46,8 @@ function AdminEntityPage({
           </button>
         </div>
 
-        <div className="admin-table-scroll">
-          <table className="admin-table">
+        <div className="admin-table-scroll admin-entity-scroll">
+          <table className="admin-table admin-entity-table">
             <thead>
               <tr>
                 {section.columns.map((column) => (
@@ -60,7 +60,7 @@ function AdminEntityPage({
               {visibleRows.map((record) => (
                 <tr key={record.id}>
                   {section.columns.map((column) => (
-                    <td key={column.key}>
+                    <td data-label={column.label} key={column.key}>
                       {renderCell?.(record, column.key) ??
                         (column.key === "status"
                           ? (
@@ -71,7 +71,7 @@ function AdminEntityPage({
                           : record[column.key] ?? "—")}
                     </td>
                   ))}
-                  <td className="admin-row-actions">
+                  <td className="admin-row-actions" data-label="Aksi">
                     <button
                       aria-label={`Lihat ${section.title}: ${record.name ?? record.grade ?? record.code ?? record.nis ?? record.teacher ?? ""}`}
                       onClick={() => onDetails(record)}

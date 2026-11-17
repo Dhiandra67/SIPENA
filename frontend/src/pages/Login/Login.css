@@ -520,3 +520,64 @@
     text-shadow: 0 1px 3px rgb(16 43 83 / 70%);
   }
 }
+
+@media (max-width: 700px) {
+  .page-shell {
+    background-color: #102b53;
+    background-image:
+      linear-gradient(
+        180deg,
+        rgb(16 43 83 / 72%) 0%,
+        rgb(16 43 83 / 42%) 40%,
+        rgb(16 43 83 / 70%) 100%
+      ),
+      url("../../assets/classroom-banner.jpg");
+    background-position: center, center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    color: #fff;
+  }
+
+  .site-header {
+    border: 0;
+    background: transparent;
+  }
+
+  .brand {
+    color: #fff;
+  }
+
+  .brand-mark {
+    background: rgb(255 255 255 / 18%);
+    color: #fff;
+  }
+
+  .login-layout {
+    gap: 23px;
+    padding-top: 28px;
+    padding-bottom: 24px;
+  }
+
+  .welcome-copy h1 {
+    color: #fff;
+  }
+
+  .welcome-copy p {
+    color: #eef2f8;
+  }
+
+  .login-card {
+    border-color: rgb(255 255 255 / 72%);
+    border-radius: 15px;
+    box-shadow: 0 14px 36px rgb(16 43 83 / 22%);
+  }
+
+  .login-card h2 {
+    color: #102b53;
+  }
+
+  .site-footer {
+    color: #fff;
+    text-shadow: 0 1px 3px rgb(16 43 83 / 70%);
+  }
+}
