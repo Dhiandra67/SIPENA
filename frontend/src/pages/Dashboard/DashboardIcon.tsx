@@ -119,7 +119,7 @@ function DashboardIcon({ name }: { name: IconName }) {
       stroke="currentColor"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth="1.7"
+      strokeWidth="1.8"
       viewBox="0 0 24 24"
     >
       {paths[name]}

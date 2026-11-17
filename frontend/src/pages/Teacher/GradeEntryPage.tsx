@@ -59,6 +59,7 @@ function GradeEntryPage({
   const [openComponent, setOpenComponent] = useState<{
     componentId: string;
     focusStudentId: string | null;
+    openAll: boolean;
   } | null>(null);
   const isGradeLocked = Boolean(currentAssignment.isLocked);
 
@@ -99,17 +100,19 @@ function GradeEntryPage({
 
   function toggleComponentFromHeader(componentId: string) {
     setOpenComponent((current) =>
-      current?.componentId === componentId
+      current?.componentId === componentId && current.openAll
         ? null
-        : { componentId, focusStudentId: visibleStudents[0]?.id ?? null },
+        : { componentId, focusStudentId: visibleStudents[0]?.id ?? null, openAll: true },
     );
   }
 
   function toggleComponentFromCell(componentId: string, studentId: string) {
     setOpenComponent((current) =>
-      current?.componentId === componentId && current.focusStudentId === studentId
+      current?.componentId === componentId &&
+      current.focusStudentId === studentId &&
+      !current.openAll
         ? null
-        : { componentId, focusStudentId: studentId },
+        : { componentId, focusStudentId: studentId, openAll: false },
     );
   }
 
@@ -218,7 +221,9 @@ function GradeEntryPage({
                 {components.map((component) => (
                   <th key={component.id} scope="col">
                     <button
-                      aria-expanded={openComponent?.componentId === component.id}
+                      aria-expanded={
+                        openComponent?.componentId === component.id && openComponent.openAll
+                      }
                       className="teacher-component-accordion-trigger"
                       onClick={() => toggleComponentFromHeader(component.id)}
                       type="button"
@@ -252,12 +257,19 @@ function GradeEntryPage({
                         <ScoreEntriesDropdown
                           componentName={component.name}
                           disabled={isGradeLocked}
-                          isOpen={openComponent?.componentId === component.id}
+                          isOpen={
+                            openComponent?.componentId === component.id &&
+                            (openComponent.openAll ||
+                              openComponent.focusStudentId === student.id)
+                          }
                           onSave={(values) =>
                             onUpdateScoreEntries(student.id, component.id, values)
                           }
                           onToggle={() => toggleComponentFromCell(component.id, student.id)}
-                          shouldFocus={openComponent?.focusStudentId === student.id}
+                          shouldFocus={
+                            openComponent?.componentId === component.id &&
+                            openComponent.focusStudentId === student.id
+                          }
                           studentName={student.name}
                           values={
                             scoreEntries[student.id]?.[component.id] ??
