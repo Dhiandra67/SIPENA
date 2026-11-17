@@ -23,9 +23,8 @@ export function TeacherPageHeading({
   return (
     <header className={`teacher-page-heading${isDashboard ? " teacher-dashboard-heading" : ""}`}>
       <div>
-        <span className="teacher-eyebrow">SIPENA · GURU</span>
         <h1>{title}</h1>
-        <p>{description}</p>
+        {description && <p>{description}</p>}
       </div>
       {periodList.length > 0 ? (
         <label className="teacher-select-label" style={{ minWidth: "210px" }}>

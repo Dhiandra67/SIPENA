@@ -829,25 +829,21 @@ function TeacherPanel({
   if (isLoading) {
     content = (
       <>
-        {renderHeading("Memuat data pengajaran dan nilai dari server...")}
+        {renderHeading("")}
         <section className="teacher-card">
-          <p className="teacher-empty">Memuat data pengajaran dari database...</p>
+          <p className="teacher-empty">Memuat pengajaran...</p>
         </section>
       </>
     );
   } else if (assignmentList.length === 0) {
     content = (
       <>
-        {renderHeading("Daftar penugasan mengajar pada periode akademik terpilih.")}
+        {renderHeading("")}
         <section className="teacher-card">
           <div className="teacher-card-heading">
             <div>
-              <h2>Belum Ada Penugasan Mengajar</h2>
-              <p>
-                Akun Anda belum memiliki penugasan kelas dan mata pelajaran pada periode akademik
-                ini. Silakan hubungi Admin Sekolah untuk menambahkan penugasan pada menu{" "}
-                <strong>Pembagian Tugas Guru</strong>.
-              </p>
+              <h2>Belum ada pengajaran</h2>
+              <p>Hubungi Admin Sekolah untuk menambahkan kelas dan mata pelajaran.</p>
             </div>
           </div>
         </section>
@@ -860,7 +856,7 @@ function TeacherPanel({
           <AssignmentsPage
             assignmentList={assignmentList}
             componentsByAssignment={componentsByAssignment}
-            heading={renderHeading("Daftar kelas dan mata pelajaran yang Anda ampu.")}
+            heading={renderHeading("")}
             onOpenAssignment={openAssignment}
             scores={scores}
           />
@@ -875,7 +871,7 @@ function TeacherPanel({
             components={components}
             currentAssignment={currentAssignment}
             gradeRanges={gradeRanges}
-            heading={renderHeading("Ringkasan kelas, rekapitulasi nilai, dan akses penilaian.")}
+            heading={renderHeading("")}
             highest={highest}
             lowest={lowest}
             onExportGrades={() => void exportGrades()}
@@ -900,9 +896,7 @@ function TeacherPanel({
             })}
             hasUnsavedComponents={hasUnsavedComponents}
             hasUnsavedKkm={hasUnsavedKkm}
-            heading={renderHeading(
-              "Atur komponen penilaian dan bobot untuk satu atau seluruh pengajaran.",
-            )}
+            heading={renderHeading("")}
             kkmValue={
               selectedSettingsAssignmentId === "all"
                 ? (kkmDrafts.all ??
@@ -950,9 +944,7 @@ function TeacherPanel({
             gradeStatusFilter={gradeStatusFilter}
             hasUnsavedScores={hasUnsavedScores}
             hasValidWeights={hasValidWeights}
-            heading={renderHeading(
-              "Masukkan nilai setiap komponen; nilai akhir dihitung otomatis dari rata-ratanya.",
-            )}
+            heading={renderHeading("Input nilai per komponen.")}
             onDownloadTemplate={() => void downloadGradeTemplate()}
             onExportGrades={() => void exportGrades()}
             onGradeStatusFilterChange={setGradeStatusFilter}
@@ -974,7 +966,7 @@ function TeacherPanel({
             completionCount={completionCount}
             componentsByAssignment={componentsByAssignment}
             currentAssignment={currentAssignment}
-            heading={renderHeading(`Ringkasan pengajaran ${currentAssignment.subject}`)}
+            heading={renderHeading("")}
             onNavigate={navigate}
             onOpenAssignment={openAssignment}
             scores={scores}
