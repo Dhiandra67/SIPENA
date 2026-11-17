@@ -1,6 +1,7 @@
 import type {
   GradeComponent,
   GradeRange,
+  PeriodOption,
   ScoreMap,
   TeacherRoute,
   TeachingAssignment,
@@ -85,4 +86,26 @@ export function resolvePredicate(score: number | null, gradeRanges: GradeRange[]
 export function formatCompletionStatus(score: number | null, kkm: number): string {
   if (score === null) return "Belum lengkap";
   return score >= kkm ? "Tuntas" : "Belum tuntas";
+}
+
+export function sortPeriodOptions(periods: PeriodOption[]): PeriodOption[] {
+  const parsePeriod = (value: string) => {
+    const yearMatch = value.match(/(\d{4})\/(\d{4})/);
+    const startYear = yearMatch ? Number(yearMatch[1]) : Number.MAX_SAFE_INTEGER;
+    const endYear = yearMatch ? Number(yearMatch[2]) : Number.MAX_SAFE_INTEGER;
+    const lower = value.toLocaleLowerCase("id");
+    const semesterOrder = lower.includes("ganjil") ? 1 : lower.includes("genap") ? 2 : 3;
+    return { startYear, endYear, semesterOrder };
+  };
+
+  return [...periods].sort((a, b) => {
+    const parsedA = parsePeriod(a.name);
+    const parsedB = parsePeriod(b.name);
+    if (parsedA.startYear !== parsedB.startYear) return parsedA.startYear - parsedB.startYear;
+    if (parsedA.endYear !== parsedB.endYear) return parsedA.endYear - parsedB.endYear;
+    if (parsedA.semesterOrder !== parsedB.semesterOrder) {
+      return parsedA.semesterOrder - parsedB.semesterOrder;
+    }
+    return a.name.localeCompare(b.name, "id");
+  });
 }

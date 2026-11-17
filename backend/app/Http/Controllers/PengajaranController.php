@@ -137,8 +137,8 @@ class PengajaranController extends Controller
         $periodeAktif = PeriodeAkademik::where('is_active', true)->first()
             ?? PeriodeAkademik::orderByDesc('id')->first();
 
-        $academic = PeriodeAkademik::orderByDesc('is_active')
-            ->orderByDesc('tanggal_mulai')
+        $academic = PeriodeAkademik::orderBy('tahun_ajaran')
+            ->orderByRaw("CASE WHEN semester = 'GANJIL' THEN 1 ELSE 2 END")
             ->get()
             ->map(fn (PeriodeAkademik $p) => $periodeController->formatPeriode($p))
             ->values();
@@ -150,9 +150,14 @@ class PengajaranController extends Controller
             ->map(fn (RentangNilai $r) => $rentangController->formatRentang($r))
             ->values();
 
-        $subjects = MataPelajaran::orderBy('kode_mapel')
+        $subjects = MataPelajaran::with('periodeAkademik')
+            ->orderBy('kode_mapel')
             ->get()
-            ->map(fn (MataPelajaran $m) => $mapelController->formatMapel($m))
+            ->flatMap(function (MataPelajaran $m) use ($mapelController) {
+                return $m->periodeAkademik->map(
+                    fn (PeriodeAkademik $p) => $mapelController->formatMapel($m, $p->nama_periode)
+                );
+            })
             ->values();
 
         $classes = Kelas::with(['periode', 'waliKelas'])
@@ -162,16 +167,28 @@ class PengajaranController extends Controller
             ->map(fn (Kelas $k) => $kelasController->formatKelas($k))
             ->values();
 
-        $teachers = Guru::with('user')
+        $teachers = Guru::with(['user', 'periodeAkademik'])
             ->orderBy('nama_lengkap')
             ->get()
-            ->map(fn (Guru $g) => $guruController->formatGuru($g))
+            ->flatMap(function (Guru $g) use ($guruController) {
+                return $g->periodeAkademik->map(
+                    fn (PeriodeAkademik $p) => $guruController->formatGuru($g, $p->nama_periode)
+                );
+            })
             ->values();
 
         $students = Siswa::with(['anggotaKelas.kelas.periode'])
             ->orderBy('nis')
             ->get()
-            ->map(fn (Siswa $s) => $siswaController->formatSiswa($s, $periodeAktif?->id))
+            ->flatMap(function (Siswa $s) use ($siswaController) {
+                $periodIds = $s->anggotaKelas
+                    ->map(fn ($ak) => $ak->kelas?->periode_id)
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                return $periodIds->map(fn (int $pid) => $siswaController->formatSiswa($s, $pid));
+            })
             ->values();
 
         $assignments = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])

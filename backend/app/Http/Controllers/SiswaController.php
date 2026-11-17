@@ -33,6 +33,8 @@ class SiswaController extends Controller
                 ->all();
 
             $query->whereHas('anggotaKelas', fn ($q) => $q->whereIn('kelas_id', $allowedKelasIds));
+        } elseif ($periodeAktif) {
+            $query->whereHas('anggotaKelas.kelas', fn ($q) => $q->where('periode_id', $periodeAktif->id));
         }
 
         if ($request->filled('search')) {
@@ -98,13 +100,24 @@ class SiswaController extends Controller
         $payload = $this->validateSiswa($request, $periodeAktif->id);
 
         $siswa = DB::transaction(function () use ($payload): Siswa {
-            $created = Siswa::create([
-                'nis' => $payload['nis'],
-                'nisn' => $payload['nisn'],
-                'nama_lengkap' => $payload['nama_lengkap'],
-                'jenis_kelamin' => $payload['jenis_kelamin'],
-                'status' => $payload['status'],
-            ]);
+            $existing = Siswa::where('nis', $payload['nis'])->first();
+            if ($existing) {
+                $existing->update([
+                    'nisn' => $payload['nisn'],
+                    'nama_lengkap' => $payload['nama_lengkap'],
+                    'jenis_kelamin' => $payload['jenis_kelamin'],
+                    'status' => $payload['status'],
+                ]);
+                $created = $existing;
+            } else {
+                $created = Siswa::create([
+                    'nis' => $payload['nis'],
+                    'nisn' => $payload['nisn'],
+                    'nama_lengkap' => $payload['nama_lengkap'],
+                    'jenis_kelamin' => $payload['jenis_kelamin'],
+                    'status' => $payload['status'],
+                ]);
+            }
 
             AnggotaKelas::updateOrCreate([
                 'kelas_id' => $payload['kelas']->id,
@@ -185,8 +198,15 @@ class SiswaController extends Controller
             ->get()
             ->keyBy(fn (Kelas $k) => strtoupper($k->kode_kelas));
 
-        $existingNis = Siswa::pluck('nis')->flip()->all();
-        $existingNisn = Siswa::whereNotNull('nisn')->pluck('nisn')->flip()->all();
+        $existingNis = Siswa::whereHas('anggotaKelas.kelas', fn ($q) => $q->where('periode_id', $periodeAktif->id))
+            ->pluck('nis')
+            ->flip()
+            ->all();
+        $existingNisn = Siswa::whereHas('anggotaKelas.kelas', fn ($q) => $q->where('periode_id', $periodeAktif->id))
+            ->whereNotNull('nisn')
+            ->pluck('nisn')
+            ->flip()
+            ->all();
 
         $seenNis = [];
         $seenNisn = [];
@@ -253,15 +273,17 @@ class SiswaController extends Controller
         $createdStudents = DB::transaction(function () use ($validatedRows): array {
             $result = [];
             foreach ($validatedRows as $item) {
-                $siswa = Siswa::create([
-                    'nis' => $item['nis'],
-                    'nisn' => $item['nisn'],
-                    'nama_lengkap' => $item['nama_lengkap'],
-                    'jenis_kelamin' => $item['jenis_kelamin'],
-                    'status' => 'AKTIF',
-                ]);
+                $siswa = Siswa::updateOrCreate(
+                    ['nis' => $item['nis']],
+                    [
+                        'nisn' => $item['nisn'],
+                        'nama_lengkap' => $item['nama_lengkap'],
+                        'jenis_kelamin' => $item['jenis_kelamin'],
+                        'status' => 'AKTIF',
+                    ]
+                );
 
-                AnggotaKelas::create([
+                AnggotaKelas::updateOrCreate([
                     'kelas_id' => $item['kelas_id'],
                     'siswa_id' => $siswa->id,
                 ]);
@@ -355,6 +377,8 @@ class SiswaController extends Controller
         });
         if ($ignoreId !== null) {
             $duplicateQuery->where('id', '!=', $ignoreId);
+        } else {
+            $duplicateQuery->whereHas('anggotaKelas.kelas', fn ($q) => $q->where('periode_id', $periodeId));
         }
         if ($duplicateQuery->exists()) {
             abort(response()->json(['message' => 'NIS atau NISN sudah terdaftar.'], 422));

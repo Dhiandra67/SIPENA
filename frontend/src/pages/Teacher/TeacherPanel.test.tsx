@@ -277,4 +277,29 @@ describe("rekap nilai pada detail kelas", () => {
       expect(JSON.parse(String(saveCall?.[1]?.body))).toEqual({ kkm: 80 });
     });
   });
+
+  it("mengatur dan menyimpan KKM ketika filter Semua Pengajaran dipilih", async () => {
+    const fetchMock = vi.mocked(fetch);
+    render(
+      <TeacherPanel
+        onNavigate={() => undefined}
+        route="grade-settings"
+      />,
+    );
+
+    const assignmentSelect = await screen.findByLabelText("Pilih pengajaran");
+    fireEvent.change(assignmentSelect, { target: { value: "all" } });
+
+    const kkmInput = screen.getByLabelText("KKM Semua Pengajaran");
+    fireEvent.change(kkmInput, { target: { value: "78" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan KKM" }));
+
+    await waitFor(() => {
+      const saveCall = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith("/v1/pengajaran/all/kkm"),
+      );
+      expect(saveCall).toBeDefined();
+      expect(JSON.parse(String(saveCall?.[1]?.body))).toEqual({ kkm: 78 });
+    });
+  });
 });

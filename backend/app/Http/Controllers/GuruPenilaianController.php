@@ -217,13 +217,26 @@ class GuruPenilaianController extends Controller
         ]);
     }
 
-    public function updateKkm(Request $request, int $id): JsonResponse
+    public function updateKkm(Request $request, string $id): JsonResponse
     {
-        $pengajaran = $this->findAuthorizedPengajaran($request, $id);
-        if ($pengajaran->is_locked || ! ($pengajaran->periode?->is_active ?? true)) {
-            return response()->json([
-                'message' => 'KKM pengajaran ini telah dikunci atau berada pada periode arsip.',
-            ], 422);
+        if ($id !== 'all' && ! ctype_digit($id)) {
+            return response()->json(['message' => 'Pengajaran tidak ditemukan.'], 404);
+        }
+
+        $targets = $id === 'all'
+            ? $this->resolveTeacherPengajaranList($request)
+            : new Collection([$this->findAuthorizedPengajaran($request, (int) $id)]);
+
+        if ($targets->isEmpty()) {
+            return response()->json(['message' => 'Pengajaran tidak ditemukan.'], 404);
+        }
+
+        foreach ($targets as $pengajaran) {
+            if ($pengajaran->is_locked || ! ($pengajaran->periode?->is_active ?? true)) {
+                return response()->json([
+                    'message' => 'KKM pengajaran ini telah dikunci atau berada pada periode arsip.',
+                ], 422);
+            }
         }
 
         $kkm = $request->input('kkm');
@@ -233,9 +246,11 @@ class GuruPenilaianController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($pengajaran, $kkm): void {
-            $pengajaran->update(['kkm' => round((float) $kkm, 2)]);
-            $this->gradeService->recalculateForPengajaran($pengajaran);
+        DB::transaction(function () use ($targets, $kkm): void {
+            foreach ($targets as $pengajaran) {
+                $pengajaran->update(['kkm' => round((float) $kkm, 2)]);
+                $this->gradeService->recalculateForPengajaran($pengajaran);
+            }
         });
 
         return response()->json([
@@ -550,8 +565,8 @@ class GuruPenilaianController extends Controller
             'description' => $r['keterangan'],
         ], $rentangList);
 
-        $allPeriods = PeriodeAkademik::orderByDesc('is_active')
-            ->orderByDesc('tanggal_mulai')
+        $allPeriods = PeriodeAkademik::orderBy('tahun_ajaran')
+            ->orderByRaw("CASE WHEN semester = 'GANJIL' THEN 1 ELSE 2 END")
             ->get()
             ->map(fn (PeriodeAkademik $p) => [
                 'id' => (string) $p->id,

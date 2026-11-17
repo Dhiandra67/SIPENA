@@ -144,6 +144,11 @@
   box-shadow: 0 0 0 3px rgb(52 74 64 / 12%);
 }
 
+.input-wrap input::-ms-reveal,
+.input-wrap input::-ms-clear {
+  display: none;
+}
+
 .field-icon {
   position: absolute;
   z-index: 1;

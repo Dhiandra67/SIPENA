@@ -41,7 +41,9 @@ function GradeSettingsPage({
   onSaveComponents,
 }: GradeSettingsPageProps) {
   const showAll = selectedSettingsAssignmentId === "all";
-  const isSettingsLocked = !showAll && Boolean(selectedSettingsAssignment.isLocked);
+  const isSettingsLocked = showAll
+    ? assignmentList.some((assignment) => Boolean(assignment.isLocked))
+    : Boolean(selectedSettingsAssignment.isLocked);
 
   return (
     <>
@@ -61,7 +63,7 @@ function GradeSettingsPage({
               : `${selectedSettingsAssignment.subject} · ${selectedSettingsAssignment.className}`}
           </strong>
           <span>{selectedSettingsAssignment.period}</span>
-          {!showAll && <span>KKM {selectedSettingsAssignment.kkm}</span>}
+          <span>KKM {selectedSettingsAssignment.kkm}</span>
         </div>
       </section>
 
@@ -87,7 +89,11 @@ function GradeSettingsPage({
         <div className="teacher-card-heading">
           <div>
             <h2>Pengaturan KKM</h2>
-            <p>KKM berlaku untuk semua siswa pada pengajaran yang dipilih.</p>
+            <p>
+              {showAll
+                ? "Perubahan KKM akan diterapkan ke seluruh pengajaran yang aktif."
+                : "KKM berlaku untuk semua siswa pada pengajaran yang dipilih."}
+            </p>
           </div>
         </div>
         <div className="teacher-table-scroll">

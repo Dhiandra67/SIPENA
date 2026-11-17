@@ -65,7 +65,7 @@ function DashboardTopbar({
           onClick={onToggleProfileMenu}
           type="button"
         >
-          <strong>{displayName}</strong>
+          <strong title={displayName}>{displayName}</strong>
           <span className="user-avatar">{initial}</span>
         </button>
 
@@ -80,8 +80,8 @@ function DashboardTopbar({
                 {initial}
               </span>
               <div className="profile-popover-identity">
-                <strong>{displayName}</strong>
-                <small>{profileEmail}</small>
+                <strong title={displayName}>{displayName}</strong>
+                <small title={profileEmail}>{profileEmail}</small>
               </div>
             </div>
 

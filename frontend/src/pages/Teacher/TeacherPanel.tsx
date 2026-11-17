@@ -29,6 +29,7 @@ import {
   formatCompletionStatus,
   initialComponents,
   resolvePredicate,
+  sortPeriodOptions,
   titleByRoute,
 } from "./utils";
 import "./TeacherPanel.css";
@@ -97,18 +98,19 @@ function TeacherPanel({
     selectedPeriod?: string | null;
   }) {
     if (Array.isArray(data.periods)) {
-      setPeriodList(data.periods);
+      setPeriodList(sortPeriodOptions(data.periods));
     }
     if (typeof data.selectedPeriod === "string" && data.selectedPeriod) {
       setSelectedPeriod(data.selectedPeriod);
     }
     if (Array.isArray(data.assignments)) {
       setAssignmentList(data.assignments);
-      setKkmDrafts(
-        Object.fromEntries(
+      setKkmDrafts({
+        all: String(data.assignments[0]?.kkm ?? 75),
+        ...Object.fromEntries(
           data.assignments.map((assignment) => [assignment.id, String(assignment.kkm)]),
         ),
-      );
+      });
       if (data.assignments.length > 0) {
         const firstId = data.assignments[0].id;
         setSelectedAssignmentId((prev) =>
@@ -424,18 +426,21 @@ function TeacherPanel({
   }
 
   async function saveKkm() {
-    if (selectedSettingsAssignmentId === "all") {
-      setNotice("Pilih satu pengajaran untuk mengubah KKM.");
-      return;
-    }
-    if (selectedSettingsAssignment.isLocked) {
+    const isAll = selectedSettingsAssignmentId === "all";
+    const isLocked = isAll
+      ? assignmentList.some((assignment) => Boolean(assignment.isLocked))
+      : Boolean(selectedSettingsAssignment.isLocked);
+    if (isLocked) {
       setNotice(
         "KKM tidak dapat diubah karena pengajaran ini sedang dikunci atau berada pada periode arsip.",
       );
       return;
     }
+    const targetId = isAll ? "all" : selectedSettingsAssignment.id;
     const rawKkm =
-      kkmDrafts[selectedSettingsAssignment.id] ?? String(selectedSettingsAssignment.kkm);
+      kkmDrafts[targetId] ??
+      kkmDrafts[selectedSettingsAssignment.id] ??
+      String(selectedSettingsAssignment.kkm);
     const kkm = Number(rawKkm);
     if (rawKkm.trim() === "" || !Number.isFinite(kkm) || kkm < 0 || kkm > 100) {
       setNotice("KKM harus berupa angka antara 0 dan 100.");
@@ -449,18 +454,15 @@ function TeacherPanel({
       return;
     }
     try {
-      const response = await fetch(
-        `${apiBaseUrl}/v1/pengajaran/${selectedSettingsAssignment.id}/kkm`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ kkm }),
+      const response = await fetch(`${apiBaseUrl}/v1/pengajaran/${targetId}/kkm`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({ kkm }),
+      });
       const payload = (await response.json().catch(() => null)) as {
         message?: string;
         data?: {
@@ -480,13 +482,21 @@ function TeacherPanel({
       } else {
         setAssignmentList((current) =>
           current.map((assignment) =>
-            assignment.id === selectedSettingsAssignment.id ? { ...assignment, kkm } : assignment,
+            isAll || assignment.id === selectedSettingsAssignment.id
+              ? { ...assignment, kkm }
+              : assignment,
           ),
         );
-        setKkmDrafts((current) => ({
-          ...current,
-          [selectedSettingsAssignment.id]: String(kkm),
-        }));
+        setKkmDrafts((current) => {
+          if (!isAll) {
+            return { ...current, [selectedSettingsAssignment.id]: String(kkm) };
+          }
+          return {
+            ...current,
+            all: String(kkm),
+            ...Object.fromEntries(assignmentList.map((item) => [item.id, String(kkm)])),
+          };
+        });
         setHasUnsavedKkm(false);
       }
       setNotice(payload?.message ?? "KKM berhasil disimpan.");
@@ -893,13 +903,28 @@ function TeacherPanel({
             heading={renderHeading(
               "Atur komponen penilaian dan bobot untuk satu atau seluruh pengajaran.",
             )}
-            kkmValue={kkmDrafts[selectedSettingsAssignment.id] ?? selectedSettingsAssignment.kkm}
+            kkmValue={
+              selectedSettingsAssignmentId === "all"
+                ? (kkmDrafts.all ??
+                  kkmDrafts[selectedSettingsAssignment.id] ??
+                  selectedSettingsAssignment.kkm)
+                : (kkmDrafts[selectedSettingsAssignment.id] ?? selectedSettingsAssignment.kkm)
+            }
             onAddComponent={addComponent}
             onKkmChange={(value) => {
-              setKkmDrafts((current) => ({
-                ...current,
-                [selectedSettingsAssignment.id]: value,
-              }));
+              setKkmDrafts((current) => {
+                if (selectedSettingsAssignmentId === "all") {
+                  return {
+                    ...current,
+                    all: value,
+                    ...Object.fromEntries(assignmentList.map((item) => [item.id, value])),
+                  };
+                }
+                return {
+                  ...current,
+                  [selectedSettingsAssignment.id]: value,
+                };
+              });
               setHasUnsavedKkm(true);
             }}
             onRemoveComponent={removeComponent}

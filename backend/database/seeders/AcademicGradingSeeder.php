@@ -76,7 +76,7 @@ class AcademicGradingSeeder extends Seeder
 
         $mapelByKode = [];
         foreach ($daftarMapel as $item) {
-            $mapelByKode[$item['kode_mapel']] = MataPelajaran::updateOrCreate(
+            $mapel = MataPelajaran::updateOrCreate(
                 ['kode_mapel' => $item['kode_mapel']],
                 [
                     'nama_mapel' => $item['nama_mapel'],
@@ -85,6 +85,8 @@ class AcademicGradingSeeder extends Seeder
                     'is_active' => true,
                 ]
             );
+            $mapel->periodeAkademik()->syncWithoutDetaching([$periodeAktif->id]);
+            $mapelByKode[$item['kode_mapel']] = $mapel;
         }
 
         // 4. Akun Guru & Profil Guru
@@ -142,6 +144,10 @@ class AcademicGradingSeeder extends Seeder
                 'alamat' => 'Desa Karang Sari, Jati Agung, Lampung Selatan',
             ]
         );
+
+        foreach ([$guruSari, $guruDedi, $guruRatna] as $seededGuru) {
+            $seededGuru->periodeAkademik()->syncWithoutDetaching([$periodeAktif->id]);
+        }
 
         // 5. Kelas
         $daftarKelas = [
