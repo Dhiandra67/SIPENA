@@ -7,7 +7,7 @@ export type AdminRecord = Record<string, string>;
 export interface AdminField {
   key: string;
   label: string;
-  type?: "email" | "number" | "date" | "select";
+  type?: "email" | "number" | "date" | "select" | "multiselect";
   options?: string[];
   required?: boolean;
   min?: number;

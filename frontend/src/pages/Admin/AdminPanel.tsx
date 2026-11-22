@@ -289,12 +289,27 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
     const editingRecord = selectedRecord;
     const formData = new FormData(event.currentTarget);
     const rawCandidate: AdminRecord = Object.fromEntries(
-      section.fields.map((field) => [field.key, String(formData.get(field.key) ?? "").trim()]),
+      section.fields.map((field) => [
+        field.key,
+        (field.type === "multiselect"
+          ? formData.getAll(field.key).map((value) => String(value).trim()).join(" | ")
+          : String(formData.get(field.key) ?? "").trim()),
+      ]),
     );
     const candidate: AdminRecord = {
       ...rawCandidate,
       period: rawCandidate.period || currentPeriod,
     };
+    const guruIds = currentRoute === "assignments"
+      ? rawCandidate.teacher
+          .split(" | ")
+          .map((name) => periodRecords.teachers.find((teacher) => teacher.name === name)?.id)
+          .filter((id): id is string => Boolean(id))
+      : [];
+    if (currentRoute === "assignments" && guruIds.length === 0) {
+      setFormError("Pilih minimal satu guru pengampu yang terdaftar.");
+      return;
+    }
     const validationMessage = validateAdminRecord(
       candidate,
       currentRoute,
@@ -337,7 +352,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(candidate),
+        body: JSON.stringify(
+          activeRouteSnapshot === "assignments" ? { ...candidate, guru_ids: guruIds } : candidate,
+        ),
       });
       const payload = (await response.json().catch(() => null)) as {
         message?: string;
@@ -384,7 +401,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
           periodRecords.assignments.some((assignment) => assignment.className === record.code))) ||
       (activeRouteSnapshot === "teachers" &&
         (periodRecords.classes.some((classRecord) => classRecord.homeroom === record.name) ||
-          periodRecords.assignments.some((assignment) => assignment.teacher === record.name))) ||
+          periodRecords.assignments.some((assignment) =>
+            assignment.teacher.split(" | ").includes(record.name ?? ""),
+          ))) ||
       (activeRouteSnapshot === "subjects" &&
         periodRecords.assignments.some((assignment) => assignment.subject === record.name));
     if (inUse) {
@@ -963,6 +982,16 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
 
       const savedRecords: AdminRecord[] = [];
       for (const candidate of candidates) {
+        const guruIds = routeSnapshot === "assignments"
+          ? candidate.teacher
+              .split(" | ")
+              .map((name) => periodRecords.teachers.find((teacher) => teacher.name === name)?.id)
+              .filter((id): id is string => Boolean(id))
+          : [];
+        if (routeSnapshot === "assignments" && guruIds.length === 0) {
+          setNotice("Impor dibatalkan: pilih guru pengampu yang terdaftar.", routeSnapshot);
+          return;
+        }
         const response = await fetch(`${apiBaseUrl}${endpointByRoute[routeSnapshot]}`, {
           method: "POST",
           headers: {
@@ -970,7 +999,9 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(candidate),
+          body: JSON.stringify(
+            routeSnapshot === "assignments" ? { ...candidate, guru_ids: guruIds } : candidate,
+          ),
         });
         const payload = (await response.json().catch(() => null)) as {
           message?: string;
