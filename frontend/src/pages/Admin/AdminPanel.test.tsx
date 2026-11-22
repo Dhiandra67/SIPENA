@@ -100,6 +100,33 @@ describe("panel admin modular", () => {
     expect(onNavigate).toHaveBeenCalledWith("grades");
   });
 
+  it("mengizinkan satu penugasan mata pelajaran memilih beberapa guru", () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    render(<AdminPanel onNavigate={() => undefined} route="assignments" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Tambah penugasan/i }));
+    const teacherSelect = screen.getByLabelText(
+      "Guru Pengampu (pilih satu atau lebih)",
+    ) as HTMLSelectElement;
+    for (const option of Array.from(teacherSelect.options)) {
+      option.selected =
+        option.value === "Sari Wulandari, S.Pd." || option.value === "Dedi Saputra, S.Pd.";
+    }
+
+    fireEvent.change(screen.getByLabelText("Mata pelajaran"), {
+      target: { value: "Matematika" },
+    });
+    fireEvent.change(screen.getByLabelText("Kelas"), { target: { value: "VIII-B" } });
+    fireEvent.change(screen.getByLabelText("Periode"), {
+      target: { value: "2026/2027 · Ganjil" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
+
+    expect(
+      screen.getByText("Sari Wulandari, S.Pd. | Dedi Saputra, S.Pd."),
+    ).toBeInTheDocument();
+  });
+
   it("mengunduh template Excel siswa yang dapat diisi lalu diimpor", async () => {
     window.localStorage.removeItem("sipena.accessToken");
     const headers = [

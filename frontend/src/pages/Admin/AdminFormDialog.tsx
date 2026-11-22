@@ -57,7 +57,22 @@ function AdminFormDialog({
             {section.fields.map((field) => (
               <label key={field.key}>
                 {field.label}
-                {field.type === "select" ? (
+                {field.type === "multiselect" ? (
+                  <select
+                    aria-label={field.label}
+                    defaultValue={(selectedRecord?.[field.key] ?? "").split(" | ").filter(Boolean)}
+                    multiple
+                    name={field.key}
+                    required={field.required !== false}
+                    size={Math.min((field.options ?? getOptions(field.key)).length, 5)}
+                  >
+                    {(field.options ?? getOptions(field.key)).map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : field.type === "select" ? (
                   <select defaultValue={selectedRecord?.[field.key] ?? ""} name={field.key} required>
                     <option disabled value="">
                       Pilih {field.label.toLocaleLowerCase("id")}
