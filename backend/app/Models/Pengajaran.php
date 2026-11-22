@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -45,6 +46,12 @@ class Pengajaran extends Model
     public function guru(): BelongsTo
     {
         return $this->belongsTo(Guru::class, 'guru_id');
+    }
+
+    public function gurus(): BelongsToMany
+    {
+        return $this->belongsToMany(Guru::class, 'pengajaran_guru', 'pengajaran_id', 'guru_id')
+            ->withTimestamps();
     }
 
     public function komponenNilai(): HasMany

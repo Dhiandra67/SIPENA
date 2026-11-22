@@ -230,6 +230,7 @@ class AcademicGradingSeeder extends Seeder
                     'is_locked' => false,
                 ]
             );
+            $pengajaranMap[$key]->gurus()->syncWithoutDetaching([$item['guru']->id]);
         }
 
         // 8. Komponen Nilai (Total Bobot = 100%)
