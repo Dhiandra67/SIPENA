@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AdminPanel from "./AdminPanel";
 
@@ -105,13 +105,8 @@ describe("panel admin modular", () => {
     render(<AdminPanel onNavigate={() => undefined} route="assignments" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Tambah penugasan/i }));
-    const teacherSelect = screen.getByLabelText(
-      "Guru Pengampu (pilih satu atau lebih)",
-    ) as HTMLSelectElement;
-    for (const option of Array.from(teacherSelect.options)) {
-      option.selected =
-        option.value === "Sari Wulandari, S.Pd." || option.value === "Dedi Saputra, S.Pd.";
-    }
+    fireEvent.click(screen.getByLabelText("Sari Wulandari, S.Pd."));
+    fireEvent.click(screen.getByLabelText("Dedi Saputra, S.Pd."));
 
     fireEvent.change(screen.getByLabelText("Mata pelajaran"), {
       target: { value: "Matematika" },
@@ -125,6 +120,65 @@ describe("panel admin modular", () => {
     expect(
       screen.getByText("Sari Wulandari, S.Pd. | Dedi Saputra, S.Pd."),
     ).toBeInTheDocument();
+  });
+
+  it("menolak penyimpanan penugasan jika tidak ada checkbox guru yang dipilih", () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    render(<AdminPanel onNavigate={() => undefined} route="assignments" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Tambah penugasan/i }));
+    fireEvent.change(screen.getByLabelText("Mata pelajaran"), {
+      target: { value: "Matematika" },
+    });
+    fireEvent.change(screen.getByLabelText("Kelas"), { target: { value: "VIII-B" } });
+    fireEvent.change(screen.getByLabelText("Periode"), {
+      target: { value: "2026/2027 · Ganjil" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
+
+    expect(
+      screen.getByText("Pilih minimal satu guru pengampu yang terdaftar."),
+    ).toBeInTheDocument();
+  });
+
+  it("menghapus guru dari penugasan saat di-uncheck pada modal edit dan disimpan", () => {
+    window.localStorage.removeItem("sipena.accessToken");
+    render(<AdminPanel onNavigate={() => undefined} route="assignments" />);
+
+    // Buat penugasan dengan 2 guru
+    fireEvent.click(screen.getByRole("button", { name: /Tambah penugasan/i }));
+    fireEvent.click(screen.getByLabelText("Sari Wulandari, S.Pd."));
+    fireEvent.click(screen.getByLabelText("Dedi Saputra, S.Pd."));
+    fireEvent.change(screen.getByLabelText("Mata pelajaran"), {
+      target: { value: "Matematika" },
+    });
+    fireEvent.change(screen.getByLabelText("Kelas"), { target: { value: "VIII-B" } });
+    fireEvent.change(screen.getByLabelText("Periode"), {
+      target: { value: "2026/2027 · Ganjil" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
+
+    expect(
+      screen.getByText("Sari Wulandari, S.Pd. | Dedi Saputra, S.Pd."),
+    ).toBeInTheDocument();
+
+    // Klik Edit pada baris penugasan yang baru dibuat
+    const row = screen.getByText("Sari Wulandari, S.Pd. | Dedi Saputra, S.Pd.").closest("tr")!;
+    fireEvent.click(within(row).getByRole("button", { name: "Edit" }));
+
+    // Pastikan kedua guru tercentang
+    const dediCheckbox = screen.getByLabelText("Dedi Saputra, S.Pd.") as HTMLInputElement;
+    expect(dediCheckbox.checked).toBe(true);
+
+    // Uncheck Dedi Saputra, S.Pd.
+    fireEvent.click(dediCheckbox);
+    expect(dediCheckbox.checked).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
+
+    // Guru yang di-uncheck tidak lagi ada di baris penugasan
+    expect(screen.queryByText("Sari Wulandari, S.Pd. | Dedi Saputra, S.Pd.")).not.toBeInTheDocument();
+    expect(within(row).getByText("Sari Wulandari, S.Pd.")).toBeInTheDocument();
   });
 
   it("mengunduh template Excel siswa yang dapat diisi lalu diimpor", async () => {

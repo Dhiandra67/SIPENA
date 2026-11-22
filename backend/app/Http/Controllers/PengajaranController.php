@@ -128,7 +128,7 @@ class PengajaranController extends Controller
             $guruIds = $payload['guru_ids'];
             unset($payload['guru_ids']);
             $pengajaran->update($payload);
-            $pengajaran->gurus()->syncWithoutDetaching($guruIds);
+            $pengajaran->gurus()->sync($guruIds);
             $this->gradeService->recalculateForPengajaran($pengajaran);
         });
 
@@ -313,20 +313,17 @@ class PengajaranController extends Controller
                 abort(response()->json(['message' => 'Guru pengampu tidak boleh dipilih lebih dari satu kali.'], 422));
             }
         } else {
-            $guru = null;
             $hasTeacherInput = $request->filled('guru_id') || $request->filled('teacher');
             if ($request->filled('guru_id')) {
                 $guru = Guru::find($request->input('guru_id'));
+                $guruIds = $guru ? [$guru->id] : [];
             } elseif ($request->filled('teacher')) {
-                $guru = Guru::where('nama_lengkap', trim((string) $request->input('teacher')))->first();
-            }
-            if ($hasTeacherInput && ! $guru) {
-                $guruIds = [];
+                $teacherNames = array_filter(array_map('trim', explode('|', (string) $request->input('teacher'))));
+                $foundGurus = Guru::whereIn('nama_lengkap', $teacherNames)->get();
+                $guruIds = $foundGurus->pluck('id')->all();
             } elseif (! $hasTeacherInput && $existing) {
                 $existing->loadMissing('gurus');
                 $guruIds = $existing->gurus->modelKeys();
-            } elseif ($guru) {
-                $guruIds = [$guru->id];
             } else {
                 $guruIds = [];
             }

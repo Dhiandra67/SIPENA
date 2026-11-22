@@ -369,6 +369,57 @@ class AcademicApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_updating_assignment_removes_unchecked_teachers(): void
+    {
+        $this->seed();
+        $adminToken = $this->loginAs('test@example.com', 'password');
+
+        $pengajaran = Pengajaran::with(['guru', 'gurus', 'mataPelajaran', 'kelas', 'periode'])
+            ->whereHas('kelas', fn ($query) => $query->where('kode_kelas', 'VII-A'))
+            ->firstOrFail();
+        $guruA = $pengajaran->guru;
+        $guruB = \App\Models\Guru::whereHas('user', fn ($query) => $query->where('email', 'dedi@sekolah.sch.id'))
+            ->firstOrFail();
+
+        // 1. Tambahkan guru B ke penugasan sehingga ada guru A dan guru B
+        $this->withToken($adminToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}", [
+                'guru_ids' => [$guruA->id, $guruB->id],
+                'subject' => $pengajaran->mataPelajaran->nama_mapel,
+                'className' => $pengajaran->kelas->nama_kelas,
+                'period' => $pengajaran->periode->nama_periode,
+                'kkm' => 75,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.teacher', $guruA->nama_lengkap.' | '.$guruB->nama_lengkap);
+
+        $this->assertDatabaseHas('pengajaran_guru', [
+            'pengajaran_id' => $pengajaran->id,
+            'guru_id' => $guruB->id,
+        ]);
+
+        // 2. Uncheck guru B (hanya kirim guru A) saat edit
+        $this->withToken($adminToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}", [
+                'guru_ids' => [$guruA->id],
+                'subject' => $pengajaran->mataPelajaran->nama_mapel,
+                'className' => $pengajaran->kelas->nama_kelas,
+                'period' => $pengajaran->periode->nama_periode,
+                'kkm' => 75,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.teacher', $guruA->nama_lengkap);
+
+        $this->assertDatabaseMissing('pengajaran_guru', [
+            'pengajaran_id' => $pengajaran->id,
+            'guru_id' => $guruB->id,
+        ]);
+        $this->assertDatabaseHas('pengajaran_guru', [
+            'pengajaran_id' => $pengajaran->id,
+            'guru_id' => $guruA->id,
+        ]);
+    }
+
     public function test_teacher_cannot_submit_duplicate_component_ids(): void
     {
         $this->seed();

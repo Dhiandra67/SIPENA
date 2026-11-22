@@ -54,43 +54,65 @@ function AdminFormDialog({
           </dl>
         ) : (
           <form className="admin-form" onSubmit={onSave}>
-            {section.fields.map((field) => (
-              <label key={field.key}>
-                {field.label}
-                {field.type === "multiselect" ? (
-                  <select
-                    aria-label={field.label}
-                    defaultValue={(selectedRecord?.[field.key] ?? "").split(" | ").filter(Boolean)}
-                    multiple
-                    name={field.key}
-                    required={field.required !== false}
-                    size={Math.min((field.options ?? getOptions(field.key)).length, 5)}
-                  >
-                    {(field.options ?? getOptions(field.key)).map((option) => (
-                      <option key={option} value={option}>
-                        {option}
+            {section.fields.map((field) => {
+              if (field.type === "multiselect") {
+                const options = field.options ?? getOptions(field.key);
+                const selectedValues = (selectedRecord?.[field.key] ?? "")
+                  .split(" | ")
+                  .map((value) => value.trim())
+                  .filter(Boolean);
+
+                return (
+                  <div className="admin-form-field admin-form-field-multiselect" key={field.key}>
+                    <span className="admin-field-label">{field.label}</span>
+                    <div
+                      aria-label={field.label}
+                      className="admin-checkbox-group"
+                      role="group"
+                    >
+                      {options.length === 0 ? (
+                        <p className="admin-empty-option">Tidak ada data guru yang tersedia.</p>
+                      ) : (
+                        options.map((option) => (
+                          <label className="admin-checkbox-item" key={option}>
+                            <input
+                              defaultChecked={selectedValues.includes(option)}
+                              name={field.key}
+                              type="checkbox"
+                              value={option}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <label key={field.key}>
+                  {field.label}
+                  {field.type === "select" ? (
+                    <select defaultValue={selectedRecord?.[field.key] ?? ""} name={field.key} required>
+                      <option disabled value="">
+                        Pilih {field.label.toLocaleLowerCase("id")}
                       </option>
-                    ))}
-                  </select>
-                ) : field.type === "select" ? (
-                  <select defaultValue={selectedRecord?.[field.key] ?? ""} name={field.key} required>
-                    <option disabled value="">
-                      Pilih {field.label.toLocaleLowerCase("id")}
-                    </option>
-                    {(field.options ?? getOptions(field.key)).map((option) => (
-                      <option key={option}>{option}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    defaultValue={selectedRecord?.[field.key] ?? ""}
-                    name={field.key}
-                    required
-                    type={field.type ?? "text"}
-                  />
-                )}
-              </label>
-            ))}
+                      {(field.options ?? getOptions(field.key)).map((option) => (
+                        <option key={option}>{option}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      defaultValue={selectedRecord?.[field.key] ?? ""}
+                      name={field.key}
+                      required
+                      type={field.type ?? "text"}
+                    />
+                  )}
+                </label>
+              );
+            })}
             {formError && (
               <p className="admin-form-error" role="alert">
                 {formError}

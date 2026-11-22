@@ -292,7 +292,7 @@ function AdminPanel({ route, onNavigate }: AdminPanelProps) {
       section.fields.map((field) => [
         field.key,
         (field.type === "multiselect"
-          ? formData.getAll(field.key).map((value) => String(value).trim()).join(" | ")
+          ? formData.getAll(field.key).map((value) => String(value).trim()).filter(Boolean).join(" | ")
           : String(formData.get(field.key) ?? "").trim()),
       ]),
     );
