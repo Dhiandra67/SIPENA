@@ -88,11 +88,11 @@ function DashboardTopbar({
             <dl className="profile-popover-details">
               <div>
                 <dt>Nama Lengkap</dt>
-                <dd>{displayName}</dd>
+                <dd title={displayName}>{displayName}</dd>
               </div>
               <div>
                 <dt>Email Login</dt>
-                <dd>{profileEmail}</dd>
+                <dd title={profileEmail}>{profileEmail}</dd>
               </div>
               <div>
                 <dt>Peran Akun</dt>

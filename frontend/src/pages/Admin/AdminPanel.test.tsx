@@ -136,7 +136,7 @@ describe("panel admin modular", () => {
 
   it("menyediakan template, impor, dan ekspor untuk entitas admin lainnya", async () => {
     window.localStorage.removeItem("sipena.accessToken");
-    const headers = ["NIP", "Nama lengkap", "Jenis kelamin", "Email akun", "Status akun"];
+    const headers = ["NIP", "Nama Lengkap", "Jenis Kelamin (L/P)", "Email", "Status"];
     spreadsheetMocks.downloadSpreadsheet.mockResolvedValue(undefined);
     spreadsheetMocks.readSpreadsheetFile.mockResolvedValue([
       headers,
