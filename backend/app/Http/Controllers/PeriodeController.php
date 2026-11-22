@@ -228,7 +228,7 @@ class PeriodeController extends Controller
             }
 
             if ($copyAssignments && $classIdMap !== []) {
-                $sourceAssignments = Pengajaran::with('komponenNilai')
+                $sourceAssignments = Pengajaran::with(['komponenNilai', 'gurus'])
                     ->where('periode_id', $sourcePeriode->id)
                     ->whereIn('kelas_id', array_keys($classIdMap))
                     ->get();
@@ -251,6 +251,7 @@ class PeriodeController extends Controller
                             'is_locked' => false,
                         ]
                     );
+                    $destPengajaran->gurus()->syncWithoutDetaching($srcPengajaran->gurus->modelKeys());
 
                     if ($destPengajaran->komponenNilai()->count() === 0) {
                         foreach ($srcPengajaran->komponenNilai as $comp) {

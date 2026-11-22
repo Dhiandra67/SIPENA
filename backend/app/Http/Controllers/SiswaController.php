@@ -28,7 +28,7 @@ class SiswaController extends Controller
             }
 
             $allowedKelasIds = Kelas::where('wali_kelas_id', $guru->id)
-                ->orWhereHas('pengajaran', fn ($q) => $q->where('guru_id', $guru->id))
+                ->orWhereHas('pengajaran.gurus', fn ($q) => $q->where('guru.id', $guru->id))
                 ->pluck('id')
                 ->all();
 
@@ -74,7 +74,7 @@ class SiswaController extends Controller
             }
 
             $allowedKelasIds = Kelas::where('wali_kelas_id', $guru->id)
-                ->orWhereHas('pengajaran', fn ($q) => $q->where('guru_id', $guru->id))
+                ->orWhereHas('pengajaran.gurus', fn ($q) => $q->where('guru.id', $guru->id))
                 ->pluck('id')
                 ->all();
 

@@ -31,9 +31,10 @@ class Guru extends Model
         return $this->hasMany(Kelas::class, 'wali_kelas_id');
     }
 
-    public function pengajaran(): HasMany
+    public function pengajaran(): BelongsToMany
     {
-        return $this->hasMany(Pengajaran::class, 'guru_id');
+        return $this->belongsToMany(Pengajaran::class, 'pengajaran_guru', 'guru_id', 'pengajaran_id')
+            ->withTimestamps();
     }
 
     public function periodeAkademik(): BelongsToMany
