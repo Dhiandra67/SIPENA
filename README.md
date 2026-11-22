@@ -145,7 +145,7 @@ Buka `http://127.0.0.1:5173`. Perintah `npm.cmd start` dari folder `frontend` ju
 
 Backend menyediakan `GET /api/health` dan autentikasi bearer token melalui `POST /api/auth/login`. Akun Admin dibuat melalui database seeding (`php artisan db:seed`, default: `test@example.com` / `password` atau dapat dikonfigurasi melalui variabel `.env` `ADMIN_EMAIL`, `ADMIN_NAME`, dan `ADMIN_PASSWORD`). Akun Guru ditambahkan oleh Admin melalui menu **Data Guru** tanpa menginput kata sandi; sistem secara otomatis menetapkan kata sandi sementara `guru12345`, dan Guru tetap dapat mengubah kata sandinya sendiri di halaman Guru (menu **Profil Saya**). Endpoint `GET /api/auth/me` memeriksa sesi, sementara `POST /api/auth/logout` mencabut token. Rincian integrasi frontend ada di [frontend/README.md](frontend/README.md).
 
-Untuk deploy backend dari root repository menggunakan Docker, gunakan `Dockerfile` di root. Image ini menjalankan Laravel dengan PHP dan mendengarkan pada port dari variabel `PORT` (default `8080`); konfigurasi koneksi database dan `APP_KEY` melalui environment deployment. Jangan gunakan `npm start` sebagai perintah start backend karena image Node tidak menyediakan PHP.
+Untuk deploy backend dari root repository menggunakan Docker, gunakan `Dockerfile` di root. Saat container dimulai, image menjalankan `php artisan migrate --force` sebelum Laravel menerima request, sehingga perubahan skema database ikut diterapkan saat deploy. Image ini mendengarkan pada port dari variabel `PORT` (default `8080`); konfigurasi koneksi database dan `APP_KEY` melalui environment deployment. Jangan gunakan `npm start` sebagai perintah start backend karena image Node tidak menyediakan PHP.
 
 ### Pengujian backend
 
