@@ -231,6 +231,144 @@ class AcademicApiTest extends TestCase
         $this->assertSame([80, 90], $detail->fresh()->nilai_entri);
     }
 
+    public function test_adding_teachers_reuses_existing_assignment_and_preserves_existing_teachers(): void
+    {
+        $this->seed();
+        $adminToken = $this->loginAs('test@example.com', 'password');
+
+        $pengajaran = Pengajaran::with(['guru', 'mataPelajaran', 'kelas', 'periode'])
+            ->whereHas('kelas', fn ($query) => $query->where('kode_kelas', 'VII-A'))
+            ->firstOrFail();
+        $guruA = $pengajaran->guru;
+        $guruB = \App\Models\Guru::whereHas('user', fn ($query) => $query->where('email', 'dedi@sekolah.sch.id'))
+            ->firstOrFail();
+        $guruC = \App\Models\Guru::create([
+            'nip' => '199501012020011001',
+            'nama_lengkap' => 'Guru C',
+            'jenis_kelamin' => 'L',
+        ]);
+        $guruD = \App\Models\Guru::create([
+            'nip' => '199501022020011002',
+            'nama_lengkap' => 'Guru D',
+            'jenis_kelamin' => 'P',
+        ]);
+
+        $assignmentCount = Pengajaran::count();
+        $payload = [
+            'guru_ids' => [$guruB->id],
+            'subject' => $pengajaran->mataPelajaran->nama_mapel,
+            'className' => $pengajaran->kelas->nama_kelas,
+            'period' => $pengajaran->periode->nama_periode,
+        ];
+
+        $this->withToken($adminToken)
+            ->postJson('/api/v1/pengajaran', $payload)
+            ->assertOk()
+            ->assertJsonPath('message', 'Guru baru berhasil ditambahkan ke penugasan mata pelajaran yang sudah ada.');
+
+        $this->withToken($adminToken)
+            ->postJson('/api/v1/pengajaran', [
+                ...$payload,
+                'guru_ids' => [$guruC->id, $guruD->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Guru baru berhasil ditambahkan ke penugasan mata pelajaran yang sudah ada.');
+
+        $this->withToken($adminToken)
+            ->postJson('/api/v1/pengajaran', [
+                ...$payload,
+                'guru_ids' => [$guruA->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Guru yang dipilih sudah terdaftar pada penugasan mata pelajaran ini.');
+
+        $this->assertSame($assignmentCount, Pengajaran::count());
+        $this->assertSame(
+            1,
+            Pengajaran::where('periode_id', $pengajaran->periode_id)
+                ->where('kelas_id', $pengajaran->kelas_id)
+                ->where('mapel_id', $pengajaran->mapel_id)
+                ->count(),
+        );
+
+        $freshPengajaran = $pengajaran->fresh();
+        foreach ([$guruA->id, $guruB->id, $guruC->id, $guruD->id] as $guruId) {
+            $this->assertDatabaseHas('pengajaran_guru', [
+                'pengajaran_id' => $freshPengajaran->id,
+                'guru_id' => $guruId,
+            ]);
+        }
+    }
+
+    public function test_assigned_teachers_share_one_grade_record_and_unassigned_teachers_are_denied(): void
+    {
+        $this->seed();
+        $adminToken = $this->loginAs('test@example.com', 'password');
+        $teacherAToken = $this->loginAs('guru@example.com', 'guru12345');
+        $teacherBToken = $this->loginAs('dedi@sekolah.sch.id', 'guru12345');
+        $unassignedTeacherToken = $this->loginAs('ratna@sekolah.sch.id', 'guru12345');
+
+        $pengajaran = Pengajaran::with(['guru', 'mataPelajaran', 'kelas', 'periode'])
+            ->whereHas('kelas', fn ($query) => $query->where('kode_kelas', 'VII-A'))
+            ->firstOrFail();
+        $guruA = $pengajaran->guru;
+        $guruB = \App\Models\Guru::whereHas('user', fn ($query) => $query->where('email', 'dedi@sekolah.sch.id'))
+            ->firstOrFail();
+        $guruTidakDitugaskan = \App\Models\Guru::whereHas('user', fn ($query) => $query->where('email', 'ratna@sekolah.sch.id'))
+            ->firstOrFail();
+
+        $this->withToken($adminToken)
+            ->putJson("/api/v1/pengajaran/{$pengajaran->id}", [
+                'guru_ids' => [$guruA->id, $guruB->id],
+                'subject' => $pengajaran->mataPelajaran->nama_mapel,
+                'className' => $pengajaran->kelas->nama_kelas,
+                'period' => $pengajaran->periode->nama_periode,
+                'kkm' => 75,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.teacher', $guruA->nama_lengkap.' | '.$guruB->nama_lengkap);
+
+        $this->assertDatabaseCount('pengajaran_guru', 6);
+        $this->assertDatabaseHas('pengajaran_guru', [
+            'pengajaran_id' => $pengajaran->id,
+            'guru_id' => $guruB->id,
+        ]);
+
+        $student = Siswa::where('nis', '2026001')->firstOrFail();
+        $component = $pengajaran->komponenNilai()->where('nama_komponen', 'Tugas Harian')->firstOrFail();
+        $scoreUrl = "/api/v1/pengajaran/{$pengajaran->id}/nilai";
+
+        $this->withToken($teacherAToken)
+            ->putJson($scoreUrl, [
+                'scores' => [(string) $student->id => [(string) $component->id => '85']],
+            ])
+            ->assertOk();
+
+        $this->withToken($teacherBToken)
+            ->getJson($scoreUrl)
+            ->assertOk()
+            ->assertJsonPath('data.scores.'.$student->id.'.'.$component->id, '85');
+
+        $this->withToken($teacherBToken)
+            ->putJson($scoreUrl, [
+                'scores' => [(string) $student->id => [(string) $component->id => '90']],
+            ])
+            ->assertOk();
+
+        $this->withToken($teacherAToken)
+            ->getJson($scoreUrl)
+            ->assertOk()
+            ->assertJsonPath('data.scores.'.$student->id.'.'.$component->id, '90');
+
+        $this->assertSame(1, NilaiDetail::where('komponen_id', $component->id)
+            ->where('anggota_kelas_id', $student->anggotaKelas()->firstOrFail()->id)
+            ->count());
+
+        $this->withToken($unassignedTeacherToken)
+            ->getJson($scoreUrl)
+            ->assertForbidden();
+    }
+
     public function test_teacher_cannot_submit_duplicate_component_ids(): void
     {
         $this->seed();

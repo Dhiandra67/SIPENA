@@ -215,17 +215,5 @@ export function validateAdminRecord(
   ) {
     return "Pilih kelas yang terdaftar.";
   }
-  if (currentRoute === "assignments") {
-    const duplicate = existing.some(
-      (record) =>
-        record.teacher === candidate.teacher &&
-        record.subject === candidate.subject &&
-        record.className === candidate.className &&
-        record.period === candidate.period,
-    );
-    if (duplicate) {
-      return "Penugasan guru, mata pelajaran, kelas, dan periode tersebut sudah ada.";
-    }
-  }
   return "";
 }
