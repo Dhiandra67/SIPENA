@@ -24,7 +24,7 @@ class PengajaranController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $query = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
+        $query = Pengajaran::with(['guru', 'gurus', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
             ->withCount('nilaiAkhirMapel')
             ->orderBy('id');
 
@@ -33,7 +33,7 @@ class PengajaranController extends Controller
             if (! $guru) {
                 return response()->json(['data' => []]);
             }
-            $query->where('guru_id', $guru->id);
+            $query->whereHas('gurus', fn ($q) => $q->where('guru.id', $guru->id));
         }
 
         if ($request->filled('periode_id')) {
@@ -49,8 +49,37 @@ class PengajaranController extends Controller
     {
         $payload = $this->validatePengajaran($request);
 
-        $pengajaran = DB::transaction(function () use ($payload): Pengajaran {
+        $result = DB::transaction(function () use ($payload): array {
+            $guruIds = $payload['guru_ids'];
+            unset($payload['guru_ids']);
+
+            $identity = [
+                'periode_id' => $payload['periode_id'],
+                'kelas_id' => $payload['kelas_id'],
+                'mapel_id' => $payload['mapel_id'],
+            ];
+            $pengajaran = Pengajaran::where($identity)->first();
+
+            if ($pengajaran) {
+                $pengajaran->loadMissing('gurus');
+                $existingGuruIds = $pengajaran->gurus->modelKeys();
+                $addedGuruIds = array_values(array_diff($guruIds, $existingGuruIds));
+                $attachGuruIds = array_values(array_unique(array_merge(
+                    $existingGuruIds,
+                    $guruIds,
+                    $pengajaran->guru_id ? [$pengajaran->guru_id] : [],
+                )));
+                $pengajaran->gurus()->syncWithoutDetaching($attachGuruIds);
+
+                return [
+                    'pengajaran' => $pengajaran,
+                    'added_guru_ids' => $addedGuruIds,
+                    'was_created' => false,
+                ];
+            }
+
             $created = Pengajaran::create($payload);
+            $created->gurus()->syncWithoutDetaching($guruIds);
 
             $defaultComponents = [
                 ['nama_komponen' => 'Tugas Harian', 'bobot_persen' => 20.00, 'urutan' => 1],
@@ -68,15 +97,26 @@ class PengajaranController extends Controller
                 ]);
             }
 
-            return $created;
+            return [
+                'pengajaran' => $created,
+                'added_guru_ids' => $guruIds,
+                'was_created' => true,
+            ];
         });
 
-        $pengajaran->load(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
+        $pengajaran = $result['pengajaran'];
+        $pengajaran->load(['guru', 'gurus', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
+
+        $message = $result['was_created']
+            ? 'Penugasan pengajaran berhasil ditambahkan.'
+            : ($result['added_guru_ids'] === []
+                ? 'Guru yang dipilih sudah terdaftar pada penugasan mata pelajaran ini.'
+                : 'Guru baru berhasil ditambahkan ke penugasan mata pelajaran yang sudah ada.');
 
         return response()->json([
-            'message' => 'Penugasan pengajaran berhasil ditambahkan.',
+            'message' => $message,
             'data' => $this->formatPengajaran($pengajaran),
-        ], 201);
+        ], $result['was_created'] ? 201 : 200);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -85,11 +125,14 @@ class PengajaranController extends Controller
         $payload = $this->validatePengajaran($request, $pengajaran->id, $pengajaran);
 
         DB::transaction(function () use ($pengajaran, $payload): void {
+            $guruIds = $payload['guru_ids'];
+            unset($payload['guru_ids']);
             $pengajaran->update($payload);
+            $pengajaran->gurus()->syncWithoutDetaching($guruIds);
             $this->gradeService->recalculateForPengajaran($pengajaran);
         });
 
-        $pengajaran->load(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
+        $pengajaran->load(['guru', 'gurus', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])->loadCount('nilaiAkhirMapel');
 
         return response()->json([
             'message' => 'Penugasan pengajaran berhasil diperbarui.',
@@ -99,7 +142,7 @@ class PengajaranController extends Controller
 
     public function toggleLock(int $id): JsonResponse
     {
-        $pengajaran = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
+        $pengajaran = Pengajaran::with(['guru', 'gurus', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
             ->withCount('nilaiAkhirMapel')
             ->findOrFail($id);
 
@@ -191,7 +234,7 @@ class PengajaranController extends Controller
             })
             ->values();
 
-        $assignments = Pengajaran::with(['guru', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
+        $assignments = Pengajaran::with(['guru', 'gurus', 'mataPelajaran', 'kelas.anggotaKelas', 'periode'])
             ->withCount('nilaiAkhirMapel')
             ->orderBy('id')
             ->get()
@@ -231,7 +274,7 @@ class PengajaranController extends Controller
             'kelas_id' => (string) $p->kelas_id,
             'mapel_id' => (string) $p->mapel_id,
             'guru_id' => (string) $p->guru_id,
-            'teacher' => $p->guru?->nama_lengkap ?? '',
+            'teacher' => $p->gurus->pluck('nama_lengkap')->implode(' | ') ?: ($p->guru?->nama_lengkap ?? ''),
             'subject' => $p->mataPelajaran?->nama_mapel ?? '',
             'className' => $p->kelas?->nama_kelas ?? '',
             'period' => $p->periode?->nama_periode ?? '',
@@ -260,13 +303,37 @@ class PengajaranController extends Controller
             abort(response()->json(['message' => 'Periode akademik belum tersedia.'], 422));
         }
 
-        $guru = null;
-        if ($request->filled('guru_id')) {
-            $guru = Guru::find($request->input('guru_id'));
-        } elseif ($request->filled('teacher')) {
-            $guru = Guru::where('nama_lengkap', trim((string) $request->input('teacher')))->first();
+        if ($request->has('guru_ids')) {
+            $rawGuruIds = $request->input('guru_ids');
+            if (! is_array($rawGuruIds) || $rawGuruIds === []) {
+                abort(response()->json(['message' => 'Pilih minimal satu guru pengampu.'], 422));
+            }
+            $guruIds = array_map('intval', $rawGuruIds);
+            if (count($guruIds) !== count(array_unique($guruIds))) {
+                abort(response()->json(['message' => 'Guru pengampu tidak boleh dipilih lebih dari satu kali.'], 422));
+            }
+        } else {
+            $guru = null;
+            $hasTeacherInput = $request->filled('guru_id') || $request->filled('teacher');
+            if ($request->filled('guru_id')) {
+                $guru = Guru::find($request->input('guru_id'));
+            } elseif ($request->filled('teacher')) {
+                $guru = Guru::where('nama_lengkap', trim((string) $request->input('teacher')))->first();
+            }
+            if ($hasTeacherInput && ! $guru) {
+                $guruIds = [];
+            } elseif (! $hasTeacherInput && $existing) {
+                $existing->loadMissing('gurus');
+                $guruIds = $existing->gurus->modelKeys();
+            } elseif ($guru) {
+                $guruIds = [$guru->id];
+            } else {
+                $guruIds = [];
+            }
         }
-        if (! $guru) {
+
+        $matchedGuruCount = Guru::whereIn('id', $guruIds)->count();
+        if ($guruIds === [] || $matchedGuruCount !== count($guruIds)) {
             abort(response()->json(['message' => 'Pilih guru yang terdaftar.'], 422));
         }
 
@@ -300,18 +367,6 @@ class PengajaranController extends Controller
             abort(response()->json(['message' => 'KKM pengajaran harus berada pada rentang 0–100.'], 422));
         }
 
-        $duplicateQuery = Pengajaran::where('periode_id', $periode->id)
-            ->where('kelas_id', $kelas->id)
-            ->where('mapel_id', $mapel->id);
-        if ($ignoreId !== null) {
-            $duplicateQuery->where('id', '!=', $ignoreId);
-        }
-        if ($duplicateQuery->exists()) {
-            abort(response()->json([
-                'message' => 'Penugasan mata pelajaran pada kelas dan periode tersebut sudah ada.',
-            ], 422));
-        }
-
         $isLocked = $request->has('is_locked')
             ? (bool) $request->boolean('is_locked')
             : ($existing !== null ? (bool) $existing->is_locked : false);
@@ -320,7 +375,8 @@ class PengajaranController extends Controller
             'periode_id' => $periode->id,
             'kelas_id' => $kelas->id,
             'mapel_id' => $mapel->id,
-            'guru_id' => $guru->id,
+            'guru_id' => $guruIds[0],
+            'guru_ids' => $guruIds,
             'kkm' => round((float) $kkmRaw, 2),
             'is_locked' => $isLocked,
         ];

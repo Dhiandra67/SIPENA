@@ -433,6 +433,7 @@ class GuruPenilaianController extends Controller
             'periode',
             'mataPelajaran',
             'guru',
+            'gurus',
             'kelas.anggotaKelas.siswa',
             'komponenNilai',
             'nilaiAkhirMapel',
@@ -447,7 +448,7 @@ class GuruPenilaianController extends Controller
             if (! $guru) {
                 return new Collection();
             }
-            $query->where('guru_id', $guru->id);
+            $query->whereHas('gurus', fn ($q) => $q->where('guru.id', $guru->id));
         }
 
         return $query->get();
@@ -459,6 +460,7 @@ class GuruPenilaianController extends Controller
             'periode',
             'mataPelajaran',
             'guru',
+            'gurus',
             'kelas.anggotaKelas.siswa',
             'komponenNilai',
             'nilaiAkhirMapel',
@@ -467,7 +469,7 @@ class GuruPenilaianController extends Controller
         $user = $request->user();
         if ($user && in_array(strtolower((string) $user->role), ['teacher', 'guru', 'role_guru'], true)) {
             $guru = Guru::where('user_id', $user->id)->first();
-            if (! $guru || $pengajaran->guru_id !== $guru->id) {
+            if (! $guru || ! $pengajaran->gurus->contains('id', $guru->id)) {
                 abort(response()->json([
                     'message' => 'Anda tidak memiliki akses pada pengajaran kelas ini.',
                 ], 403));

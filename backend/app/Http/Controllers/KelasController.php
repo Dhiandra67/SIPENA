@@ -25,7 +25,7 @@ class KelasController extends Controller
 
             $query->where(function ($q) use ($guru) {
                 $q->where('wali_kelas_id', $guru->id)
-                    ->orWhereHas('pengajaran', fn ($pq) => $pq->where('guru_id', $guru->id));
+                    ->orWhereHas('pengajaran.gurus', fn ($gq) => $gq->where('guru.id', $guru->id));
             });
         }
 
